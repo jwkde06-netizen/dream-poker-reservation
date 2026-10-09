@@ -79,3 +79,50 @@ body{background:#050608;color:#f5f5f5}
 @media(max-width:620px){.hero{padding:13px 0 12px}.hero h1{font-size:25px;margin:6px 0}.gameNumbers{min-width:104px}.gameNumbers b{font-size:17px}.gameStart{font-size:13px}}
 
 .roomStatus{font-weight:750;font-size:13px;color:#d9bd8c;border-bottom:1px solid #2f3032;margin:0 0 12px;padding:4px 0 12px}
+
+/* One-screen cashier/desk workspace */
+body:has(.staffWorkspace){overflow:hidden}
+body:has(.staffWorkspace) .shell{max-width:none;padding:10px 16px 0}
+body:has(.staffWorkspace) .header{margin-bottom:8px;padding:0 0 7px}
+body:has(.staffWorkspace) footer{display:none}
+.staffWorkspace{color:#e9edf3;--stBorder:#30343b;--stGold:#e9c480}
+.staffTop{display:flex;align-items:center;justify-content:space-between;gap:16px;background:#121417;border:1px solid var(--stBorder);border-radius:12px;padding:10px 16px;margin-bottom:10px}
+.staffTop>div:first-child strong{font-size:20px;display:block}.staffTop>div:first-child small{color:#9aa5b5;font-size:11px}
+.staffKpis{display:flex;gap:17px;align-items:center}.staffKpis span{color:#a6afbc;font-size:12px;white-space:nowrap}.staffKpis b{color:#f4f5f6;font-size:19px;margin-left:6px}.staffKpis b.staffGold{color:#edc67d}
+.staffTopActions{display:flex;gap:6px;align-items:center}.staffTopActions button,.staffTopActions label{border:1px solid #404752;border-radius:7px;padding:8px 9px;background:#20242a;color:#eff2f5;font-size:12px;white-space:nowrap}.staffTopActions label{display:flex;gap:4px;align-items:center}
+.staffGrid{display:grid;grid-template-columns:minmax(245px,22%) minmax(400px,1fr) minmax(275px,25%);gap:10px;height:calc(100dvh - 165px);min-height:440px}
+.staffPane{background:#111317;border:1px solid var(--stBorder);border-radius:12px;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.staffPaneHead{padding:14px 15px;border-bottom:1px solid var(--stBorder);flex-shrink:0}
+.staffPaneHead h2{font-size:16px;margin:0 0 4px}.staffPaneHead small{color:#9ea8b7;font-size:11px}
+.staffScroll{overflow:auto;overscroll-behavior:contain;min-height:0;flex:1;padding:12px}
+.staffCreate{border:1px solid #3b414a;border-radius:10px;padding:11px;background:#191c21;margin-bottom:18px}
+.staffSubheading{font-weight:800;font-size:12px;color:#eac98a;margin:0 0 10px}
+.staffCreateGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.staffCreateGrid label{font-size:11px;color:#aeb8c5;display:flex;flex-direction:column;gap:5px;min-width:0}
+.staffCreateGrid label.wide{grid-column:1/-1}
+.staffCreateGrid input{width:100%;min-width:0;border-radius:7px;padding:9px;font-size:13px;background:#0e1217;color:#fff;border:1px solid #3b4552}
+.staffAdd{background:#edc787;border:0;border-radius:8px;color:#18202d;font-weight:800;padding:11px;width:100%;margin-top:10px}
+.staffGameOption{display:flex;flex-direction:column;gap:5px;width:100%;background:#191c21;border:1px solid #333941;border-radius:9px;padding:10px;text-align:left;color:#eff2f6;margin:0 0 7px}
+.staffGameOption.active{border-color:#d7aa64;background:#29241c}
+.staffGameOption>strong{font-size:13px}.staffGameOption>span,.staffGameChoose span{font-size:11px;color:#c0c7d0}
+.staffGameChoose{border:0;background:transparent;padding:0;text-align:left;display:flex;flex-direction:column;gap:5px;color:#f5f5f5}
+.staffGameChoose strong{font-size:13px}.staffGameChoose small{font-size:11px;color:#b4bfce}
+.staffQueueToggle{align-self:flex-end;font-size:11px;padding:6px 10px;background:#343941;color:#fff;border:0;border-radius:6px}.staffQueueToggle.open{background:#4c3435;color:#ffbcb8}
+.staffListTools{display:flex;align-items:center;gap:12px;padding:9px 12px;border-bottom:1px solid var(--stBorder)}.staffListTools input{flex:1;min-width:0;padding:9px 11px;background:#1d2025;color:#fff;border:1px solid #3c424c;border-radius:8px;font-size:13px}.staffListTools span{font-size:12px;color:#a8b4c4}
+.staffTableScroll{padding:0;overflow:auto}.staffTable{border-collapse:collapse;min-width:565px;width:100%;font-size:12px}
+.staffTable th{text-align:left;color:#a4aebe;background:#181b20;position:sticky;top:0;z-index:1;font-size:11px;font-weight:700;padding:12px 10px;white-space:nowrap}.staffTable td{padding:13px 10px;border-top:1px solid #292e35;vertical-align:middle}.staffTable tbody tr{cursor:pointer}.staffTable tbody tr:hover{background:#242830}.staffTable tbody tr.selected{background:#302920}.staffTable td strong{display:block;font-size:13px}.staffTable td small{display:block;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#dec88f;margin-top:3px}
+.staffStatus{font-size:11px;border-radius:6px;padding:6px 7px;white-space:nowrap;background:#50401f;color:#f2d17d;font-weight:700}.staffStatus.confirmed,.staffStatus.checked_in{background:#173d2d;color:#82e7ad}.staffStatus.waitlisted{background:#1b3852;color:#92ceff}.staffStatus.rejected,.staffStatus.no_show,.staffStatus.cancelled{background:#4a2428;color:#f5a6a9}
+.staffMemberId{color:#f4d494;font-size:13px}
+.staffPerson{display:flex;gap:9px;justify-content:space-between;align-items:center;margin-bottom:12px}.staffPerson strong{font-size:20px}
+.staffIdCard{background:#27231b;border:1px solid #786343;border-radius:9px;padding:9px 12px;color:#aeb8c5;font-size:12px}.staffIdCard b{display:block;color:#f7d18e;font-size:23px;margin-top:3px}
+.staffFacts{margin:12px 0}.staffFacts>div{display:flex;align-items:baseline;justify-content:space-between;gap:14px;border-bottom:1px solid #292d34;padding:8px 0}.staffFacts dt{font-size:11px;color:#a7b0c0}.staffFacts dd{font-size:12px;text-align:right;margin:0}
+.staffNote{padding:10px 12px;background:#1b1e23;border-radius:8px;margin-bottom:12px}.staffNote small{color:#aab5c2;font-size:11px}.staffNote p{font-size:13px;margin:5px 0;overflow-wrap:anywhere}
+.staffActionGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.staffActionGrid button{padding:11px 5px;border:1px solid #414954;border-radius:8px;color:#fff;background:#2b3038;font-weight:700;font-size:12px}.staffActionGrid .confirm{background:#207748;border-color:#207748}.staffActionGrid .wait{background:#23557e;border-color:#23557e}.staffActionGrid .reject{background:#8b333d;border-color:#8b333d}
+.staffTools{border-top:1px solid #323741;margin-top:18px;padding-top:12px}.staffTools h3{font-size:13px;margin:0 0 10px}.staffToolBtns{display:flex;flex-wrap:wrap;gap:6px}.staffToolBtns button{padding:9px;border:1px solid #414954;border-radius:7px;background:#1e242d;color:#e5e9ef;font-size:11px}
+.staffEmpty{padding:24px;color:#aab4c1;text-align:center;font-size:13px}
+.staffMobileNav{display:none}
+.staffOverlay{position:fixed;inset:0;background:#000b;z-index:150;display:flex;justify-content:flex-end}
+.staffDrawer{background:#101318;border-left:1px solid #414956;width:min(690px,100vw);max-height:100dvh;overflow:auto;padding:16px}.staffDrawerTop{display:flex;justify-content:space-between;align-items:center;padding-bottom:12px;margin-bottom:15px;border-bottom:1px solid #363e47}.staffDrawerTop button{padding:8px 12px;background:#272e39;color:#fff;border:1px solid #485061;border-radius:7px}.staffDrawer .panel{margin-bottom:0}
+.staffAudit>div{padding:12px 0;border-bottom:1px solid #353b44;font-size:12px}.staffAudit small{display:block;color:#96a8bb;margin-top:5px}
+@media(max-width:1050px){.staffGrid{grid-template-columns:220px minmax(315px,1fr) 260px}.staffKpis{gap:9px}.staffKpis span{font-size:10px}}
+@media(max-width:760px){body:has(.staffWorkspace) .shell{padding:10px 10px 0}.staffGrid{display:block;height:calc(100dvh - 205px);min-height:260px}.staffPane{height:100%;display:none}.staffPane.mobileOn{display:flex}.staffTop{flex-wrap:wrap;padding:10px}.staffTop>div:first-child{flex:1}.staffTopActions{margin-left:auto}.staffTopActions label{display:none}.staffKpis{order:3;width:100%;justify-content:space-between}.staffKpis span{font-size:11px}.staffKpis b{font-size:16px}.staffMobileNav{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:9px}.staffMobileNav button{background:#1b2028;color:#c3cfdb;border:1px solid #414852;border-radius:8px;padding:11px 5px;font-weight:700}.staffMobileNav button.on{background:#d7b577;color:#131b25;border-color:#d7b577}.staffTable{min-width:550px}.staffDrawer{padding:10px}}
