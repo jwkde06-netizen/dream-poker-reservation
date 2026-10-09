@@ -20,3 +20,22 @@
 .chatActions .primary{grid-column:auto;min-width:120px}
 @media(max-width:850px){.deskForm{grid-template-columns:1fr 1fr}.deskForm label:first-child{grid-column:1/-1}}
 @media(max-width:620px){.deskForm{grid-template-columns:1fr}.deskForm label:first-child{grid-column:auto}.deskForm .primary{max-width:none}.chatCompose{grid-template-columns:1fr}.chatBubble{max-width:100%}.chatActions .primary{min-width:100px}}
+
+.reservationModes{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:5px;background:#0c1728;border-radius:12px;border:1px solid #354c66;margin:16px 0 20px}
+.reservationModes button{background:transparent;border:0;border-radius:9px;color:#c2d2e2;padding:13px 8px;font-weight:800}
+.reservationModes .selected{background:#f2c680;color:#172235}
+.memberBox{padding:17px;border-radius:12px;border:1px solid #435c75;background:#162840}
+.memberBox label,.sharedArrival{display:flex;flex-direction:column;gap:8px;color:#d3dfed;font-size:13px;font-weight:750}
+.sharedArrival{margin:0 0 15px}
+.sharedArrival input{max-width:440px}
+.memberLogin,.memberActions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.memberLogin input{flex:1;min-width:170px}
+.memberLogin .primary,.memberActions .primary{grid-column:auto}
+.memberAccount{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:18px}
+.memberAccount strong{overflow-wrap:anywhere}
+.memberFields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.memberFields input{width:100%}
+.memberActions .primary{flex:1}
+.memberNumber{display:inline-block;background:#f0c77f;color:#13243a;font-size:14px;font-weight:900;letter-spacing:.04em;border-radius:7px;padding:6px 10px;margin:7px 0}
+.memberNotice{color:#f1d095;font-size:13px;overflow-wrap:anywhere}
+@media(max-width:620px){.memberFields{grid-template-columns:1fr}.memberActions{flex-direction:column;align-items:stretch}.memberActions button{width:100%}.memberLogin{flex-direction:column;align-items:stretch}.memberAccount{align-items:flex-start}.reservationModes button{font-size:13px;padding:13px 5px}}
