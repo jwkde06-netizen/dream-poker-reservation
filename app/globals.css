@@ -39,3 +39,35 @@
 .memberNumber{display:inline-block;background:#f0c77f;color:#13243a;font-size:14px;font-weight:900;letter-spacing:.04em;border-radius:7px;padding:6px 10px;margin:7px 0}
 .memberNotice{color:#f1d095;font-size:13px;overflow-wrap:anywhere}
 @media(max-width:620px){.memberFields{grid-template-columns:1fr}.memberActions{flex-direction:column;align-items:stretch}.memberActions button{width:100%}.memberLogin{flex-direction:column;align-items:stretch}.memberAccount{align-items:flex-start}.reservationModes button{font-size:13px;padding:13px 5px}}
+
+/* Customer-first dark booking, optimized for KakaoTalk in-app browser */
+body{background:#050608;color:#f5f5f5}
+.shell{max-width:1020px}
+.header{padding:8px 0 18px;border-bottom:1px solid #252526}
+.brandLogo{width:55px;height:55px;object-fit:contain;flex-shrink:0}
+.brand strong{font-size:20px;letter-spacing:.09em}
+.brand small{font-size:10px;color:#bababa}
+.hero{padding:32px 0 24px}
+.panel{background:#101113;border-color:#303136}
+.gameCard{background:#191b1e;border-color:#3a3b42}
+.gameCard.active{background:#26221a;border-color:#edc57d}
+.gameNumbers .green{color:#c7e6cf}
+.tabs{display:none}
+.reservationModes{background:#08090b;border-color:#303136}
+.guestNoteLabel{display:flex;flex-direction:column;gap:9px;margin:15px 0;color:#e3e3e3;font-weight:750;font-size:13px}
+.guestNoteLabel textarea{background:#0b0d0f;border:1px solid #45464a;border-radius:10px;color:#fff;resize:vertical;min-height:88px;width:100%;padding:14px;font:inherit;font-size:15px}
+.guestNoteStaff{font-weight:650;color:#ffd893!important;white-space:pre-wrap;overflow-wrap:anywhere;max-width:600px}
+.bookingForm input,.memberFields input,.sharedArrival input{font-size:16px}
+@media(max-width:620px){
+ .shell{padding:12px 12px 44px}
+ .header{padding-bottom:12px}
+ .brandLogo{width:46px;height:46px}
+ .brand strong{font-size:16px}
+ .brand small{font-size:8px}
+ .hero{padding:22px 0 18px}
+ .hero h1{font-size:31px}
+ .gameCard{min-height:87px}
+ .panel{border-radius:13px;padding:16px}
+ .guestNoteLabel textarea{font-size:16px}
+ .bookingForm .primary{position:relative;min-height:54px}
+}
