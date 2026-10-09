@@ -4,12 +4,14 @@ import {projectUrl,publicKey,tg} from "../../../lib/telegram";
 export const runtime="nodejs";
 const fmt=(date:string)=>new Date(date).toLocaleString("ko-KR",{timeZone:"Asia/Ho_Chi_Minh",month:"long",day:"numeric",hour:"2-digit",minute:"2-digit"});
 export async function POST(request:Request){
- const target=process.env.TELEGRAM_CHAT_ID||"";
- if(!publicKey||!target)return NextResponse.json({enabled:false},{status:200});
+ if(!publicKey)return NextResponse.json({enabled:false},{status:200});
  try{
  const {token}=await request.json();
  if(typeof token!=="string"||!/^[a-f0-9-]{36}$/i.test(token))return NextResponse.json({error:"Invalid reservation reference"},{status:400});
  const db=createClient(projectUrl,publicKey,{auth:{persistSession:false}});
+ const destination=await db.rpc("reservation_telegram_target");
+ const target=destination.data||process.env.TELEGRAM_CHAT_ID||"";
+ if(!target)return NextResponse.json({enabled:false},{status:200});
  const {data,error}=await db.rpc("claim_poker_telegram_notification",{p_token:token});
  if(error)return NextResponse.json({error:"Notification lookup failed"},{status:503});
  const booking=data?.[0];if(!booking)return NextResponse.json({ok:true,alreadyProcessed:true});
