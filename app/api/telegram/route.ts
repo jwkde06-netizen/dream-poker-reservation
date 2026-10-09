@@ -12,7 +12,7 @@ export async function GET(request:Request){
  const chat=update.message?.chat||update.my_chat_member?.chat;
  if(chat&&["group","supergroup"].includes(chat.type))map.set(String(chat.id),{id:String(chat.id),title:chat.title||"Group",type:chat.type});
  }
- return NextResponse.json({groups:[...map.values()],count:updates.length});
+ return NextResponse.json({groups:Array.from(map.values()),count:updates.length});
  }catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Telegram connection failed"},{status:502})}
 }
 export async function POST(request:Request){
