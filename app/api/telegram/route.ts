@@ -1,5 +1,6 @@
 import {NextResponse} from "next/server";
-import {requireAdmin,tg} from "../../../lib/telegram";
+import {requireAdmin,tg,projectUrl,publicKey} from "../../../lib/telegram";
+import {createClient} from "@supabase/supabase-js";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 export async function GET(request:Request){
@@ -23,6 +24,10 @@ export async function POST(request:Request){
  const chat=await tg("getChat",{chat_id:id});
  if(!["group","supergroup"].includes(chat.type))return NextResponse.json({error:"Group required"},{status:400});
  const msg=await tg("sendMessage",{chat_id:id,text:"♠ Dream Poker 예약 알림 연결 테스트\n텔레그램 그룹 연결이 정상입니다."});
+ const bearer=(request.headers.get("authorization")||"").replace(/^Bearer\s+/i,"");
+ const db=createClient(projectUrl,publicKey,{global:{headers:{Authorization:"Bearer "+bearer}},auth:{persistSession:false}});
+ const saved=await db.rpc("set_reservation_telegram_target",{p_chat_id:id,p_title:chat.title||""});
+ if(saved.error)throw Error("메시지는 전송됐지만 그룹 저장이 실패했습니다: "+saved.error.message);
  return NextResponse.json({ok:true,chat_id:id,title:chat.title,message_id:msg.message_id});
  }catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Telegram test failed"},{status:502})}
 }
