@@ -5,6 +5,7 @@ import DeskTools from "./DeskTools";
 import MemberBooking from "./MemberBooking";
 import TelegramSetup from "./TelegramSetup";
 import StaffDashboard from "./StaffDashboard";
+import BrandSettings,{DEFAULT_BRAND,type Brand} from "./BrandSettings";
 type Lang="ko"|"en"|"vi";
 type Status="pending"|"confirmed"|"waitlisted"|"rejected"|"cancelled"|"checked_in"|"no_show";
 type Game={id:string;title:string;starts_at:string;capacity:number;is_open:boolean;table_no:string;game_no?:string;description:string};
@@ -24,6 +25,7 @@ export default function Home({staffOnly=false}:{staffOnly?:boolean}){
  const [lang,setLang]=useState<Lang>("ko"),[view,setView]=useState<"guest"|"cashier">(staffOnly?"cashier":"guest");
  const [games,setGames]=useState<Game[]>([]),[stats,setStats]=useState<Stats[]>([]),[selected,setSelected]=useState("");
  const [running5m,setRunning5m]=useState<number|null>(null);
+ const [brand,setBrand]=useState<Brand>(DEFAULT_BRAND),[theme,setTheme]=useState<"light"|"dark">("dark");
  const [memberMode,setMemberMode]=useState(false),[guestNote,setGuestNote]=useState("");
  const [name,setName]=useState(""),[arrival,setArrival]=useState(localDatetime(new Date(Date.now()+3600000)));
  const [mine,setMine]=useState<Own[]>([]),[tokens,setTokens]=useState<string[]>([]);
@@ -42,6 +44,9 @@ export default function Home({staffOnly=false}:{staffOnly?:boolean}){
  const selectedStat=stats.find(s=>s.game_id===selected);
  const activeGames=games.filter(g=>g.is_open&&new Date(g.starts_at).getTime()>Date.now()-36*3600000);
  const notice=(value:string)=>{setMessage(value);};
+ useEffect(()=>{try{const saved=localStorage.getItem("reservation-theme");if(saved==="dark"||saved==="light")setTheme(saved)}catch{}},[]);
+ useEffect(()=>{if(!db)return;const load=async()=>{const {data}=await db!.from("reservation_brand_settings").select("room_name,subtitle,logo_url,default_theme").eq("id",true).maybeSingle();if(data){setBrand(data as Brand);if(!localStorage.getItem("reservation-theme"))setTheme(data.default_theme)}};void load()},[]);
+ function changeTheme(next:"dark"|"light"){setTheme(next);try{localStorage.setItem("reservation-theme",next)}catch{}}
  const loadPublic=useCallback(async()=>{if(!db)return;const [g,st]=await Promise.all([db.from("reservation_games").select("*").order("starts_at",{ascending:true}).gte("starts_at",new Date(Date.now()-36*3600000).toISOString()),db.rpc("reservation_public_stats")]);
  const room=await db.rpc("reservation_live_room_status");if(!room.error)setRunning5m(Number(room.data?.[0]?.running_5m||0));if(g.error)notice(g.error.message);else setGames(g.data||[]);if(st.error)notice(st.error.message);else setStats((st.data||[]).map((r:any)=>({...r,confirmed_count:Number(r.confirmed_count),pending_count:Number(r.pending_count),waiting_count:Number(r.waiting_count)})));setLoading(false)},[]);
  const loadMine=useCallback(async(ts:string[])=>{const client=db;if(!client||!ts.length){setMine([]);return}const results=await Promise.all(ts.slice(0,30).map(async token=>{const {data}=await client.rpc("lookup_poker_reservation",{p_token:token});return data?.[0]?{...data[0],lookup_token:token}:null}));setMine(results.filter(Boolean) as Own[])},[]);
@@ -61,7 +66,7 @@ export default function Home({staffOnly=false}:{staffOnly?:boolean}){
  async function createGame(){if(!db)return;setBusy(true);const {error}=await db.rpc("manage_reservation_game",{p_id:null,p_title:newGame.title.trim(),p_table_no:newGame.table_no.trim(),p_game_no:newGame.game_no.trim(),p_starts_at:new Date(newGame.starts+"+07:00").toISOString(),p_capacity:Number(newGame.capacity),p_open:true});setBusy(false);notice(error?.message||"다음 게임 예약이 열렸습니다.");if(!error)void loadPublic()}
  async function setOpen(game:Game,is_open:boolean){if(!db)return;setBusy(true);const {error}=await db.rpc("manage_reservation_game",{p_id:game.id,p_title:game.title,p_table_no:game.table_no,p_game_no:game.game_no||"1",p_starts_at:game.starts_at,p_capacity:game.capacity,p_open:is_open});setBusy(false);notice(error?.message||(is_open?"예약을 열었습니다.":"예약 접수를 닫았습니다."));void loadPublic()}
  const bookByGame=useMemo(()=>bookings.filter(b=>filter==="all"||b.game_id===filter),[bookings,filter]);
- return <main className="shell"><header className="header"><div className="brand"><img className="brandLogo" src="/dream-poker-logo.svg" alt="Dream Poker logo"/><div><strong>DREAM POKER</strong><small>DA NANG · RESERVATIONS</small></div></div><select aria-label="Language" value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="ko">한국어</option><option value="en">English</option><option value="vi">Tiếng Việt</option></select></header>
+ return <main className={"shell bookingTheme "+(theme==="light"?"themeLight":"themeDark")}><header className="header"><div className="brand"><img className="brandLogo" src={brand.logo_url} alt={brand.room_name+" logo"}/><div><strong>{brand.room_name}</strong><small>{brand.subtitle}</small></div></div><div className="bookingHeaderActions"><button aria-label="테마 변경" onClick={()=>changeTheme(theme==="dark"?"light":"dark")}>{theme==="dark"?"☀ 라이트":"☾ 다크"}</button><select aria-label="Language" value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="ko">한국어</option><option value="en">English</option><option value="vi">Tiếng Việt</option></select></div></header>
  {!configured&&<div className="warning">{t.demo} · NEXT_PUBLIC_SUPABASE_ANON_KEY</div>}
  
  {message&&<div className="alert" role="status" onClick={()=>setMessage("")}>{message} <span>×</span></div>}
@@ -70,6 +75,6 @@ export default function Home({staffOnly=false}:{staffOnly?:boolean}){
  <section className="panel"><h2>{t.mine}</h2>{mine.length?mine.map((b,i)=><div className="bookingRow" key={b.id}><div><strong>{b.game_title}</strong><small>{fmt(b.arrival_at,lang)} · {b.player_name}</small><small>#{b.id.slice(0,8)}</small></div><div className="bookingRight"><span className={"status "+b.status}>{t[b.status]}</span>{["pending","confirmed","waitlisted"].includes(b.status)&&<button className="quiet" disabled={busy} onClick={()=>void cancelBooking(b.lookup_token||"")}>{t.cancel}</button>}</div></div>):<p className="muted">{t.empty}</p>}</section></>:
  !sessionUser?<section className="panel login"><h1>{t.login}</h1><label>{t.id}<input value={email} onChange={e=>setEmail(e.target.value)} autoComplete="username"/></label><label>{t.password}<input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete="current-password"/></label><button className="primary" disabled={busy||!configured} onClick={()=>void login()}>{t.signIn}</button></section>:
  !staff?<section className="panel"><p>{t.access}</p><button onClick={()=>void logout()}>{t.signOut}</button></section>:
- <StaffDashboard games={games} bookings={bookings} bookingsLoaded={bookingsLoaded} stats={stats} running={running5m} profileName={profile?.display_name||profile?.role||"Staff"} admin={profile?.role==="admin"} busy={busy} onLogout={()=>void logout()} onRefresh={()=>{void loadStaff();void loadPublic()}} onManage={(id,status)=>void manage(id,status)} onCreate={()=>void createGame()} onToggle={(g,opened)=>void setOpen(g,opened)} newGame={newGame} setNewGame={setNewGame} sound={sound} setSound={setSound} audit={audit}/>}
+ <>{profile?.role==="admin"&&<details className="brandSettingsDisclosure"><summary>⚙ 포커룸 로고 · 이름 · 기본 테마 설정</summary><BrandSettings value={brand} onSaved={b=>{setBrand(b);changeTheme(b.default_theme)}}/></details>}<StaffDashboard games={games} bookings={bookings} bookingsLoaded={bookingsLoaded} stats={stats} running={running5m} profileName={profile?.display_name||profile?.role||"Staff"} admin={profile?.role==="admin"} busy={busy} onLogout={()=>void logout()} onRefresh={()=>{void loadStaff();void loadPublic()}} onManage={(id,status)=>void manage(id,status)} onCreate={()=>void createGame()} onToggle={(g,opened)=>void setOpen(g,opened)} newGame={newGame} setNewGame={setNewGame} sound={sound} setSound={setSound} audit={audit}/></>}
  <footer>© DREAM POKER DA NANG · Reservations</footer></main>
 }
