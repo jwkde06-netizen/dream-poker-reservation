@@ -228,3 +228,14 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
  .bookingTheme:not(:has(.staffWorkspace)) .roomStatus{margin-bottom:9px}
  .bookingTheme:not(:has(.staffWorkspace)) .guestNoteLabel textarea{min-height:58px}
 }
+
+/* Compact, date-free guest arrival selector */
+.guestArrival{display:flex;flex-direction:column;gap:8px;min-width:0}
+.guestArrival input[type=time]{width:100%;min-height:48px;font-size:18px;font-weight:750;font-variant-numeric:tabular-nums}
+.guestTimeHint{font-size:11px;color:#92a4b9;font-weight:400}
+.guestQuickTimes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.guestQuickTimes button{padding:9px 3px;border-radius:8px;background:#253346;border:1px solid #506076;color:#f7ead6;font-size:12px;font-weight:800;white-space:nowrap}
+.guestQuickTimes button:active{transform:scale(.98)}
+.themeLight .guestTimeHint{color:#637185}
+.themeLight .guestQuickTimes button{background:#f4f6f9;color:#263548;border-color:#d2d9e2}
+@media(max-width:620px){.guestArrival input[type=time]{min-height:52px}.guestQuickTimes button{min-height:39px}}
