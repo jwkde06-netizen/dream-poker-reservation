@@ -10,10 +10,11 @@ export async function POST(request:Request){
  if(typeof token!=="string"||!/^[a-f0-9-]{36}$/i.test(token))return NextResponse.json({error:"Invalid reservation reference"},{status:400});
  const db=createClient(projectUrl,publicKey,{auth:{persistSession:false}});
  const destination=await db.rpc("reservation_telegram_target");
- const target=destination.data||process.env.TELEGRAM_CHAT_ID||"";
- if(!target)return NextResponse.json({enabled:false},{status:200});
+ if(destination.error)return NextResponse.json({error:"Telegram group lookup failed"},{status:503});
+ const target=String(destination.data||process.env.TELEGRAM_CHAT_ID||"").trim();
+ if(!target)return NextResponse.json({error:"Telegram group is not linked. Check /staff Telegram settings."},{status:503});
  const {data,error}=await db.rpc("claim_poker_telegram_notification",{p_token:token});
- if(error)return NextResponse.json({error:"Notification lookup failed"},{status:503});
+ if(error)return NextResponse.json({error:"Notification lookup failed: "+error.message},{status:503});
  const booking=data?.[0];if(!booking)return NextResponse.json({ok:true,alreadyProcessed:true});
  const name=String(booking.player_name||"").slice(0,80);
  const note=String(booking.guest_note||"").slice(0,500);
