@@ -445,3 +445,17 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
 }
 @media(max-width:1199px){.staffResizable>.staffResizeHandle{display:none}}
 @media(min-width:761px){.staffResizable .staffPane{min-width:0}}
+
+.accountManagementList{margin-top:18px;border-top:1px solid #48556a;padding-top:14px}
+.accountManagementHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.accountManagementHead h3{font-size:15px;margin:0}
+.accountManagementHead button,.accountManagementRow button{border:1px solid #59697d;border-radius:7px;padding:7px 10px;background:#263344;color:#f0f4f8}
+.accountManagementRow{display:grid;grid-template-columns:minmax(100px,1fr) minmax(95px,135px) minmax(110px,140px);gap:8px;align-items:center;padding:9px 0;border-top:1px solid #3d4b60}
+.accountManagementRow strong,.accountManagementRow small{display:block}
+.accountManagementRow small{font-size:11px;margin-top:3px;color:#a8b8ca}
+.accountManagementRow select{width:100%;min-width:0}
+.accountManagementRow button{font-size:11px}
+.themeLight .accountManagementList,.themeLight .accountManagementRow{border-color:#d6dee8}
+.themeLight .accountManagementRow small{color:#687789}
+.themeLight .accountManagementHead button,.themeLight .accountManagementRow button{background:#f1f4f8;color:#243246;border-color:#c9d3df}
+@media(max-width:560px){.accountManagementRow{grid-template-columns:1fr 1fr}.accountManagementRow>div{grid-column:1/-1}}
