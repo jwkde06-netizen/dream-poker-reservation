@@ -585,3 +585,46 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
 .themeLight .staffSettingsPanel button,.themeLight .staffSettingsPanel a,.themeLight .staffPlayerSuggestions button{color:#273545}
 .themeLight .staffSettingsPanel button:hover,.themeLight .staffSettingsPanel a:hover,.themeLight .staffPlayerSuggestions button:hover{background:#f1f5f9}
 @media(max-width:760px){.staffAssignmentCards button{min-height:66px}}
+
+/* Compact one-screen cashier layout: dense without sacrificing touch targets. */
+@media(min-width:761px){
+ .staffShell .staffPaneHead{padding:8px 12px 7px;min-height:45px!important}
+ .staffShell .staffPaneHead h2{font-size:14px;margin:0 0 2px}
+ .staffShell .staffPaneHead small{font-size:10px}
+ .staffShell .staffScroll{padding:7px 9px}
+ .staffShell .staffCreateAlways{padding:9px!important;margin-bottom:8px!important}
+ .staffShell .staffCreateHeading{font-size:12px;padding:1px 2px 6px}
+ .staffShell .staffQuickFields{gap:5px}
+ .staffShell .staffQuickFields input,.staffShell .staffQuickFields select,.staffShell .staffQuickStart input{padding:5px;min-height:33px}
+ .staffShell .staffReturning{margin:8px 0 5px}
+ .staffShell .staffStepCounter button{height:28px;width:28px}
+ .staffShell .staffSeatMeter{margin:5px 0 7px;gap:3px}
+ .staffShell .staffSeatMeter button{height:32px;border-radius:6px}
+ .staffShell .staffSeatResult{padding:8px 10px;margin-bottom:8px}
+ .staffShell .staffSeatResult strong{font-size:19px}
+ .staffShell .staffQuickStart{margin-bottom:5px}
+ .staffShell .staffAdd{min-height:36px;padding:6px;margin-top:5px}
+ .staffShell .staffHoldHint{font-size:9px;margin-top:5px}
+ .staffShell .staffSubheading{margin:7px 0 6px}
+ .staffShell .staffGameOption{padding:7px 9px;margin-bottom:5px;gap:3px}
+ .staffShell .staffGameChoose{gap:3px}
+ .staffShell .staffQueueToggle{padding:4px 7px}
+ .staffShell .staffPerson{margin-bottom:7px}
+ .staffShell .staffFacts{margin:5px 0}
+ .staffShell .staffFacts>div{padding:7px 0}
+ .staffShell .staffNote{padding:9px;margin:7px 0}
+ .staffShell .staffAssignBox{padding:9px;margin:8px 0;gap:6px}
+ .staffShell .staffAssignmentCards{gap:5px}
+ .staffShell .staffAssignmentCards button{min-height:54px;padding:7px}
+ .staffShell .staffAssignmentCards button b{font-size:14px}
+ .staffShell .staffActionGrid{gap:6px}
+ .staffShell .staffActionGrid button{min-height:38px;padding:8px 6px}
+ .staffShell .staffTools{margin-top:9px;padding-top:8px}
+ .staffShell .staffTools h3{font-size:11px}
+}
+@media(max-width:760px){
+ .staffShell .staffTable td:nth-child(4){grid-column:1;grid-row:2}
+ .staffShell .staffTable td:nth-child(5){grid-column:2;grid-row:2}
+ .staffShell .staffTable td:nth-child(3){display:block;grid-column:1;grid-row:2}
+ .staffShell .staffTable td:nth-child(4){grid-column:2;grid-row:2;text-align:right}
+}
