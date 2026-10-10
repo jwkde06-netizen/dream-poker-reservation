@@ -1,6 +1,6 @@
 import {NextResponse} from "next/server";
 import {createClient} from "@supabase/supabase-js";
-import {projectUrl,publicKey} from "../../../lib/telegram";
+import {projectUrl,publicKey} from "../../../../lib/telegram";
 export const runtime="nodejs";
 export async function POST(request:Request){
  const token=(request.headers.get("authorization")||"").replace(/^Bearer\s+/i,"");
