@@ -53,3 +53,4 @@ export default function StaffDashboard({lang,games,bookings,bookingsLoaded,stats
  </div>
  {tools&&<div className="staffOverlay" role="presentation" onClick={()=>setTools(null)}><div className="staffDrawer" role="dialog" aria-modal="true" aria-label="현장 도구" onClick={e=>e.stopPropagation()}><div className="staffDrawerTop"><strong>{tools==="desk"?tr("현장 예약 · 채팅"):tools==="telegram"?tr("텔레그램 설정"):tools==="accounts"?(lang==="en"?"Account management":lang==="vi"?"Quản lý tài khoản":"계정 관리"):tr("변경 이력")}</strong><button onClick={()=>setTools(null)}>{tr("닫기")}</button></div>{tools==="desk"?<DeskTools games={games} bookings={bookings} language={lang} refresh={onRefresh}/>:tools==="telegram"?<TelegramSetup lang={lang}/>:tools==="accounts"&&admin?<AccountAdmin/>:<div className="staffAudit">{audit.map(a=><div key={a.id}>{a.reservation_id.slice(0,8)} · {a.previous_status||"new"} → {a.new_status}<small>{format(a.created_at)}</small></div>)}</div>}</div></div>}
  </div>;
+}
