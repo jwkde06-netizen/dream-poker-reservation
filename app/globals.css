@@ -340,3 +340,23 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
  .staffShell .header{margin-bottom:9px}
  .staffShell .staffCompactToast{top:67px}
 }
+
+/* Korean desk: requests only; cashier remains a separate approval workspace */
+.deskWorkspace{padding-bottom:10px}
+.deskWorkspaceTop{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 16px;margin-bottom:12px;border:1px solid #414b5c;border-radius:12px;background:#182532}
+.deskWorkspaceTop h1{font-size:20px;margin:0 0 3px}
+.deskWorkspaceTop p{font-size:12px;color:#acbac9;margin:0}
+.deskWorkspaceActions{display:flex;gap:7px;flex-wrap:wrap}
+.deskWorkspaceActions a,.deskWorkspaceActions button{background:#2b3a4d;color:#f5f7fa;border:1px solid #566579;border-radius:8px;padding:8px 11px;text-decoration:none;font-size:12px;white-space:nowrap}
+.deskWorkspaceGrid{display:grid;grid-template-columns:minmax(360px,1fr) minmax(320px,1fr);gap:12px;align-items:start}
+.deskWorkspaceGrid .deskTools{margin:0}
+.deskWorkspaceGrid .deskQueue{margin:0}
+.deskQueueScroll{max-height:65dvh;overflow:auto}
+.deskQueueRow{display:flex;align-items:center;justify-content:space-between;padding:12px 4px;gap:10px;border-bottom:1px solid #475568}
+.deskQueueRow strong{display:block}
+.deskQueueRow small{display:block;font-size:11px;color:#a9b9ca;margin-top:4px}
+.themeLight .deskWorkspaceTop{background:#fff;border-color:#d1d8e1}
+.themeLight .deskWorkspaceTop p,.themeLight .deskQueueRow small{color:#68778b}
+.themeLight .deskWorkspaceActions a,.themeLight .deskWorkspaceActions button{background:#eff2f6;color:#202c3b;border-color:#cbd4df}
+.themeLight .deskQueueRow{border-color:#e1e5eb}
+@media(max-width:800px){.deskWorkspaceGrid{grid-template-columns:1fr}.deskWorkspaceTop{flex-wrap:wrap}.deskWorkspaceActions{width:100%}}
