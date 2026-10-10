@@ -25,7 +25,7 @@ export async function POST(request:Request){
  if(!booking)return NextResponse.json({error:"No sendable booking returned by notification claim"},{status:409});
  const name=String(booking.player_name||"").slice(0,80);
  const note=String(booking.guest_note||"").slice(0,500);
- const title=String(booking.game_title||"Game").replace(/\\bTIME\\s*ATTACK\\b/gi,"").trim()||"Game";
+ const title=String(booking.game_title||"Game").replace(/\bTIME\s*ATTACK\b/gi,"").trim()||"Game";
  const lines=["🟢 NEW BOOKING / ĐẶT CHỖ MỚI",`${title} · Table ${booking.table_no||"—"} / No.${booking.game_no||"—"}`,`👤 ${name}`,`🕒 ETA ${fmt(booking.arrival_at)} (VN)`,note?`📝 ${note.slice(0,100)}`:""].filter(Boolean);
  await tg("sendMessage",{chat_id:target,text:lines.join("\n"),reply_markup:{inline_keyboard:[[{text:"📋 Open cashier / Mở trang thu ngân",url:"https://dream-poker-reservation.vercel.app/staff"}]]}});
  if(!error){const receipt=await db.rpc("confirm_poker_telegram_notification",{p_token:token});
