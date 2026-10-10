@@ -3,7 +3,7 @@ import {createClient} from "@supabase/supabase-js";
 import {requireAdmin,projectUrl} from "../../../lib/telegram";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
-const roleSet=new Set(["admin","cashier","desk"]);
+const roleSet=new Set(["admin","cashier","desk","staff"]);
 export async function POST(request:Request){
   const administrator=await requireAdmin(request);
   if(!administrator)return NextResponse.json({error:"Administrator access required"},{status:403});
