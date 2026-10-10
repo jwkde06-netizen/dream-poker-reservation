@@ -198,3 +198,33 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
 .themeLight .notificationSettings select{background:#fff;color:#17202b;border-color:#c5ced9}
 .themeLight .notificationSettings small{color:#637184}
 .themeLight .notificationSettings .notificationPreview{background:#e4bf80;color:#192435}
+
+/* Guest reservation: concise, scannable game cards */
+.guestCompactList{gap:9px}
+.guestCompactCard{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:85px;padding:15px 17px;text-align:left}
+.guestGameMain{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0}
+.guestGameLabel{font-size:12px;font-weight:850;letter-spacing:.04em;color:#d9b77e}
+.guestGameLabel span{opacity:.6}
+.guestCompactCard .guestGameMain strong{font-size:19px;margin:0;line-height:1.2}
+.guestCompactCard .guestGameMain .gameStart{font-size:12px;color:#afbdcd}
+.guestGameRight{display:flex;align-items:center;gap:13px;flex-shrink:0}
+.guestGameRight b{font-size:14px;white-space:nowrap}
+.guestSelectMark{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;border:1px solid #536072;color:#b6c1ce;font-size:17px}
+.guestCompactCard.active .guestSelectMark{background:#e4bf80;color:#1e2630;border-color:#e4bf80}
+.themeLight .guestGameLabel{color:#9c6b23}
+.themeLight .guestCompactCard .guestGameMain .gameStart{color:#687484}
+.themeLight .guestSelectMark{border-color:#c7ced8;color:#64748b}
+.themeLight .guestCompactCard.active .guestSelectMark{color:#1e2630;border-color:#d8ac60}
+@media(max-width:620px){
+ .bookingTheme:not(:has(.staffWorkspace)) .hero{padding:0 0 5px}
+ .bookingTheme:not(:has(.staffWorkspace)) .hero h1{font-size:23px;margin:5px 0 10px}
+ .bookingTheme:not(:has(.staffWorkspace)) .panel{padding:15px;margin-bottom:11px}
+ .bookingTheme:not(:has(.staffWorkspace)) .panel h2{font-size:17px;margin-bottom:11px}
+ .guestCompactCard{min-height:75px;padding:12px 13px;border-radius:11px}
+ .guestCompactCard .guestGameMain strong{font-size:18px}
+ .guestGameRight{gap:8px}
+ .guestGameRight b{font-size:13px}
+ .guestSelectMark{width:24px;height:24px}
+ .bookingTheme:not(:has(.staffWorkspace)) .roomStatus{margin-bottom:9px}
+ .bookingTheme:not(:has(.staffWorkspace)) .guestNoteLabel textarea{min-height:58px}
+}
