@@ -4,24 +4,31 @@ import {projectUrl,publicKey,tg} from "../../../lib/telegram";
 export const runtime="nodejs";
 const fmt=(date:string)=>new Date(date).toLocaleString("ko-KR",{timeZone:"Asia/Ho_Chi_Minh",month:"long",day:"numeric",hour:"2-digit",minute:"2-digit"});
 export async function POST(request:Request){
- if(!publicKey)return NextResponse.json({enabled:false},{status:200});
+ if(!publicKey)return NextResponse.json({error:"Supabase key is missing"},{status:503});
  try{
  const {token}=await request.json();
  if(typeof token!=="string"||!/^[a-f0-9-]{36}$/i.test(token))return NextResponse.json({error:"Invalid reservation reference"},{status:400});
  const db=createClient(projectUrl,publicKey,{auth:{persistSession:false}});
  const destination=await db.rpc("reservation_telegram_target");
- if(destination.error)return NextResponse.json({error:"Telegram group lookup failed"},{status:503});
+ if(destination.error&&!process.env.TELEGRAM_CHAT_ID)return NextResponse.json({error:"Telegram group lookup failed: "+destination.error.message},{status:503});
  const target=String(destination.data||process.env.TELEGRAM_CHAT_ID||"").trim();
  if(!target)return NextResponse.json({error:"Telegram group is not linked. Check /staff Telegram settings."},{status:503});
  const {data,error}=await db.rpc("claim_poker_telegram_notification",{p_token:token});
- if(error)return NextResponse.json({error:"Notification lookup failed: "+error.message},{status:503});
- const booking=data?.[0];if(!booking)return NextResponse.json({ok:true,alreadyProcessed:true});
+ let booking=data?.[0];
+ if(error){
+   const lookup=await db.rpc("lookup_poker_reservation",{p_token:token});
+   if(lookup.error||!lookup.data?.[0])return NextResponse.json({error:"Reservation lookup failed: "+(lookup.error?.message||error.message)},{status:503});
+   const item=lookup.data[0];
+   const game=item.game_id?(await db.from("reservation_games").select("title,table_no,game_no").eq("id",item.game_id).maybeSingle()).data:null;
+   booking={...item,reservation_id:item.reservation_id||item.id,game_title:item.game_title||game?.title||"Reservation",table_no:item.table_no||game?.table_no,game_no:item.game_no||game?.game_no};
+ }
+ if(!booking)return NextResponse.json({error:"No sendable booking returned by notification claim"},{status:409});
  const name=String(booking.player_name||"").slice(0,80);
  const note=String(booking.guest_note||"").slice(0,500);
  const lines=["♠ DREAM POKER · 신규 예약 신청","",`게임: ${booking.game_title}`,`테이블: ${booking.table_no||"-"} · No.${booking.game_no||"-"}`,`이름: ${name}`,booking.member_number?`회원번호: ${booking.member_number}`:"비회원 예약",`도착 예정: ${fmt(booking.arrival_at)} (베트남)`,note?`특이사항: ${note}`:"",`예약 ID: ${String(booking.reservation_id).slice(0,8)}`,"","캐셔 관리 화면에서 승인·대기·거절을 처리해주세요."].filter(Boolean);
  await tg("sendMessage",{chat_id:target,text:lines.join("\n"),reply_markup:{inline_keyboard:[[{text:"🔎 캐셔 예약 관리",url:"https://dream-poker-reservation.vercel.app/staff"}]]}});
- const receipt=await db.rpc("confirm_poker_telegram_notification",{p_token:token});
- if(receipt.error)return NextResponse.json({ok:true,warning:"Telegram delivered; receipt update failed"});
+ if(!error){const receipt=await db.rpc("confirm_poker_telegram_notification",{p_token:token});
+ if(receipt.error)return NextResponse.json({ok:true,warning:"Telegram delivered; receipt update failed"});}
  return NextResponse.json({ok:true});
  }catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Telegram notification unavailable"},{status:502})}
 }
