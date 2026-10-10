@@ -311,3 +311,8 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
 .staffRefreshButton{min-width:102px;white-space:nowrap}
 .staffRefreshButton span{display:inline-block;font-size:17px;line-height:1;vertical-align:-1px;margin-right:3px}
 .staffRefreshSpin{animation:staffSpin .75s linear infinite}
+
+/* Cashier desktop layout: give next-game reservations more emphasis. */
+@media(min-width:1051px){
+ .staffGrid{grid-template-columns:minmax(335px,1.52fr) minmax(350px,1.85fr) minmax(270px,1.03fr)}
+}
