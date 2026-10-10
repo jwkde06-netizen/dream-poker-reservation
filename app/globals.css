@@ -628,3 +628,85 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
  .staffShell .staffTable td:nth-child(3){display:block;grid-column:1;grid-row:2}
  .staffShell .staffTable td:nth-child(4){grid-column:2;grid-row:2;text-align:right}
 }
+
+/* Design system V2 — modern poker operations, inspired by clarity of K-Holdem rather than its old table styling */
+.staffShell .staffWorkspace{
+ --poker-felt:#188461;--poker-felt-deep:#106248;--poker-highlight:#dbb975;
+ --poker-stroke:#ffffff17;--poker-ink:#f2f5f5;--poker-subtle:#a7b6b9;
+}
+.staffShell .staffGrid{gap:0}
+.staffShell .staffPane{background:#181e25;border:1px solid #35414b;border-radius:15px;box-shadow:none}
+.staffShell .staffPaneHead{background:#222b33;border-bottom:1px solid #35444c;min-height:48px!important}
+.staffShell .staffPaneHead h2{font-size:14px;font-weight:800;color:#f1f6f5;letter-spacing:-.03em}
+.staffShell .staffPaneHead small{color:#a9bab9}
+.staffShell .staffTop{background:#202a31;border:1px solid #394b50;border-radius:13px;box-shadow:none}
+.staffShell .staffTop>div:first-child strong{letter-spacing:-.025em}
+.staffShell .staffKpis span{color:#a8b9bb}
+.staffShell .staffKpis b{color:#f4f7f5}
+.staffShell .staffKpis b.staffGold{color:#f2cf82}
+.staffShell .staffCreateAlways{background:#202b32!important;border:1px solid #39584e!important;box-shadow:none!important;border-radius:13px!important}
+.staffShell .staffCreateHeading{color:#dcece6!important}
+.staffShell .staffLiveDot{background:#40c68f;box-shadow:0 0 0 3px #41bd8d24}
+.staffShell .staffQuickFields select,.staffShell .staffQuickFields input,.staffShell .staffQuickStart input{background:#121e25;color:#f0f5f4;border:1px solid #45605f;border-radius:8px}
+.staffShell .staffSeatMeter button{background:#17242a;border:1px solid #42625b;border-radius:6px;color:#c2d0cd;font-size:12px;font-variant-numeric:tabular-nums}
+.staffShell .staffSeatMeter button.filled{background:#1e936c;color:#fff;border-color:#3aaf85;box-shadow:inset 0 -2px 0 #0002}
+.staffShell .staffSeatResult{background:#163e33!important;border:1px solid #367c60!important;border-radius:10px}
+.staffShell .staffSeatResult strong{color:#bdf2d4!important}
+.staffShell .staffAdd{background:#1f976d;border:1px solid #54bb8e;border-radius:9px;box-shadow:none;color:white}
+.staffShell .staffAdd:hover:not(:disabled){background:#26a778}
+.staffShell .staffGameOption{background:#212d35;border:1px solid #3a4d57;border-radius:10px;box-shadow:none}
+.staffShell .staffGameOption.active{background:#193e35;border-color:#32966e;box-shadow:inset 3px 0 0 #46c18e}
+.staffShell .staffGameOption:hover{border-color:#47a782}
+.staffShell .staffGameOption>strong,.staffShell .staffGameChoose strong{color:#f2f5f4}
+.staffShell .staffQueueToggle.open{background:#1c604b;border-color:#348869;color:#cdf3df}
+.staffShell .staffInlineBooking{background:#202b33;border-bottom:1px solid #3b4f55}
+.staffShell .staffInlineBookingFields button{background:#218c68;color:#fff;border-radius:8px}
+.staffShell .staffTable{border-collapse:collapse}
+.staffShell .staffTable thead{background:#26343d;color:#a9b9bf}
+.staffShell .staffTable thead th{font-size:10px;letter-spacing:.055em;text-transform:uppercase;padding:9px 8px}
+.staffShell .staffTable tbody tr{background:#1c252c;border-bottom:1px solid #34444c}
+.staffShell .staffTable tbody tr:nth-child(2n){background:#222c33}
+.staffShell .staffTable tbody tr:hover{background:#283d3b}
+.staffShell .staffTable tbody tr.selected{background:#1b4539!important;box-shadow:inset 3px 0 0 #52d29b}
+.staffShell .staffTable tbody td{padding:10px 8px}
+.staffShell .staffTable tbody td strong{font-size:13px;color:#f2f5f4}
+.staffShell .staffPerson{padding-bottom:7px;border-bottom:1px solid #394c52}
+.staffShell .staffPerson strong{font-size:21px;letter-spacing:-.03em}
+.staffShell .staffFacts>div{border-bottom:1px solid #36464b}
+.staffShell .staffAssignBox{background:#202d33;border:1px solid #3e5857}
+.staffShell .staffAssignmentCards button{background:#1b2d34;border:1px solid #436261;color:#e8f1ee;border-radius:9px}
+.staffShell .staffAssignmentCards button:not(:disabled):hover{background:#225746;border-color:#4fbe93}
+.staffShell .staffAssignmentCards button.current{background:#1b7455;border-color:#55c496;color:#fff}
+.staffShell .staffActionGrid button{border-radius:9px;font-weight:800}
+.staffShell .staffActionGrid .confirm{background:#208a63}
+.staffShell .staffStatus.pending{background:#58482c;color:#f9da9b}
+.staffShell .staffStatus.confirmed{background:#1d654b;color:#d2f8e7}
+.themeLight.staffShell .staffPane{background:#fff;border-color:#d6e0df}
+.themeLight.staffShell .staffPaneHead{background:#f5f8f7;border-bottom-color:#dde6e4}
+.themeLight.staffShell .staffPaneHead h2{color:#203831}
+.themeLight.staffShell .staffPaneHead small{color:#6c817a}
+.themeLight.staffShell .staffTop{background:#fff;border-color:#dde5e4}
+.themeLight.staffShell .staffKpis span{color:#637a74}
+.themeLight.staffShell .staffKpis b{color:#1d332e}
+.themeLight.staffShell .staffKpis b.staffGold{color:#9c742c}
+.themeLight.staffShell .staffCreateAlways{background:#f5f9f7!important;border-color:#c8ded2!important}
+.themeLight.staffShell .staffCreateHeading{color:#234c3d!important}
+.themeLight.staffShell .staffQuickFields select,.themeLight.staffShell .staffQuickFields input,.themeLight.staffShell .staffQuickStart input{background:#fff;color:#213c33;border-color:#c6d9d0}
+.themeLight.staffShell .staffSeatMeter button{background:#e8f0ed;color:#527567;border-color:#c1d5cc}
+.themeLight.staffShell .staffSeatMeter button.filled{background:#36a677;color:white;border-color:#2d996f}
+.themeLight.staffShell .staffSeatResult{background:#e4f4ec!important;border-color:#9fceaf!important}
+.themeLight.staffShell .staffSeatResult strong{color:#28754d!important}
+.themeLight.staffShell .staffGameOption{background:#f7f9f8;border-color:#d4dfda}
+.themeLight.staffShell .staffGameOption.active{background:#e6f5ed;border-color:#6bad88}
+.themeLight.staffShell .staffGameOption>strong,.themeLight.staffShell .staffGameChoose strong{color:#223a32}
+.themeLight.staffShell .staffInlineBooking{background:#f5f8f7;border-color:#d9e4df}
+.themeLight.staffShell .staffTable thead{background:#edf3f0;color:#61776f}
+.themeLight.staffShell .staffTable tbody tr{background:#fff;border-bottom-color:#e2eae6}
+.themeLight.staffShell .staffTable tbody tr:nth-child(2n){background:#f7f9f8}
+.themeLight.staffShell .staffTable tbody tr:hover{background:#e9f5ee}
+.themeLight.staffShell .staffTable tbody tr.selected{background:#e0f4e8!important}
+.themeLight.staffShell .staffTable tbody td strong{color:#203a30}
+.themeLight.staffShell .staffAssignBox{background:#f2f7f4;border-color:#d0e1d8}
+.themeLight.staffShell .staffAssignmentCards button{background:#fff;color:#284237;border-color:#c9ded2}
+.themeLight.staffShell .staffAssignmentCards button.current{background:#dbf4e6;border-color:#6dbf91;color:#1d6244}
+@media(prefers-reduced-motion:reduce){.staffShell *{scroll-behavior:auto}}
