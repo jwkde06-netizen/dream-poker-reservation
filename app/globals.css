@@ -731,3 +731,45 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
 .guestExpress .guestGameGrid .guestGameStart{display:block;font-size:11px;font-weight:650;color:#6f7d91;white-space:nowrap;margin-top:2px}
 .themeDark .guestExpress .guestGameGrid .guestGameStart{color:#b2c4c4}
 @media(max-width:620px){.guestExpress .guestGameGrid .guestCompactCard{min-height:104px}.guestExpress .guestGameGrid .guestGameStart{font-size:10px}}
+
+/* Guest experience: one focused reservation screen, transparent confirmation status */
+.guestExpressShell .guestExpress{max-width:760px}
+.guestExpressHero{margin-bottom:12px}
+.guestExpressHero h1{font-size:clamp(18px,3.5vw,24px);letter-spacing:-.035em;margin:0 0 6px}
+.guestExpressHero p{font-size:12px;color:#9db5b0;line-height:1.4;margin:0}
+.themeLight .guestExpressHero p{color:#59776e}
+.guestExpress .guestGameGrid .guestGameMain{gap:4px}
+.guestExpress .guestGameGrid .guestGameLabel{font-size:10px;color:#29996d}
+.guestExpress .guestGameGrid .guestGameTable{font-size:10px;color:#89989b;margin-top:1px}
+.themeLight .guestExpress .guestGameGrid .guestGameTable{color:#72817f}
+.guestExpress .guestGameGrid .guestGameRight b{font-size:10px;color:#249c72;white-space:normal;text-align:right;line-height:1.25}
+.guestExpress .guestGameGrid .guestCompactCard{min-height:107px}
+.guestMenuWrapper{position:relative;order:3}
+.guestMenuButton{min-width:36px;min-height:36px;font-size:20px}
+.guestMenuPopover{position:absolute;z-index:100;right:0;top:calc(100% + 7px);display:flex;flex-direction:column;background:#26313b;border:1px solid #64777a;box-shadow:0 12px 28px #0004;border-radius:12px;padding:6px;min-width:190px}
+.guestMenuPopover button{background:transparent;border:0;color:#f1f7f4;text-align:left;padding:11px;border-radius:8px;font-size:13px}
+.guestMenuPopover button:hover{background:#ffffff12}
+.themeLight .guestMenuPopover{background:white;border-color:#d0dcd8}
+.themeLight .guestMenuPopover button{color:#23382e}
+.themeLight .guestMenuPopover button:hover{background:#f0f6f2}
+.guestBookingOverlay{position:fixed;inset:0;z-index:300;display:flex;align-items:flex-end;justify-content:center;background:#0009;padding:10px}
+.guestBookingDrawer{width:min(100%,670px);max-height:min(80dvh,720px);overflow-y:auto;padding:18px;background:#242c35;color:#e8f0ed;border:1px solid #60716b;border-radius:17px;box-shadow:0 18px 50px #0005}
+.guestBookingDrawerHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.guestBookingDrawerHead h2{margin:0;font-size:18px}
+.guestBookingDrawerHead button{width:35px;height:35px;border-radius:9px}
+.themeLight .guestBookingDrawer{background:#fff;color:#24382e;border-color:#d0d9d4}
+.guestBookingSuccess{display:flex;flex-direction:column;gap:6px;background:#e2f7e9;border:1px solid #9bd2b0;border-radius:12px;padding:13px;margin-top:12px;color:#20583b;font-size:12px}
+.guestBookingSuccess strong{font-size:15px}
+.guestBookingSuccess button{align-self:flex-start;background:#236f50;color:#fff;border:0;border-radius:8px;padding:9px 12px;font-weight:750}
+.themeDark .guestBookingSuccess{background:#183e30;border-color:#368c63;color:#c3efdb}
+@media(max-width:620px){
+ .guestExpressShell .guestExpressPanel{padding:11px}
+ .guestExpressHero{margin-bottom:9px}
+ .guestExpressHero p{font-size:11px}
+ .guestExpress .guestGameGrid .guestCompactCard{min-height:98px}
+ .guestExpressShell .guestExpressStep{margin-bottom:10px}
+ .guestExpress .guestGameGrid .guestGameMain strong{font-size:18px}
+ .guestExpressShell .guestExpressStep>input{min-height:42px}
+ .guestExpressShell .guestExpressTimes button{min-height:40px}
+ .guestExpressShell .guestExpressSubmit{min-height:46px}
+}
