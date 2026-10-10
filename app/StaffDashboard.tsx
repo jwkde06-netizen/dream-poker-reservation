@@ -19,13 +19,13 @@ export default function StaffDashboard({lang,games,bookings,bookingsLoaded,stats
  const format=(value:string)=>formatDate(value,lang);
  const [returning,setReturning]=useState(0),[tabletDetailOpen,setTabletDetailOpen]=useState(false);
  const [assignment,setAssignment]=useState(""),[assigning,setAssigning]=useState(false),[assignError,setAssignError]=useState("");
- const [paneWidths,setPaneWidths]=useState<[number,number,number]>([38,40,22]);
+ const [paneWidths,setPaneWidths]=useState<[number,number,number]>([44,35,21]);
  const gridRef=useRef<HTMLDivElement|null>(null);
  const dragRef=useRef<{index:number,startX:number,widths:[number,number,number],width:number}|null>(null);
- useEffect(()=>{try{const saved=JSON.parse(localStorage.getItem("dream-cashier-pane-widths")||"null");if(Array.isArray(saved)&&saved.length===3&&saved.every((v:unknown)=>typeof v==="number"&&Number.isFinite(v))&&Math.abs(saved.reduce((a:number,b:number)=>a+b,0)-100)<1&&saved.every((v:number)=>v>=18))setPaneWidths(saved as [number,number,number])}catch{}},[]);
+ useEffect(()=>{try{const saved=JSON.parse(localStorage.getItem("dream-cashier-pane-widths-v2")||"null");if(Array.isArray(saved)&&saved.length===3&&saved.every((v:unknown)=>typeof v==="number"&&Number.isFinite(v))&&Math.abs(saved.reduce((a:number,b:number)=>a+b,0)-100)<1&&saved.every((v:number)=>v>=18))setPaneWidths(saved as [number,number,number])}catch{}},[]);
  function resizeStart(e:React.PointerEvent<HTMLDivElement>,index:number){if(e.button!==0||!gridRef.current)return;const width=gridRef.current.getBoundingClientRect().width-16;dragRef.current={index,startX:e.clientX,widths:[...paneWidths],width};e.currentTarget.setPointerCapture(e.pointerId)}
  function resizeMove(e:React.PointerEvent<HTMLDivElement>){const d=dragRef.current;if(!d)return;const delta=(e.clientX-d.startX)/d.width*100;const updated:[number,number,number]=[...d.widths];const i=d.index;const change=Math.max(20-updated[i],Math.min(delta,updated[i+1]-20));updated[i]+=change;updated[i+1]-=change;setPaneWidths(updated)}
- function resizeEnd(){if(dragRef.current){dragRef.current=null;try{localStorage.setItem("dream-cashier-pane-widths",JSON.stringify(paneWidths))}catch{}}}
+ function resizeEnd(){if(dragRef.current){dragRef.current=null;try{localStorage.setItem("dream-cashier-pane-widths-v2",JSON.stringify(paneWidths))}catch{}}}
 
  const [selectedGame,setSelectedGame]=useState("all"),[selectedBooking,setSelectedBooking]=useState(""),[mobileTab,setMobileTab]=useState<"games"|"list"|"detail">("list"),[tools,setTools]=useState<"desk"|"telegram"|"audit"|null>(null),[query,setQuery]=useState("");
  const shown=useMemo(()=>bookings.filter(b=>(selectedGame==="all"||b.game_id===selectedGame)&&(!query||[b.player_name,b.member_number||"",b.guest_note||""].join(" ").toLowerCase().includes(query.toLowerCase()))),[bookings,selectedGame,query]);
