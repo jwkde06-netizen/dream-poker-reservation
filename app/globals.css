@@ -316,3 +316,27 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
 @media(min-width:1051px){
  .staffGrid{grid-template-columns:minmax(335px,1.52fr) minmax(350px,1.85fr) minmax(270px,1.03fr)}
 }
+
+/* Compact workstation header: reclaim vertical space for three-pane operations. */
+@media(min-width:761px){
+ .staffShell{padding-top:9px!important}
+ .staffShell .header{height:48px;min-height:48px;margin-bottom:8px;padding:0 2px 7px;gap:10px}
+ .staffShell .brand{gap:8px}
+ .staffShell .brandLogo{width:35px!important;height:35px!important;max-height:35px;object-fit:contain}
+ .staffShell .brand strong{font-size:17px;letter-spacing:.025em}
+ .staffShell .brand small{display:none}
+ .staffShell .bookingHeaderActions{gap:6px}
+ .staffShell .bookingHeaderActions button,.staffShell .bookingHeaderActions select{min-height:32px;padding:5px 9px}
+ .staffShell .staffTop{min-height:57px;padding:7px 12px;margin-bottom:8px;gap:8px}
+ .staffShell .staffTop>div:first-child strong{font-size:16px}
+ .staffShell .staffTop>div:first-child small{display:none}
+ .staffShell .staffTopActions{gap:5px}
+ .staffShell .staffTopActions button,.staffShell .staffGuestLink{padding:6px 8px;font-size:11px}
+ .staffShell .staffGrid{height:calc(100dvh - 148px)}
+}
+.staffShell .staffCompactToast{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:400;max-width:min(460px,calc(100vw - 28px));width:max-content;margin:0;box-shadow:0 10px 32px #0003;padding:10px 18px;border-radius:10px;font-size:12px;cursor:pointer}
+.themeLight .staffCompactToast{background:#e9f3ed;color:#225037;border-color:#9abb9f}
+@media(max-width:760px){
+ .staffShell .header{margin-bottom:9px}
+ .staffShell .staffCompactToast{top:67px}
+}
