@@ -27,7 +27,7 @@ export default function StaffDashboard({lang,games,bookings,bookingsLoaded,stats
  function resizeMove(e:React.PointerEvent<HTMLDivElement>){const d=dragRef.current;if(!d)return;const delta=(e.clientX-d.startX)/d.width*100;const updated:[number,number,number]=[...d.widths];const i=d.index;const change=Math.max(20-updated[i],Math.min(delta,updated[i+1]-20));updated[i]+=change;updated[i+1]-=change;setPaneWidths(updated)}
  function resizeEnd(){if(dragRef.current){dragRef.current=null;try{localStorage.setItem("dream-cashier-pane-widths-v2",JSON.stringify(paneWidths))}catch{}}}
 
- const [selectedGame,setSelectedGame]=useState("all"),[selectedBooking,setSelectedBooking]=useState(""),[mobileTab,setMobileTab]=useState<"games"|"list"|"detail">("list"),[tools,setTools]=useState<"desk"|"telegram"|"audit"|null>(null),[query,setQuery]=useState("");
+ const [selectedGame,setSelectedGame]=useState("all"),[selectedBooking,setSelectedBooking]=useState(""),[mobileTab,setMobileTab]=useState<"games"|"list"|"detail">("list"),[tools,setTools]=useState<"desk"|"telegram"|"audit"|"accounts"|null>(null),[query,setQuery]=useState("");
  const shown=useMemo(()=>bookings.filter(b=>(selectedGame==="all"||b.game_id===selectedGame)&&(!query||[b.player_name,b.member_number||"",b.guest_note||""].join(" ").toLowerCase().includes(query.toLowerCase()))),[bookings,selectedGame,query]);
  const current=shown.find(b=>b.id===selectedBooking)||shown[0];
  const pending=bookings.filter(b=>b.status==="pending").length;
