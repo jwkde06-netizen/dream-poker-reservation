@@ -17,7 +17,7 @@ export async function POST(request:Request){
   if(!/^[a-z][a-z0-9_]{3,31}$/.test(username)||password.length<12||!roleSet.has(role))
     return NextResponse.json({error:"Username must be 4–32 characters; password at least 12 characters"},{status:400});
   const client=createClient(projectUrl,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}});
-  const email=username+"@reservation.dream-poker.invalid";
+  const email=username+"@staff.dreampoker.example";
   const created=await client.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{username,display_name:displayName}});
   if(created.error||!created.data.user)return NextResponse.json({error:created.error?.message||"Failed to create account"},{status:409});
   const userId=created.data.user.id;
