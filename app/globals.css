@@ -239,3 +239,33 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
 .themeLight .guestTimeHint{color:#637185}
 .themeLight .guestQuickTimes button{background:#f4f6f9;color:#263548;border-color:#d2d9e2}
 @media(max-width:620px){.guestArrival input[type=time]{min-height:52px}.guestQuickTimes button{min-height:39px}}
+
+/* Unified sound-settings palette, consistent in both modes */
+.notificationSettings{--notify-bg:#1d232d;--notify-text:#f3f5f8;--notify-muted:#c0cad7;--notify-field:#2a3442;--notify-border:#4b596b;background:var(--notify-bg);color:var(--notify-text);border-color:var(--notify-border)}
+.notificationSettings .notificationTitle strong{color:var(--notify-text)}
+.notificationSettings .notificationTitle button,.notificationSettings select{background:var(--notify-field);color:var(--notify-text);border:1px solid var(--notify-border)}
+.notificationSettings label,.notificationSettings small{color:var(--notify-muted)}
+.notificationSettings input[type=range]{accent-color:#d6ad6c}
+.themeLight .notificationSettings{--notify-bg:#fff;--notify-text:#182332;--notify-muted:#56657a;--notify-field:#f3f5f8;--notify-border:#c9d2df;background:var(--notify-bg);color:var(--notify-text);border-color:var(--notify-border)}
+.themeLight .notificationSettings .notificationTitle button,.themeLight .notificationSettings select{background:var(--notify-field);color:var(--notify-text);border-color:var(--notify-border)}
+.themeLight .notificationSettings label,.themeLight .notificationSettings small{color:var(--notify-muted)}
+.themeLight .staffTopActions .notifyControl button{background:#f1f4f7;color:#263444;border-color:#cbd4df}
+.themeLight .staffTopActions .notifyControl button.notifyEnabled{background:#e6f4e9;color:#25633e;border-color:#80b594}
+/* Fast-open panel */
+.staffQuickFields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.staffQuickFields label,.staffQuickStart{display:flex;flex-direction:column;gap:4px;font-size:11px;color:#cbd5e1}
+.staffQuickFields input,.staffQuickFields select,.staffQuickStart input{width:100%;min-width:0;padding:9px 5px;font-size:13px}
+.staffReturning{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:14px 0 9px;font-size:11px}
+.staffStepCounter{display:flex;align-items:center;gap:10px}
+.staffStepCounter button{width:32px;height:32px;border-radius:9px;background:#303b49;color:inherit;border:1px solid #637083;font-size:20px}
+.staffStepCounter strong{white-space:nowrap;font-size:17px}
+.staffSeatResult{display:flex;justify-content:space-between;align-items:center;background:#31412f;border:1px solid #7f9b72;border-radius:11px;padding:13px 10px;margin-bottom:13px}
+.staffSeatResult strong{font-size:22px;color:#bdf0a3}
+.staffSeatResult small{font-size:11px}
+.staffQuickStart{margin-bottom:11px}
+.staffHoldHint{display:block;font-size:10px;line-height:1.5;color:#aab6c7;margin-top:7px}
+.themeLight .staffQuickFields label,.themeLight .staffQuickStart{color:#4b5a6e}
+.themeLight .staffStepCounter button{background:#e9edf2;color:#243142;border-color:#cbd3dc}
+.themeLight .staffSeatResult{background:#edf7ed;border-color:#9abf91;color:#273f2c}
+.themeLight .staffSeatResult strong{color:#266b34}
+.themeLight .staffHoldHint{color:#657387}
