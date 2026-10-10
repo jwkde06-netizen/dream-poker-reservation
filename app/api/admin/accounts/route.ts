@@ -1,6 +1,6 @@
 import {NextResponse} from "next/server";
 import {createClient} from "@supabase/supabase-js";
-import {requireAdmin,projectUrl} from "../../../lib/telegram";
+import {requireAdmin,projectUrl} from "../../../../lib/telegram";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 const roleSet=new Set(["admin","cashier","desk","staff"]);
