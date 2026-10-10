@@ -128,3 +128,19 @@ body:has(.staffWorkspace) footer{display:none}
 @media(max-width:760px){body:has(.staffWorkspace) .shell{padding:10px 10px 0}.staffGrid{display:block;height:calc(100dvh - 205px);min-height:260px}.staffPane{height:100%;display:none}.staffPane.mobileOn{display:flex}.staffTop{flex-wrap:wrap;padding:10px}.staffTop>div:first-child{flex:1}.staffTopActions{margin-left:auto}.staffTopActions label{display:none}.staffKpis{order:3;width:100%;justify-content:space-between}.staffKpis span{font-size:11px}.staffKpis b{font-size:16px}.staffMobileNav{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:9px}.staffMobileNav button{background:#1b2028;color:#c3cfdb;border:1px solid #414852;border-radius:8px;padding:11px 5px;font-weight:700}.staffMobileNav button.on{background:#d7b577;color:#131b25;border-color:#d7b577}.staffTable{min-width:550px}.staffDrawer{padding:10px}}
 
 .staffGuestLink{display:inline-flex;align-items:center;text-decoration:none;border:1px solid #404752;border-radius:7px;padding:8px 9px;background:#20242a;color:#eff2f5;font-size:12px;white-space:nowrap}
+
+/* Spoken reservation announcement controls */
+.notifyControl{display:flex;gap:5px;align-items:center}
+.staffTopActions .notifyControl button{border:1px solid #414c5d;border-radius:7px;background:#222935;color:#f0f1f4;padding:8px 10px;font-size:12px;white-space:nowrap}
+.staffTopActions .notifyControl button.notifyEnabled{border-color:#3e8462;background:#183629;color:#9ff5bd}
+.bookingToast{position:fixed;z-index:80;right:20px;top:100px;max-width:380px;background:#17251e;border:1px solid #48a777;border-radius:13px;padding:17px 20px;box-shadow:0 12px 35px #000b;color:#eefcf2}
+.bookingToast strong{font-size:15px}.bookingToast p{font-size:14px;line-height:1.5;margin:9px 0}.bookingToast button{background:#2b4e3c;color:#fff;border:0;border-radius:6px;padding:6px 13px}
+.notificationSettings{position:fixed;z-index:100;right:18px;top:111px;width:min(350px,calc(100vw - 24px));max-height:calc(100dvh - 125px);overflow:auto;border:1px solid #576373;border-radius:14px;padding:18px;background:#171b22;box-shadow:0 18px 50px #000d}
+.notificationTitle{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.notificationTitle button{color:#eff2f5;background:#2b303a;border:1px solid #505967;border-radius:6px;padding:6px 8px}
+.notificationSettings label{display:flex;flex-direction:column;gap:6px;margin:12px 0;font-size:12px;color:#c5d0dd}
+.notificationSettings select{font-size:13px;padding:10px;width:100%;background:#11161d;color:#fff;border:1px solid #465366;border-radius:7px}
+.notificationSettings input[type=range]{width:100%;accent-color:#e9c480}
+.notificationSettings small{display:block;color:#a6b1bf;line-height:1.5;margin-top:12px}
+.notificationPreview{width:100%;background:#e4bf80;color:#192435;font-weight:800;padding:12px;border:0;border-radius:8px}
+@media(max-width:760px){.notificationSettings{top:150px;right:12px}.bookingToast{right:10px;left:10px;max-width:none;top:155px}.staffTopActions .notifyControl button{padding:7px 5px;font-size:11px}}
