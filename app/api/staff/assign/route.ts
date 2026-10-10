@@ -8,14 +8,17 @@ export async function POST(request:Request){
  const caller=createClient(projectUrl,publicKey,{auth:{persistSession:false}});
  const {data:{user},error:authError}=await caller.auth.getUser(token);
  if(authError||!user)return NextResponse.json({error:"Authentication required"},{status:401});
- const {data:profile}=await caller.from("user_profiles").select("role,active").eq("user_id",user.id).maybeSingle();
- if(!profile?.active||!["admin","cashier","staff"].includes(profile.role))return NextResponse.json({error:"Cashier access required"},{status:403});
  const key=process.env.SUPABASE_SERVICE_ROLE_KEY;
  if(!key)return NextResponse.json({error:"Server admin key not configured"},{status:503});
+ // Resolve trusted roles with server credentials so a restrictive RLS policy cannot hide a valid account.
+ const admin=createClient(projectUrl,key,{auth:{persistSession:false,autoRefreshToken:false}});
+ const {data:profile,error:profileError}=await admin.from("user_profiles").select("role,active").eq("user_id",user.id).maybeSingle();
+ if(profileError)return NextResponse.json({error:"Unable to verify account permissions"},{status:500});
+ if(!profile?.active)return NextResponse.json({error:"Account is not active or has no reservation profile"},{status:403});
+ if(!["admin","cashier","staff"].includes(profile.role))return NextResponse.json({error:"Table assignment is limited to cashiers and administrators"},{status:403});
  const body=await request.json().catch(()=>null);
  const reservationId=String(body?.reservation_id||""),gameId=String(body?.game_id||"");
  if(!/^[0-9a-f-]{36}$/i.test(reservationId)||!/^[0-9a-f-]{36}$/i.test(gameId))return NextResponse.json({error:"Invalid reservation or game"},{status:400});
- const admin=createClient(projectUrl,key,{auth:{persistSession:false,autoRefreshToken:false}});
  const {data:booking,error:bookingError}=await admin.from("reservations").select("id,game_id,status").eq("id",reservationId).maybeSingle();
  if(bookingError||!booking)return NextResponse.json({error:"Reservation not found"},{status:404});
  if(["rejected","cancelled","checked_in","no_show"].includes(booking.status))return NextResponse.json({error:"This reservation cannot be reassigned"},{status:409});
