@@ -299,3 +299,15 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
 .themeLight .themeSwitch .switchTrack{background:#c7cfda;border-color:#adb7c6}
 .themeLight .themeSwitch.isOn .switchTrack{background:#358869;border-color:#358869}
 @media(max-width:760px){.staffTopActions .notifyControl .notifySwitch{padding:7px!important}.themeSwitch{padding:7px!important}}
+
+/* More room for the operational table opener; center stays readable. */
+@media(min-width:1051px){
+ .staffGrid{grid-template-columns:minmax(315px,1.28fr) minmax(390px,2.05fr) minmax(285px,1.05fr)}
+}
+.staffAuthLoading{min-height:60vh;display:flex;flex-direction:column;gap:15px;align-items:center;justify-content:center;text-align:center;color:#aeb9c7}
+.staffLoadingSpinner{display:block;width:30px;height:30px;border-radius:50%;border:3px solid #7e87934d;border-top-color:#d7b375;animation:staffSpin .75s linear infinite}
+@keyframes staffSpin{to{transform:rotate(360deg)}}
+.themeLight .staffAuthLoading{color:#576678}
+.staffRefreshButton{min-width:102px;white-space:nowrap}
+.staffRefreshButton span{display:inline-block;font-size:17px;line-height:1;vertical-align:-1px;margin-right:3px}
+.staffRefreshSpin{animation:staffSpin .75s linear infinite}
