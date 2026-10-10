@@ -414,3 +414,19 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
  .staffDetail .staffPaneHead{position:relative;padding-right:60px}
  .themeLight .tabletDetailClose{background:#f1f3f6;color:#243246;border-color:#c9d1dc}
 }
+
+/* Wider table opener and compact cashier agent booking input */
+@media(min-width:1200px){.staffShell .staffGrid{grid-template-columns:minmax(375px,1.68fr) minmax(360px,1.76fr) minmax(265px,.98fr)}}
+.staffInlineBooking{padding:10px 12px;border-bottom:1px solid #465261;background:#202833;flex-shrink:0}
+.staffInlineBookingTitle{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:9px}
+.staffInlineBookingTitle strong{font-size:13px}
+.staffInlineBookingTitle small{font-size:10px;color:#b7c3d2}
+.staffInlineBookingFields{display:grid;grid-template-columns:minmax(100px,1.2fr) minmax(130px,1.4fr) minmax(90px,.75fr) auto;gap:6px}
+.staffInlineBookingFields input,.staffInlineBookingFields select{width:100%;min-width:0;padding:8px 7px;font-size:12px}
+.staffInlineBookingFields button{border:0;background:#e3bd7b;color:#1c2733;font-weight:850;border-radius:8px;padding:8px 11px;white-space:nowrap}
+.staffInlineBookingFields button:disabled{opacity:.45}
+.staffInlineBookingFeedback{font-size:11px;margin:7px 0 0}
+.themeLight .staffInlineBooking{background:#f5f7fa;border-color:#d9e0e8}
+.themeLight .staffInlineBookingTitle small{color:#667589}
+@media(min-width:761px) and (max-width:1300px){.staffInlineBookingFields{grid-template-columns:1fr 1fr}.staffInlineBookingFields button{min-height:37px}}
+@media(max-width:760px){.staffInlineBookingFields{grid-template-columns:1fr 1fr}.staffInlineBookingFields button{min-height:44px}.staffInlineBookingTitle{align-items:flex-start;flex-direction:column;gap:2px}}
