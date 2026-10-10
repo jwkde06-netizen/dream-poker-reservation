@@ -2,6 +2,7 @@
 import {useMemo,useState} from "react";
 import DeskTools from "./DeskTools";
 import TelegramSetup from "./TelegramSetup";
+import ReservationAlerts from "./ReservationAlerts";
 type Game={id:string;title:string;starts_at:string;capacity:number;is_open:boolean;table_no:string;game_no?:string;description:string};
 type Booking={id:string;game_id:string;player_name:string;arrival_at:string;status:string;created_at:string;member_number?:string|null;guest_note?:string|null};
 type Stat={game_id:string;confirmed_count:number;pending_count:number;waiting_count:number};
@@ -18,7 +19,7 @@ export default function StaffDashboard({games,bookings,stats,running,profileName
  const activeGame=games.find(g=>g.id===selectedGame);
  const gameCount=(id:string,status:string)=>bookings.filter(b=>b.game_id===id&&b.status===status).length;
  const gameLabel=(g:Game)=>`Table ${g.table_no||"?"} · No.${g.game_no||"?"}`;
- return <div className="staffWorkspace"><div className="staffTop"><div><strong>예약 관리</strong><small>{profileName} · Dream Poker</small></div><div className="staffKpis"><span>진행 <b>{running??"—"}</b></span><span>예약 오픈 <b>{open.length}</b></span><span>승인 대기 <b className="staffGold">{pending}</b></span><span>확정 <b>{confirmed}</b></span></div><div className="staffTopActions"><label title="새 예약 알림음"><input type="checkbox" checked={sound} onChange={e=>setSound(e.target.checked)}/> 알림음</label><a className="staffGuestLink" href="/" target="_blank" rel="noopener noreferrer">손님 화면 ↗</a><button onClick={onRefresh}>새로고침</button><button onClick={onLogout}>로그아웃</button></div></div>
+ return <div className="staffWorkspace"><div className="staffTop"><div><strong>예약 관리</strong><small>{profileName} · Dream Poker</small></div><div className="staffKpis"><span>진행 <b>{running??"—"}</b></span><span>예약 오픈 <b>{open.length}</b></span><span>승인 대기 <b className="staffGold">{pending}</b></span><span>확정 <b>{confirmed}</b></span></div><div className="staffTopActions"><ReservationAlerts bookings={bookings} games={games}/><a className="staffGuestLink" href="/" target="_blank" rel="noopener noreferrer">손님 화면 ↗</a><button onClick={onRefresh}>새로고침</button><button onClick={onLogout}>로그아웃</button></div></div>
  <div className="staffMobileNav"><button className={mobileTab==="games"?"on":""} onClick={()=>setMobileTab("games")}>예약창</button><button className={mobileTab==="list"?"on":""} onClick={()=>setMobileTab("list")}>예약자 {pending? `(${pending})`:""}</button><button className={mobileTab==="detail"?"on":""} onClick={()=>setMobileTab("detail")}>상세 처리</button></div>
  <div className="staffGrid">
  <aside className={`staffPane staffGames ${mobileTab==="games"?"mobileOn":""}`}><div className="staffPaneHead"><h2>예약창 관리</h2><small>다음 게임 대기 접수</small></div><div className="staffScroll">
