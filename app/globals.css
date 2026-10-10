@@ -558,3 +558,30 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
 .themeLight.staffShell .staffTable tbody tr:hover{background:#fff5df}
 @media(hover:none){.staffShell .staffSeatMeter button:hover,.staffShell .staffGameOption:hover,.staffShell .staffActionGrid button:hover:not(:disabled){transform:none}}
 @media(prefers-reduced-motion:reduce){.staffShell .staffSeatMeter button,.staffShell .staffGameOption,.staffShell .staffActionGrid button,.staffShell .staffAdd,.staffShell .staffTable tbody tr{transition:none!important;animation:none!important}}
+
+/* One-tap cashier assignment, compact staff menu, agent player suggestions */
+.staffAssignmentCards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.staffAssignmentCards button{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;min-height:74px;border:1px solid #657487;border-radius:11px;background:#2e3b4d;color:#f5f7fc;padding:10px;text-align:left;transition:transform .13s,border-color .13s,background .13s}
+.staffAssignmentCards button b{font-size:16px}
+.staffAssignmentCards button span,.staffAssignmentCards button small{font-size:11px;opacity:.85}
+.staffAssignmentCards button:not(:disabled):hover{border-color:#e0b978;background:#425369;transform:translateY(-1px)}
+.staffAssignmentCards button.current{background:#255a44;border-color:#69b990;color:#baf3d5;opacity:1}
+.staffAssignmentCards button:disabled{cursor:default}
+.staffSettingsMenu{position:relative;display:flex;align-items:center}
+.staffSettingsMenu>button:first-child{font-size:19px;min-width:38px}
+.staffSettingsBackdrop{position:fixed;inset:0;z-index:170;background:transparent;border:0}
+.staffSettingsPanel{position:absolute;z-index:171;right:0;top:calc(100% + 8px);min-width:200px;display:flex;flex-direction:column;gap:4px;background:#222c3a;border:1px solid #637184;box-shadow:0 14px 35px #0005;padding:8px;border-radius:12px}
+.staffSettingsPanel button,.staffSettingsPanel a{display:block;width:100%;padding:10px 12px;background:transparent;border:0;border-radius:8px;color:#eff3f8;text-align:left;font-size:12px;text-decoration:none;cursor:pointer}
+.staffSettingsPanel button:hover,.staffSettingsPanel a:hover{background:#ffffff17}
+.staffPlayerSearch{position:relative;min-width:0}
+.staffPlayerSearch>input{width:100%;min-width:0}
+.staffPlayerSuggestions{position:absolute;z-index:160;top:calc(100% + 4px);left:0;right:0;max-height:270px;overflow-y:auto;border:1px solid #627185;border-radius:10px;background:#253041;box-shadow:0 12px 30px #0005;padding:4px}
+.staffPlayerSuggestions button{display:flex;justify-content:space-between;align-items:center;gap:6px;width:100%;padding:10px 8px;border:0;border-radius:7px;background:transparent;color:#edf1f6;text-align:left;cursor:pointer}
+.staffPlayerSuggestions button:hover{background:#ffffff1c}
+.staffPlayerSuggestions small{opacity:.72}
+.themeLight .staffAssignmentCards button{background:#f1f5f9;border-color:#cbd6e2;color:#263445}
+.themeLight .staffAssignmentCards button.current{background:#e3f5e9;border-color:#72b78b;color:#225d39}
+.themeLight .staffSettingsPanel,.themeLight .staffPlayerSuggestions{background:#fff;border-color:#d2dbe5;box-shadow:0 12px 30px #0002}
+.themeLight .staffSettingsPanel button,.themeLight .staffSettingsPanel a,.themeLight .staffPlayerSuggestions button{color:#273545}
+.themeLight .staffSettingsPanel button:hover,.themeLight .staffSettingsPanel a:hover,.themeLight .staffPlayerSuggestions button:hover{background:#f1f5f9}
+@media(max-width:760px){.staffAssignmentCards button{min-height:66px}}
