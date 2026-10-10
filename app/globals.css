@@ -726,3 +726,8 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
 .guestExpress .guestGameGrid .gameEmpty{grid-column:1/-1}
 @media(max-width:620px){.guestExpress .guestGameGrid.multiGame{gap:8px!important}.guestExpress .guestGameGrid .guestCompactCard{min-height:86px;padding:10px!important}.guestExpress .guestGameGrid .guestGameLabel{font-size:11px}.guestExpress .guestGameGrid .guestGameMain strong{font-size:19px}}
 @media(max-width:340px){.guestExpress .guestGameGrid.multiGame{grid-template-columns:1fr!important}}
+
+/* Guest game start time, separated from personal arrival ETA */
+.guestExpress .guestGameGrid .guestGameStart{display:block;font-size:11px;font-weight:650;color:#6f7d91;white-space:nowrap;margin-top:2px}
+.themeDark .guestExpress .guestGameGrid .guestGameStart{color:#b2c4c4}
+@media(max-width:620px){.guestExpress .guestGameGrid .guestCompactCard{min-height:104px}.guestExpress .guestGameGrid .guestGameStart{font-size:10px}}
