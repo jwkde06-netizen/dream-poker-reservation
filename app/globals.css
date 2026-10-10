@@ -161,3 +161,31 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
 .themeLight .staffFacts>div,.themeLight .staffTools{border-color:#e0e3e9}.themeLight .staffTopActions button,.themeLight .staffGuestLink,.themeLight .staffToolBtns button{background:#eff2f6;color:#1d2939;border-color:#cbd1da}
 .themeLight .staffIdCard{background:#fff4e0;color:#5b5141}.themeLight .staffMobileNav button{background:#f1f3f6;color:#273343}.themeLight .staffMobileNav button.on{background:#dcb679;color:#1b2430}
 @media(max-width:760px){.bookingHeaderActions{gap:5px}.bookingHeaderActions button{font-size:11px;padding:8px}.brandSettingsGrid{grid-template-columns:1fr}.brandPreview{flex-wrap:wrap}.brandPreview small{width:100%}}
+
+/* Staff settings and compact laptop layout */
+.bookingTheme .header{position:relative;z-index:12}
+.roomSettingsMenu{position:relative;flex-shrink:0}
+.bookingHeaderActions .roomSettingsToggle{font-size:21px;line-height:1;min-width:42px;height:39px;padding:5px 9px;border-radius:9px}
+.roomSettingsPopover{position:absolute;right:0;top:calc(100% + 10px);width:min(480px,calc(100vw - 24px));max-height:min(78dvh,680px);overflow:auto;z-index:250;padding:15px;border:1px solid #4a5059;background:#171a20;color:#f2f4f6;border-radius:14px;box-shadow:0 16px 55px #0009}
+.roomSettingsPopHead{display:flex;align-items:center;justify-content:space-between;padding:0 2px 10px;border-bottom:1px solid #373d46}
+.roomSettingsPopHead strong{font-size:15px}
+.roomSettingsPopHead button{font-size:15px;padding:5px 9px}
+.roomSettingsPopover .brandSettings{padding:12px 0 0!important;margin:0!important;border:0!important;box-shadow:none!important;background:transparent!important}
+.roomSettingsPopover .brandSettingsGrid{grid-template-columns:1fr 1fr}
+.roomSettingsPopover .brandSettingsGrid label:nth-child(3){grid-column:1/-1}
+.roomSettingsPopover .brandPreview{margin:10px 0}
+.themeLight .roomSettingsPopover{background:#fff;color:#17202c;border-color:#d2d7de;box-shadow:0 16px 55px #16202a35}
+.themeLight .roomSettingsPopover .brandSettingsGrid label{color:#556272}
+.staffGames .staffCreate{padding:5px 7px;margin-bottom:10px}
+.staffGames .staffCreateToggle{background:transparent;color:#ebcb90;border:0;display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:9px 7px;font-size:12px;font-weight:800;text-align:left}
+.staffGames .staffCreateInner{padding:6px 3px 5px}
+.staffGames .staffCreateGrid{gap:6px}
+.staffGames .staffCreateGrid label{gap:3px;font-size:10px}
+.staffGames .staffCreateGrid input{padding:7px;font-size:12px}
+.staffGames .staffAdd{padding:9px;margin-top:8px;font-size:12px}
+.staffGames .staffScroll{padding:8px}
+.staffGames .staffPaneHead{padding:10px 12px}
+.staffGames .staffGameOption{padding:8px;margin-bottom:5px}
+.staffGames .staffSubheading{margin-bottom:6px}
+.themeLight .staffGames .staffCreateToggle{color:#90601c}
+@media(max-width:760px){.roomSettingsPopover{position:fixed;top:63px;right:10px;max-height:calc(100dvh - 75px)}.roomSettingsPopover .brandSettingsGrid{grid-template-columns:1fr}}
