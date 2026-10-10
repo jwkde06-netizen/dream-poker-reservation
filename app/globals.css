@@ -480,3 +480,40 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
 @media(min-width:1200px){
  .staffShell .staffGrid.staffResizable{grid-template-columns:minmax(0,var(--pane-left)) 8px minmax(0,var(--pane-middle)) 8px minmax(0,var(--pane-right))}
 }
+
+/* One-screen mobile reservation entry from KakaoTalk */
+.guestExpressShell .header{min-height:45px;margin-bottom:8px;padding:2px 0 7px}
+.guestExpressShell .brandLogo{width:34px!important;height:34px!important;object-fit:contain}
+.guestExpressShell .brand strong{font-size:16px}
+.guestExpressShell .brand small{display:none}
+.guestExpress{max-width:720px;margin:0 auto;padding-bottom:25px}
+.guestExpressPanel{border:1px solid #485569;background:#171f2a;border-radius:14px;padding:17px}
+.guestExpressPanel h1{font-size:21px;line-height:1.25;margin:0}
+.guestExpressSubtitle{font-size:12px;color:#b6c4d2;margin:4px 0 14px}
+.guestExpressStep{margin-bottom:15px}
+.guestExpressStep>strong,.guestExpressStep>label strong{display:block;font-size:13px;margin-bottom:8px}
+.guestExpressStep>input{width:100%;min-height:45px;font-size:16px;border-radius:9px}
+.guestExpressStep .guestCompactList{gap:7px}
+.guestExpressStep .guestCompactCard{min-height:58px;padding:9px 12px}
+.guestExpressStep .guestGameMain{gap:2px}
+.guestExpressTimes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.guestExpressTimes button{border:1px solid #607081;background:#273343;color:#f3f5f8;border-radius:9px;min-height:45px;font-weight:700;font-size:13px}
+.guestExpressTimes button.selected{border-color:#debb7c;background:#72562e;color:#fff}
+.guestExpressStep input[type=time]{margin-top:9px}
+.guestExpressSubmit{width:100%;min-height:52px;font-size:16px;font-weight:850;border-radius:10px}
+.guestExpressHistory{margin-top:14px}
+.themeLight .guestExpressPanel{background:#fff;border-color:#d5dce5}
+.themeLight .guestExpressSubtitle{color:#66758a}
+.themeLight .guestExpressTimes button{background:#f2f4f7;color:#253145;border-color:#ccd4de}
+.themeLight .guestExpressTimes button.selected{background:#fff0d2;border-color:#cba45e;color:#633e0a}
+@media(max-width:620px){
+ .guestExpressShell{padding:8px 10px!important}
+ .guestExpressShell .header{margin-bottom:9px}
+ .guestExpressShell .bookingHeaderActions{gap:5px}
+ .guestExpressShell .bookingHeaderActions button,.guestExpressShell .bookingHeaderActions select{padding:5px 6px;min-height:32px;font-size:12px}
+ .guestExpressPanel{padding:13px 12px}
+ .guestExpressPanel h1{font-size:19px}
+ .guestExpressSubtitle{margin-bottom:11px}
+ .guestExpressStep{margin-bottom:12px}
+ .guestExpressStep .guestCompactCard{min-height:54px;padding:8px 10px}
+}
