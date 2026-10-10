@@ -475,3 +475,8 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
 .staffAssignBox small{color:#f4a4a4}
 .themeLight .staffAssignBox{background:#f0f5fa;border-color:#ced9e4}
 @media(max-width:760px){.staffSeatMeter button{height:43px}}
+
+/* Cashier workstation: favor wide next-game controls on large desktops. */
+@media(min-width:1200px){
+ .staffShell .staffGrid.staffResizable{grid-template-columns:minmax(0,var(--pane-left)) 8px minmax(0,var(--pane-middle)) 8px minmax(0,var(--pane-right))}
+}
