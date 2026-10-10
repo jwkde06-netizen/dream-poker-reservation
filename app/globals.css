@@ -269,3 +269,11 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
 .themeLight .staffSeatResult{background:#edf7ed;border-color:#9abf91;color:#273f2c}
 .themeLight .staffSeatResult strong{color:#266b34}
 .themeLight .staffHoldHint{color:#657387}
+
+/* High-frequency cashier action: next-game form always visible */
+.staffCreateAlways{padding:10px!important;margin:0 0 12px!important}
+.staffCreateHeading{font-weight:850;font-size:13px;color:#e7c78b;padding:4px 3px 9px}
+.staffCreateAlways .staffCreateInner{display:block!important;padding:2px 1px 7px}
+.staffCreateAlways .staffAdd{width:100%;min-height:43px;font-weight:850}
+.themeLight .staffCreateHeading{color:#85591e}
+@media(min-width:761px){.staffGames .staffScroll{overflow-y:auto}.staffCreateAlways{position:relative;top:0}}
