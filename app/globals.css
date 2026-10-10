@@ -430,3 +430,18 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
 .themeLight .staffInlineBookingTitle small{color:#667589}
 @media(min-width:761px) and (max-width:1300px){.staffInlineBookingFields{grid-template-columns:1fr 1fr}.staffInlineBookingFields button{min-height:37px}}
 @media(max-width:760px){.staffInlineBookingFields{grid-template-columns:1fr 1fr}.staffInlineBookingFields button{min-height:44px}.staffInlineBookingTitle{align-items:flex-start;flex-direction:column;gap:2px}}
+
+/* Desktop adjustable three-column cashier workspace */
+@media(min-width:1200px){
+ .staffShell .staffGrid.staffResizable{grid-template-columns:minmax(0,var(--pane-left)) 8px minmax(0,var(--pane-middle)) 8px minmax(0,var(--pane-right));column-gap:0}
+ .staffResizable>.staffGames{grid-column:1}
+ .staffResizable>.staffResizeLeft{grid-column:2}
+ .staffResizable>.staffList{grid-column:3}
+ .staffResizable>.staffResizeRight{grid-column:4}
+ .staffResizable>.staffDetail{grid-column:5}
+ .staffResizeHandle{touch-action:none;cursor:col-resize;position:relative;z-index:5;background:transparent}
+ .staffResizeHandle::after{content:"";position:absolute;inset:12px 2px;border-radius:9px;background:#677889;opacity:.42;transition:opacity .15s,background .15s}
+ .staffResizeHandle:hover::after,.staffResizeHandle:active::after{background:#dbb87c;opacity:1}
+}
+@media(max-width:1199px){.staffResizable>.staffResizeHandle{display:none}}
+@media(min-width:761px){.staffResizable .staffPane{min-width:0}}
