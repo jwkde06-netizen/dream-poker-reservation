@@ -277,3 +277,25 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
 .staffCreateAlways .staffAdd{width:100%;min-height:43px;font-weight:850}
 .themeLight .staffCreateHeading{color:#85591e}
 @media(min-width:761px){.staffGames .staffScroll{overflow-y:auto}.staffCreateAlways{position:relative;top:0}}
+
+/* Clear, consistent three-column cashier workstation */
+@media(min-width:1051px){
+ .staffGrid{grid-template-columns:minmax(265px,1.05fr) minmax(430px,2.35fr) minmax(285px,1.05fr);gap:12px}
+ .staffPane{min-width:0}
+ .staffList .staffPaneHead,.staffDetail .staffPaneHead,.staffGames .staffPaneHead{min-height:66px}
+ .staffTable{width:100%}
+}
+.staffPane{border-radius:14px}
+.staffTable tbody tr{cursor:pointer}
+.staffTable tbody tr:focus-within{outline:2px solid #d3b271}
+.staffQuickFields{grid-template-columns:repeat(3,minmax(0,1fr))}
+.staffSeatResult{border-radius:9px}
+.staffCreateAlways{border-radius:11px}
+.themeSwitch,.staffTopActions .notifyControl .notifySwitch{display:inline-flex!important;align-items:center;gap:7px}
+.switchTrack{display:inline-flex;align-items:center;width:33px;height:19px;border:1px solid #8290a2;border-radius:999px;background:#8491a1;padding:2px;transition:background .18s}
+.switchThumb{display:block;width:13px;height:13px;border-radius:50%;background:white;box-shadow:0 1px 3px #0004;transition:transform .18s}
+.isOn .switchTrack,.notifyEnabled .switchTrack{background:#358869;border-color:#358869}
+.isOn .switchThumb,.notifyEnabled .switchThumb{transform:translateX(14px)}
+.themeLight .themeSwitch .switchTrack{background:#c7cfda;border-color:#adb7c6}
+.themeLight .themeSwitch.isOn .switchTrack{background:#358869;border-color:#358869}
+@media(max-width:760px){.staffTopActions .notifyControl .notifySwitch{padding:7px!important}.themeSwitch{padding:7px!important}}
