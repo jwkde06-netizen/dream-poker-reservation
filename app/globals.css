@@ -360,3 +360,18 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
 .themeLight .deskWorkspaceActions a,.themeLight .deskWorkspaceActions button{background:#eff2f6;color:#202c3b;border-color:#cbd4df}
 .themeLight .deskQueueRow{border-color:#e1e5eb}
 @media(max-width:800px){.deskWorkspaceGrid{grid-template-columns:1fr}.deskWorkspaceTop{flex-wrap:wrap}.deskWorkspaceActions{width:100%}}
+
+/* Administrator account provisioning */
+.staffAdminAccounts{margin:0 0 8px}
+.staffAdminAccounts details{border:1px solid #546477;border-radius:10px;background:#1e2835}
+.staffAdminAccounts summary{cursor:pointer;font-size:12px;font-weight:800;padding:10px 14px}
+.accountAdmin{padding:12px 14px 15px}
+.accountAdmin h2{font-size:17px;margin:0}
+.accountAdmin p,.accountAdmin small{font-size:12px;color:#b8c5d4}
+.accountAdminGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:12px 0}
+.accountAdminGrid label{display:flex;flex-direction:column;gap:5px;font-size:12px}
+.accountAdminGrid input,.accountAdminGrid select{width:100%;min-width:0}
+.accountAdmin .primary{padding:9px 16px;min-height:36px}
+.themeLight .staffAdminAccounts details{background:#fff;border-color:#d0d8e2}
+.themeLight .accountAdmin p,.themeLight .accountAdmin small{color:#56657a}
+@media(max-width:900px){.accountAdminGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
