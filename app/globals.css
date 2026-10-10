@@ -517,3 +517,44 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
  .guestExpressStep{margin-bottom:12px}
  .guestExpressStep .guestCompactCard{min-height:54px;padding:8px 10px}
 }
+
+/* Cashier experience refresh: calm surfaces, clear hierarchy, delightful feedback. */
+.staffShell .staffWorkspace{--desk-gold:#ddb776;--desk-mint:#62c39a}
+.staffShell .staffPane{border-radius:17px;box-shadow:0 8px 26px #00000012;transition:border-color .18s,box-shadow .18s}
+.staffShell .staffPaneHead{padding:14px 17px 12px;background:linear-gradient(120deg,#ffffff08,transparent);border-bottom:1px solid #ffffff1a}
+.staffShell .staffPaneHead h2{font-size:16px;letter-spacing:-.025em}
+.staffShell .staffPaneHead small{font-size:11px}
+.staffShell .staffTop{border-radius:15px;box-shadow:0 5px 24px #0000000c}
+.staffShell .staffKpis b{font-variant-numeric:tabular-nums}
+.staffShell .staffCreateAlways{background:linear-gradient(145deg,#272b33,#1b222c);border:1px solid #7b704f88;box-shadow:0 4px 16px #00000018;border-radius:15px;padding:13px!important}
+.staffShell .staffCreateHeading{display:flex;align-items:center;gap:9px;color:#f0cc91;font-size:14px;letter-spacing:-.02em}
+.staffLiveDot{width:8px;height:8px;border-radius:50%;background:#70d6a6;box-shadow:0 0 0 4px #70d6a624;flex-shrink:0}
+.staffShell .staffSeatMeter{gap:5px}
+.staffShell .staffSeatMeter button{height:43px;border-radius:9px;transition:transform .14s ease,background .16s ease,box-shadow .16s ease}
+.staffShell .staffSeatMeter button:hover{transform:translateY(-3px);box-shadow:0 4px 10px #0002}
+.staffShell .staffSeatMeter button.filled{background:linear-gradient(160deg,#5ddca2,#43a77a);color:#102b21;border-color:#70dda8}
+.staffShell .staffSeatMeter button:active{transform:scale(.94)}
+.staffShell .staffSeatResult{background:linear-gradient(120deg,#284e3e,#263e37);border-color:#539a73;border-radius:12px;padding:12px 13px}
+.staffShell .staffSeatResult strong{color:#a8f2c5;letter-spacing:-.03em}
+.staffShell .staffAdd{background:linear-gradient(100deg,#e9c890,#dcb276);border-radius:11px;min-height:45px;box-shadow:0 3px 10px #0001;transition:transform .15s,filter .15s}
+.staffShell .staffAdd:hover:not(:disabled){transform:translateY(-2px);filter:brightness(1.06)}
+.staffShell .staffGameOption{border-radius:12px;transition:background .15s,border-color .15s,transform .15s}
+.staffShell .staffGameOption:hover{transform:translateY(-1px);border-color:#d4a95e}
+.staffShell .staffGameOption.active{box-shadow:inset 3px 0 0 #eac281}
+.staffShell .staffTable tbody tr{transition:background .14s,box-shadow .14s;cursor:pointer}
+.staffShell .staffTable tbody tr:hover{background:#e0b96014}
+.staffShell .staffTable tbody tr.selected{box-shadow:inset 3px 0 0 #dcb36f}
+.staffShell .staffActionGrid button,.staffShell .staffQueueToggle,.staffShell .staffInlineBookingFields button{transition:transform .14s ease,filter .14s ease}
+.staffShell .staffActionGrid button:hover:not(:disabled),.staffShell .staffQueueToggle:hover:not(:disabled),.staffShell .staffInlineBookingFields button:hover:not(:disabled){filter:brightness(1.09);transform:translateY(-1px)}
+.staffShell .staffActionGrid button:active:not(:disabled),.staffShell .staffInlineBookingFields button:active:not(:disabled){transform:scale(.985)}
+.staffShell .staffAssignBox{border-radius:13px}
+.staffShell :is(button,input,select,textarea):focus-visible{outline:2px solid #d7b172;outline-offset:2px}
+.themeLight.staffShell .staffCreateAlways{background:linear-gradient(145deg,#fffaf1,#fff);border-color:#dfc99f;box-shadow:0 5px 18px #a8843620}
+.themeLight.staffShell .staffCreateHeading{color:#85581f}
+.themeLight.staffShell .staffSeatMeter button.filled{background:linear-gradient(160deg,#c0f1d0,#8bd6a5);color:#153c28;border-color:#61b786}
+.themeLight.staffShell .staffSeatResult{background:linear-gradient(110deg,#e9f8ee,#e2f2e6);border-color:#9ac7a5}
+.themeLight.staffShell .staffSeatResult strong{color:#28673c}
+.themeLight.staffShell .staffPaneHead{background:linear-gradient(120deg,#f7f9fc,#fff);border-bottom-color:#e2e7ed}
+.themeLight.staffShell .staffTable tbody tr:hover{background:#fff5df}
+@media(hover:none){.staffShell .staffSeatMeter button:hover,.staffShell .staffGameOption:hover,.staffShell .staffActionGrid button:hover:not(:disabled){transform:none}}
+@media(prefers-reduced-motion:reduce){.staffShell .staffSeatMeter button,.staffShell .staffGameOption,.staffShell .staffActionGrid button,.staffShell .staffAdd,.staffShell .staffTable tbody tr{transition:none!important;animation:none!important}}
