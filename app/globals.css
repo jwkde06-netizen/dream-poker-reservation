@@ -189,3 +189,12 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
 .staffGames .staffSubheading{margin-bottom:6px}
 .themeLight .staffGames .staffCreateToggle{color:#90601c}
 @media(max-width:760px){.roomSettingsPopover{position:fixed;top:63px;right:10px;max-height:calc(100dvh - 75px)}.roomSettingsPopover .brandSettingsGrid{grid-template-columns:1fr}}
+
+/* Match reservation notification preferences with the active light theme. */
+.themeLight .notificationSettings{background:#fff;color:#1d2631;border-color:#cbd3dc;box-shadow:0 18px 50px #17263830}
+.themeLight .notificationSettings .notificationTitle strong{color:#17202b}
+.themeLight .notificationSettings .notificationTitle button{background:#eef1f5;color:#1d2939;border-color:#cbd2dc}
+.themeLight .notificationSettings label{color:#475569}
+.themeLight .notificationSettings select{background:#fff;color:#17202b;border-color:#c5ced9}
+.themeLight .notificationSettings small{color:#637184}
+.themeLight .notificationSettings .notificationPreview{background:#e4bf80;color:#192435}
