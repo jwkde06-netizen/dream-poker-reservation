@@ -407,3 +407,10 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
  .themeLight .staffShell .staffTable tbody tr{background:#fff;border-color:#d9e0e8}
  .themeLight .staffShell .staffTable tbody tr.selected{background:#fff4e2}
 }
+
+.tabletDetailClose{display:none}
+@media(min-width:761px) and (max-width:1199px){
+ .tabletDetailClose{display:block;position:absolute;right:12px;top:12px;padding:7px 11px;border:1px solid #647185;background:#273344;color:white;border-radius:8px}
+ .staffDetail .staffPaneHead{position:relative;padding-right:60px}
+ .themeLight .tabletDetailClose{background:#f1f3f6;color:#243246;border-color:#c9d1dc}
+}
