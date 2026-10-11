@@ -792,3 +792,28 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
 .staffShell .staffInlineBookingFields>.staffEtaPicker{grid-column:1/-1;grid-row:2}
 .staffShell .staffInlineBookingFields>button:last-child{grid-column:3;grid-row:1;min-height:39px}
 @media(max-width:760px){.staffShell .staffInlineBookingFields{grid-template-columns:1fr 1fr}.staffShell .staffInlineBookingFields>button:last-child{grid-column:1/-1;grid-row:3}.staffShell .staffInlineBookingFields>.staffEtaPicker{grid-row:2}}
+
+
+/* Frequently used desk booking form: more generous, readable touch targets */
+.staffShell .staffInlineBooking{padding:17px 20px 18px}
+.staffShell .staffInlineBookingTitle{margin-bottom:12px}
+.staffShell .staffInlineBookingTitle strong{font-size:17px;letter-spacing:-.02em}
+.staffShell .staffInlineBookingFields{gap:12px;grid-template-columns:minmax(190px,1fr) minmax(240px,1.35fr) minmax(125px,.5fr)}
+.staffShell .staffInlineBookingFields>.staffPlayerSearch input,
+.staffShell .staffInlineBookingFields>select{min-height:49px;font-size:15px;padding:10px 13px;border-radius:11px}
+.staffShell .staffInlineBookingFields>button:last-child{grid-column:3;grid-row:1;min-height:49px;padding:10px 18px;font-size:16px}
+.staffShell .staffInlineBookingFields>.staffEtaPicker{grid-column:1/-1;grid-row:2;gap:9px;margin-top:0}
+.staffShell .staffEtaChoices{gap:9px}
+.staffShell .staffInlineBookingFields .staffEtaChip{min-height:44px;padding:9px 15px;font-size:14px}
+.staffShell .staffEtaCustom input{min-height:44px;font-size:15px}
+@media(max-width:1000px){
+ .staffShell .staffInlineBookingFields{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)}
+ .staffShell .staffInlineBookingFields>button:last-child{grid-column:1/-1;grid-row:3}
+}
+@media(max-width:760px){
+ .staffShell .staffInlineBooking{padding:14px 12px}
+ .staffShell .staffInlineBookingFields{grid-template-columns:1fr;gap:10px}
+ .staffShell .staffInlineBookingFields>.staffEtaPicker{grid-column:1;grid-row:3}
+ .staffShell .staffInlineBookingFields>button:last-child{grid-column:1;grid-row:4;min-height:50px}
+ .staffShell .staffEtaChoices{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
