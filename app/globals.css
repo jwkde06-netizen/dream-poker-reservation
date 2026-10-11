@@ -773,3 +773,73 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
  .guestExpressShell .guestExpressTimes button{min-height:40px}
  .guestExpressShell .guestExpressSubmit{min-height:46px}
 }
+
+
+/* Cashier quick-book ETA selector */
+.staffEtaPicker{display:flex;flex-direction:column;gap:7px;min-width:0;flex:1 1 100%;margin-top:4px}
+.staffEtaChoices{display:flex;flex-wrap:wrap;gap:7px}
+.staffShell .staffInlineBookingFields .staffEtaChip{flex:0 0 auto;min-height:37px;padding:7px 12px;background:#15222d;color:#d9e9e7;border:1px solid #425e6c;border-radius:9px;font-size:13px;font-weight:700}
+.staffShell .staffInlineBookingFields .staffEtaChip.active{background:#198c69;color:#fff;border-color:#52c79e;box-shadow:inset 0 0 0 1px #52c79e}
+.staffEtaCustom{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.staffEtaCustom input{width:155px;min-height:38px}
+.staffEtaCustom small{font-size:12px;color:#a8bdbc}
+.themeLight.staffShell .staffInlineBookingFields .staffEtaChip{background:#fff;color:#304d44;border-color:#c8d8d1}
+.themeLight.staffShell .staffInlineBookingFields .staffEtaChip.active{background:#198c69;color:#fff;border-color:#168261}
+@media(max-width:650px){.staffEtaChoices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.staffShell .staffInlineBookingFields .staffEtaChip{padding:8px 5px;font-size:12px}}
+
+/* Keep main booking fields on one line; ETA shortcuts below, without overflowing */
+.staffShell .staffInlineBookingFields{grid-template-columns:minmax(140px,1fr) minmax(210px,1.35fr) auto;align-items:start}
+.staffShell .staffInlineBookingFields>.staffEtaPicker{grid-column:1/-1;grid-row:2}
+.staffShell .staffInlineBookingFields>button:last-child{grid-column:3;grid-row:1;min-height:39px}
+@media(max-width:760px){.staffShell .staffInlineBookingFields{grid-template-columns:1fr 1fr}.staffShell .staffInlineBookingFields>button:last-child{grid-column:1/-1;grid-row:3}.staffShell .staffInlineBookingFields>.staffEtaPicker{grid-row:2}}
+
+
+/* Frequently used desk booking form: more generous, readable touch targets */
+.staffShell .staffInlineBooking{padding:17px 20px 18px}
+.staffShell .staffInlineBookingTitle{margin-bottom:12px}
+.staffShell .staffInlineBookingTitle strong{font-size:17px;letter-spacing:-.02em}
+.staffShell .staffInlineBookingFields{gap:12px;grid-template-columns:minmax(190px,1fr) minmax(240px,1.35fr) minmax(125px,.5fr)}
+.staffShell .staffInlineBookingFields>.staffPlayerSearch input,
+.staffShell .staffInlineBookingFields>select{min-height:49px;font-size:15px;padding:10px 13px;border-radius:11px}
+.staffShell .staffInlineBookingFields>button:last-child{grid-column:3;grid-row:1;min-height:49px;padding:10px 18px;font-size:16px}
+.staffShell .staffInlineBookingFields>.staffEtaPicker{grid-column:1/-1;grid-row:2;gap:9px;margin-top:0}
+.staffShell .staffEtaChoices{gap:9px}
+.staffShell .staffInlineBookingFields .staffEtaChip{min-height:44px;padding:9px 15px;font-size:14px}
+.staffShell .staffEtaCustom input{min-height:44px;font-size:15px}
+@media(max-width:1000px){
+ .staffShell .staffInlineBookingFields{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)}
+ .staffShell .staffInlineBookingFields>button:last-child{grid-column:1/-1;grid-row:3}
+}
+@media(max-width:760px){
+ .staffShell .staffInlineBooking{padding:14px 12px}
+ .staffShell .staffInlineBookingFields{grid-template-columns:1fr;gap:10px}
+ .staffShell .staffInlineBookingFields>.staffEtaPicker{grid-column:1;grid-row:3}
+ .staffShell .staffInlineBookingFields>button:last-child{grid-column:1;grid-row:4;min-height:50px}
+ .staffShell .staffEtaChoices{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+
+/* Compact frequent-use staff reservation form (player, game, submit only) */
+.staffShell .staffInlineBookingFields{grid-template-columns:minmax(175px,1fr) minmax(220px,1.3fr) minmax(130px,.55fr);align-items:center;gap:11px}
+.staffShell .staffInlineBookingFields>button:last-child{grid-column:3;grid-row:1}
+@media(max-width:1000px){.staffShell .staffInlineBookingFields{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)}.staffShell .staffInlineBookingFields>button:last-child{grid-column:1/-1;grid-row:2}}
+@media(max-width:600px){.staffShell .staffInlineBookingFields{grid-template-columns:1fr}.staffShell .staffInlineBookingFields>button:last-child{grid-column:1;grid-row:3}}
+
+
+/* Desk quick booking: clean autocomplete typography and presence toggle */
+.staffShell .staffInlineBookingFields{grid-template-columns:minmax(170px,1.1fr) minmax(215px,1.35fr) minmax(185px,.9fr) minmax(125px,.6fr);align-items:center;gap:10px}
+.staffShell .staffInlineBookingFields>.staffPresence{grid-column:3;grid-row:1;display:flex;gap:4px;min-width:0;background:#14212b;border:1px solid #47606c;border-radius:11px;padding:4px}
+.staffShell .staffInlineBookingFields .staffPresence button{flex:1 1 0;min-width:0;padding:8px 6px;min-height:40px;background:transparent;color:#b7c8c9;border:0;border-radius:7px;font-size:13px;font-weight:700}
+.staffShell .staffInlineBookingFields .staffPresence button.active{background:#168464;color:#fff}
+.staffShell .staffInlineBookingFields>button:last-child{grid-column:4;grid-row:1;min-height:49px}
+.staffShell .staffPlayerSuggestions{z-index:95;max-height:280px;overflow-y:auto;padding:4px;border-radius:11px}
+.staffShell .staffPlayerSuggestions button{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;width:100%;padding:10px 12px;white-space:normal;line-height:1.35;font-family:inherit;letter-spacing:normal;text-align:left}
+.staffShell .staffPlayerSuggestions button strong{font-family:inherit;font-weight:700;font-size:15px;letter-spacing:0;line-height:1.4;word-break:break-word}
+.staffShell .staffPlayerSuggestions button small{font-family:inherit;font-size:12px;font-weight:450;letter-spacing:0;opacity:.78}
+.staffShell .staffPlayerSuggestions button.keyboardActive,.staffShell .staffPlayerSuggestions button[aria-selected="true"]{background:#196c54;color:#fff;outline:1px solid #66caa8}
+.themeLight.staffShell .staffInlineBookingFields>.staffPresence{background:#edf4f1;border-color:#c4d8d0}
+.themeLight.staffShell .staffInlineBookingFields .staffPresence button{color:#496159}
+.themeLight.staffShell .staffInlineBookingFields .staffPresence button.active{background:#168464;color:white}
+.themeLight.staffShell .staffPlayerSuggestions button.keyboardActive{color:white}
+@media(max-width:1250px){.staffShell .staffInlineBookingFields{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)}.staffShell .staffInlineBookingFields>.staffPresence{grid-column:1;grid-row:2}.staffShell .staffInlineBookingFields>button:last-child{grid-column:2;grid-row:2}}
+@media(max-width:620px){.staffShell .staffInlineBookingFields{grid-template-columns:1fr}.staffShell .staffInlineBookingFields>.staffPresence{grid-column:1;grid-row:3}.staffShell .staffInlineBookingFields>button:last-child{grid-column:1;grid-row:4}}
