@@ -817,3 +817,10 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
  .staffShell .staffInlineBookingFields>button:last-child{grid-column:1;grid-row:4;min-height:50px}
  .staffShell .staffEtaChoices{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+
+/* Compact frequent-use staff reservation form (player, game, submit only) */
+.staffShell .staffInlineBookingFields{grid-template-columns:minmax(175px,1fr) minmax(220px,1.3fr) minmax(130px,.55fr);align-items:center;gap:11px}
+.staffShell .staffInlineBookingFields>button:last-child{grid-column:3;grid-row:1}
+@media(max-width:1000px){.staffShell .staffInlineBookingFields{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)}.staffShell .staffInlineBookingFields>button:last-child{grid-column:1/-1;grid-row:2}}
+@media(max-width:600px){.staffShell .staffInlineBookingFields{grid-template-columns:1fr}.staffShell .staffInlineBookingFields>button:last-child{grid-column:1;grid-row:3}}
