@@ -14,7 +14,7 @@ export default function StaffQuickBooking({games,onBooked,lang}:{games:Game[];on
  const tr=(ko:string,en:string,vi:string)=>lang==="en"?en:lang==="vi"?vi:ko;
  const getArrival=()=>etaMode==="custom"?new Date(arrival+"+07:00").toISOString():new Date(Date.now()+Number(etaMode==="now"?0:etaMode)*60000).toISOString();
  async function submit(){if(!db||busy||!game||name.trim().length<2)return;setBusy(true);setFeedback("");try{const arrivalISO=getArrival();
- const result=await db.rpc("desk_request_poker_reservation",{p_game:game,p_name:name.trim(),p_arrival:arrivalISO});
+ const result=await db.rpc("desk_request_poker_reservation",{p_game:game,p_name:name.trim(),p_arrival:arrivalISO,p_note:""});
  if(result.error)throw Error(result.error.message);
  const {data:{session}}=await db.auth.getSession();
  const alert=await fetch("/api/notify/desk",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(session?.access_token||"")},body:JSON.stringify({game_id:game,name:name.trim(),arrival_at:arrivalISO})}).then(async r=>({ok:r.ok,body:await r.json().catch(()=>({}))})).catch(()=>({ok:false,body:{}}));
