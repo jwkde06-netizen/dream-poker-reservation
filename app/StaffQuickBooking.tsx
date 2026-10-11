@@ -14,7 +14,9 @@ export default function StaffQuickBooking({games,onBooked,lang}:{games:Game[];on
  async function submit(){if(!db||busy||!game||name.trim().length<2)return;setBusy(true);setFeedback("");try{
  const result=await db.rpc("desk_request_poker_reservation",{p_game:game,p_name:name.trim(),p_arrival:new Date(arrival+"+07:00").toISOString()});
  if(result.error)throw Error(result.error.message);
- setFeedback(tr("캐셔 예약 대기열에 등록했습니다.","Added to cashier reservation queue.","Đã thêm vào danh sách chờ của thu ngân."));
+ const {data:{session}}=await db.auth.getSession();
+ const alert=await fetch("/api/notify/desk",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(session?.access_token||"")},body:JSON.stringify({game_id:game,name:name.trim(),arrival_at:new Date(arrival+"+07:00").toISOString()})}).then(async r=>({ok:r.ok,body:await r.json().catch(()=>({}))})).catch(()=>({ok:false,body:{}}));
+ setFeedback(alert.ok?tr("예약 요청을 캐셔 텔레그램으로 전송했습니다. 승인 대기 중입니다.","Sent to cashier Telegram. Awaiting approval.","Đã gửi Telegram cho thu ngân. Đang chờ duyệt."):tr("예약은 접수됐지만 텔레그램 알림은 확인이 필요합니다.","Booking saved; Telegram notification needs attention.","Đã lưu đặt chỗ; vui lòng kiểm tra thông báo Telegram."));
  setName("");onBooked();
  }catch(e){setFeedback(e instanceof Error?e.message:"Reservation failed")}finally{setBusy(false)}}
  const open=games.filter(g=>g.is_open);
