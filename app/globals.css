@@ -773,3 +773,16 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
  .guestExpressShell .guestExpressTimes button{min-height:40px}
  .guestExpressShell .guestExpressSubmit{min-height:46px}
 }
+
+
+/* Cashier quick-book ETA selector */
+.staffEtaPicker{display:flex;flex-direction:column;gap:7px;min-width:0;flex:1 1 100%;margin-top:4px}
+.staffEtaChoices{display:flex;flex-wrap:wrap;gap:7px}
+.staffShell .staffInlineBookingFields .staffEtaChip{flex:0 0 auto;min-height:37px;padding:7px 12px;background:#15222d;color:#d9e9e7;border:1px solid #425e6c;border-radius:9px;font-size:13px;font-weight:700}
+.staffShell .staffInlineBookingFields .staffEtaChip.active{background:#198c69;color:#fff;border-color:#52c79e;box-shadow:inset 0 0 0 1px #52c79e}
+.staffEtaCustom{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.staffEtaCustom input{width:155px;min-height:38px}
+.staffEtaCustom small{font-size:12px;color:#a8bdbc}
+.themeLight.staffShell .staffInlineBookingFields .staffEtaChip{background:#fff;color:#304d44;border-color:#c8d8d1}
+.themeLight.staffShell .staffInlineBookingFields .staffEtaChip.active{background:#198c69;color:#fff;border-color:#168261}
+@media(max-width:650px){.staffEtaChoices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.staffShell .staffInlineBookingFields .staffEtaChip{padding:8px 5px;font-size:12px}}
