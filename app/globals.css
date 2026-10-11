@@ -786,3 +786,9 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
 .themeLight.staffShell .staffInlineBookingFields .staffEtaChip{background:#fff;color:#304d44;border-color:#c8d8d1}
 .themeLight.staffShell .staffInlineBookingFields .staffEtaChip.active{background:#198c69;color:#fff;border-color:#168261}
 @media(max-width:650px){.staffEtaChoices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.staffShell .staffInlineBookingFields .staffEtaChip{padding:8px 5px;font-size:12px}}
+
+/* Keep main booking fields on one line; ETA shortcuts below, without overflowing */
+.staffShell .staffInlineBookingFields{grid-template-columns:minmax(140px,1fr) minmax(210px,1.35fr) auto;align-items:start}
+.staffShell .staffInlineBookingFields>.staffEtaPicker{grid-column:1/-1;grid-row:2}
+.staffShell .staffInlineBookingFields>button:last-child{grid-column:3;grid-row:1;min-height:39px}
+@media(max-width:760px){.staffShell .staffInlineBookingFields{grid-template-columns:1fr 1fr}.staffShell .staffInlineBookingFields>button:last-child{grid-column:1/-1;grid-row:3}.staffShell .staffInlineBookingFields>.staffEtaPicker{grid-row:2}}
