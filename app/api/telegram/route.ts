@@ -6,6 +6,18 @@ export const dynamic="force-dynamic";
 export async function GET(request:Request){
  if(!await requireAdmin(request))return NextResponse.json({error:"Admin login required"},{status:403});
  try{
+ const bearer=(request.headers.get("authorization")||"").replace(/^Bearer\s+/i,"");
+ const db=createClient(projectUrl,publicKey,{global:{headers:{Authorization:"Bearer "+bearer}},auth:{persistSession:false}});
+ const saved=await db.rpc("reservation_telegram_target");
+ const target=String(saved.data||process.env.TELEGRAM_CHAT_ID||"").trim();
+ if(target){
+   const chat=await tg("getChat",{chat_id:target});
+   if(!["group","supergroup"].includes(chat.type))return NextResponse.json({error:"Saved destination is not a Telegram group"},{status:409});
+   return NextResponse.json({groups:[{id:String(chat.id),title:chat.title||"Group",type:chat.type}],count:1});
+ }
+ if(saved.error)return NextResponse.json({error:"Telegram group lookup failed"},{status:503});
+ const webhook=await tg("getWebhookInfo");
+ if(webhook.url)return NextResponse.json({error:"봇이 웹훅을 사용 중이며 저장된 알림방이 없습니다. 관리자가 예약 알림방을 먼저 연결해야 합니다."},{status:409});
  const updates=await tg("getUpdates",{limit:100,timeout:0,allowed_updates:["message","my_chat_member"]});
  const map=new Map<string,{id:string,title:string,type:string}>();
  for(const update of updates){
