@@ -1,0 +1,13 @@
+'use client';
+import {useCallback,useEffect,useState} from 'react';
+import {db} from '../lib/db';
+type Job={id:string;reservation_id:string;state:string;attempts:number;last_error:string|null;created_at:string;sent_at:string|null};
+type Health={enabled:boolean;queued:number;failed:number;pending:number;overdue:number;jobs:Job[]};
+export default function ReservationAgent({lang}:{lang:'ko'|'en'|'vi'}){
+ const [health,setHealth]=useState<Health|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState('');
+ const text=lang==='ko'?{title:'예약 에이전트',on:'알림 자동 전송 중',off:'알림 자동 전송 준비 중',queue:'전송 대기',fail:'전송 실패',late:'15분 이상 승인 대기',retry:'다시 전송',history:'최근 알림',unknown:'알림 상태를 확인하지 못했습니다.',sent:'전송 완료',sending:'전송 중',pending:'전송 대기',failed:'전송 실패'}:lang==='vi'?{title:'Trợ lý đặt chỗ',on:'Tự động gửi thông báo',off:'Chưa bật thông báo tự động',queue:'Chờ gửi',fail:'Gửi thất bại',late:'Chờ duyệt hơn 15 phút',retry:'Thử lại',history:'Thông báo gần đây',unknown:'Không thể kiểm tra thông báo.',sent:'Đã gửi',sending:'Đang gửi',pending:'Chờ gửi',failed:'Thất bại'}:{title:'Reservation agent',on:'Automatic notifications active',off:'Automatic notifications not active',queue:'Queued',fail:'Failed',late:'Awaiting approval over 15 min',retry:'Retry',history:'Recent notifications',unknown:'Unable to check notifications.',sent:'Sent',sending:'Sending',pending:'Queued',failed:'Failed'};
+ const load=useCallback(async()=>{if(!db)return;const r=await db.rpc('reservation_agent_status');if(r.error){setError('unavailable');return}setHealth(r.data);setError('')},[]);
+ useEffect(()=>{void load();const timer=setInterval(()=>void load(),15000);return()=>clearInterval(timer)},[load]);
+ async function retry(id:string){if(!db||busy)return;setBusy(id);try{const r=await db.rpc('retry_reservation_delivery',{p_id:id});if(r.error||!r.data)setError('retry');else await load()}finally{setBusy('')}}
+ return <section className="reservationAgent" aria-label={text.title}><strong>{text.title}</strong><span>{health?.enabled?text.on:text.off}</span>{error&&<p role="alert">{text.unknown}</p>}{health&&<><div className="agentCounts"><span>{text.queue} <b>{health.queued}</b></span><span>{text.fail} <b>{health.failed}</b></span><span>{text.late} <b>{health.overdue}</b></span></div><details><summary>{text.history}</summary>{health.jobs.map(j=><div className="agentJob" key={j.id}><a href={`?reservation=${j.reservation_id}`}>#{j.reservation_id.slice(0,8)}</a><span>{j.state==='sent'?text.sent:j.state==='sending'?text.sending:j.state==='failed'?text.failed:text.pending}</span>{j.state==='failed'&&<button disabled={!!busy} onClick={()=>void retry(j.id)}>{text.retry}</button>}</div>)}</details></>}</section>;
+}

@@ -14,7 +14,7 @@ export default function StaffQuickBooking({games,onBooked,lang}:{games:Game[];on
  async function submit(){if(!db||busy||!game||name.trim().length<2)return;setBusy(true);setFeedback("");try{
  const result=await db.rpc("desk_request_poker_reservation",{p_game:game,p_name:name.trim(),p_arrival:new Date(arrival+"+07:00").toISOString()});
  if(result.error)throw Error(result.error.message);
- setFeedback(tr("캐셔 예약 대기열에 등록했습니다.","Added to cashier reservation queue.","Đã thêm vào danh sách chờ của thu ngân."));
+ setFeedback(tr("직원 예약 대기열에 등록했습니다.","Added to staff reservation queue.","Đã thêm vào danh sách chờ của nhân viên."));
  setName("");onBooked();
  }catch(e){setFeedback(e instanceof Error?e.message:"Reservation failed")}finally{setBusy(false)}}
  const open=games.filter(g=>g.is_open);

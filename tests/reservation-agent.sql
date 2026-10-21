@@ -1,0 +1,46 @@
+begin;
+-- All fixtures, account role changes and queued notifications are rolled back.
+do $$
+declare uid uuid; g uuid; g2 uuid; r uuid; r2 uuid; tok uuid; j jsonb; n integer; blocked boolean;
+begin
+ select user_id into uid from public.user_profiles where role='admin' and active limit 1;
+ perform set_config('request.jwt.claim.sub',uid::text,true);
+ insert into public.reservation_games(title,starts_at,capacity,table_no) values('AGENT ROLLBACK TEST',now()+interval '1 hour',1,'test') returning id into g;
+ insert into public.reservation_games(title,starts_at,capacity,table_no) values('AGENT ROLLBACK TEST 2',now()+interval '1 hour',1,'test') returning id into g2;
+ update public.user_profiles set role='desk' where user_id=uid;
+ r:=public.desk_request_poker_reservation(g,'Agent Test One',now()+interval '1 hour','rollback only');
+ r2:=public.desk_request_poker_reservation(g,'Agent Test Two',now()+interval '1 hour','rollback only');
+ assert (select status='pending' from public.reservations where id=r),'new booking must be pending';
+ assert (select count(*)=1 from reservation_private.outbox where reservation_id=r),'insert enqueues exactly once';
+ assert public.review_poker_reservation(r,'confirmed',0),'desk can confirm';
+ assert (select version=1 and reviewed_by=uid from public.reservations where id=r),'version and actor recorded';
+ blocked:=false;begin perform public.review_poker_reservation(r,'cancelled',0);exception when others then blocked:=true;end;assert blocked,'stale update blocked';
+ update public.user_profiles set role='cashier' where user_id=uid;
+ blocked:=false;begin perform public.review_poker_reservation(r2,'confirmed',0);exception when others then blocked:=true;end;assert blocked,'last seat protected';
+ assert public.review_poker_reservation(r2,'waitlisted',0),'cashier can waitlist';
+ assert public.assign_poker_reservation(r,g2,1),'atomic move';
+ assert public.review_poker_reservation(r2,'confirmed',1),'freed seat available to cashier';
+ blocked:=false;begin perform public.assign_poker_reservation(r2,g2,2);exception when others then blocked:=true;end;assert blocked,'move to full game blocked';
+ select lookup_token into tok from public.reservations where id=r;
+ assert public.cancel_poker_reservation(tok),'guest cancellation';
+ blocked:=false;begin perform public.review_poker_reservation(r,'confirmed',3);exception when others then blocked:=true;end;assert blocked,'cancelled reservation cannot revive';
+ update public.user_profiles set role='pending' where user_id=uid;
+ blocked:=false;begin perform public.review_poker_reservation(r2,'checked_in',2);exception when others then blocked:=true;end;assert blocked,'nonstaff cannot review';
+ assert not has_function_privilege('anon','public.claim_reservation_delivery(uuid)','execute'),'anonymous cannot read queue';
+ assert not has_function_privilege('authenticated','public.finish_reservation_delivery(uuid,uuid,bigint,text)','execute'),'staff cannot forge receipts';
+ select dispatch_token into tok from reservation_private.outbox where reservation_id=r and version=0;
+ j:=public.claim_reservation_delivery(tok);
+ assert j is not null,'claim succeeds';
+ assert public.claim_reservation_delivery(tok) is null,'duplicate claim blocked';
+ assert not public.finish_reservation_delivery((j->>'id')::uuid,gen_random_uuid(),42,null),'wrong lease cannot ack';
+ assert public.finish_reservation_delivery((j->>'id')::uuid,(j->>'claim_id')::uuid,null,'test failure'),'failed delivery queued';
+ assert (select state='queued' and attempts=1 and next_attempt_at>now() from reservation_private.outbox where dispatch_token=tok),'retry backoff';
+ j:=public.claim_reservation_delivery(tok);
+ assert public.finish_reservation_delivery((j->>'id')::uuid,(j->>'claim_id')::uuid,42,null),'receipt saved';
+ assert public.claim_reservation_delivery(tok) is null,'sent never reclaimed';
+ select dispatch_token into tok from reservation_private.outbox where reservation_id=r and version=2;
+ assert public.claim_reservation_delivery(tok) is null,'event ordering';
+ assert reservation_private.dispatch()=0,'disabled worker never dispatches tests';
+ raise notice 'PASS: role permissions, capacity, version conflicts, assignment, cancellation, outbox leases, receipts and ordering';
+end $$;
+rollback;
