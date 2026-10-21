@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict');
+const {rulesTicket,validRulesTicket}=require('../.test-build/accounting-rules-link');
+const now=1792594000000,key='test-only-not-a-credential';
+const t=rulesTicket(key,now);
+assert.equal(validRulesTicket(t,key,now),true);
+assert.equal(validRulesTicket(t,'wrong',now),false);
+assert.equal(validRulesTicket(t,key,now+86401000),false);
+assert.equal(validRulesTicket(t.slice(0,-1)+'z',key,now),false);
+assert.equal(validRulesTicket('',key,now),false);
+assert.equal(validRulesTicket(t,'',now),false);
+console.log('Rules read-only ticket: valid, expired, malformed and wrong-key cases passed');
