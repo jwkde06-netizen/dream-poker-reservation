@@ -1,6 +1,7 @@
 import { accessToken } from './accounting-google';
 import { settingsDb } from './exchange-settings';
 import type { ExchangePlan } from './exchange-domain';
+import { exchangeSettlementPeriod, formatExchangeBalanceReceipt } from './exchange-receipt';
 
 export const EXCHANGE_HEADERS = ['거래번호','베트남 일시','영업일','구분','받은 돈 · 지급한 돈','수수료 (VND)','실현환차익 (VND)','비용 (VND)','동 현금 증감','베트남 계좌 증감','원화 계좌 증감','달러 현금 증감','메모','원가 확인','담당자 ID','텔레그램 원문','취소 대상','외부 거래번호'];
 export interface SheetEvent { sequence: number | string; reference: string; source_date: string; business_date: string; kind: string; plan: ExchangePlan; sender_id: string; update_id: number }
@@ -54,7 +55,7 @@ export async function syncExchangeEvent(event: SheetEvent, sourceText: string): 
   const written = await sheets('values/' + encodeURIComponent(range) + '?valueInputOption=RAW&includeValuesInResponse=true&responseValueRenderOption=UNFORMATTED_VALUE&responseDateTimeRenderOption=SERIAL_NUMBER', 'PUT', { range, majorDimension: 'ROWS', values: [values] });
   if (written.updatedRows !== 1 || !same(written.updatedData?.values?.[0] || [], values)) throw Error('Exchange sheet write was not verified');
 }
-/** Called before a successful Telegram receipt; failed Sheets writes remain retryable. */
+/** Verify the sheet, then read all balances and weekly profit in one consistent report snapshot. */
 export async function exchangeSheetReceipt(payload: Record<string, unknown>, config: { botId: string; chatId: string }): Promise<Record<string, unknown>> {
   const reply = payload.reply_parameters as { message_id?: number } | undefined;
   if (!reply?.message_id) return payload;
@@ -65,5 +66,9 @@ export async function exchangeSheetReceipt(payload: Record<string, unknown>, con
   const source = await db.from('dream_exchange_jobs').select('raw_text').eq('bot_id', config.botId).eq('update_id', result.data.update_id).eq('chat_id', config.chatId).single();
   if (source.error || !source.data) throw Error('Exchange source lookup failed');
   await syncExchangeEvent(result.data as SheetEvent, source.data.raw_text);
-  return { ...payload, text: '완료 ✅' };
+  // Use current Vietnam date, not an old message date when delivering a delayed receipt.
+  const period = exchangeSettlementPeriod();
+  const snapshot = await db.rpc('dream_exchange_report', { p_chat_id: config.chatId, p_from: period.from, p_to: period.to });
+  if (snapshot.error || !snapshot.data || snapshot.data.from !== period.from || snapshot.data.to !== period.to) throw Error('Exchange receipt report lookup failed');
+  return { ...payload, text: formatExchangeBalanceReceipt(result.data.reference, result.data.plan, snapshot.data) };
 }
