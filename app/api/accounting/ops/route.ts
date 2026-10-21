@@ -1,4 +1,5 @@
 import {resolveFnb} from '../../../../lib/accounting-intake';
+import {loadSettlement} from '../../../../lib/settlement-service';
 import {deskCommands} from '../../../../lib/accounting-conversation';
 import {jobReport,defaultAgency,completeNamedArrival} from '../../../../lib/accounting-workflow';
 import {needsChipVerification,verifyChipEvidence} from '../../../../lib/accounting-vision';
@@ -17,6 +18,10 @@ export async function POST(request:Request){
  if(!authorized(request,'ACCOUNTING_OPS_SECRET'))return NextResponse.json({error:'Unauthorized'},{status:401});
  try{
   const {action,messageId,caseName,imageData,caption}=await request.json();
+  if(action==='weeklyAudit'){
+   const r=await loadSettlement(typeof caseName==='string'?caseName:new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()),null);
+   return NextResponse.json({start:r.start,end:r.end,totals:r.totals,salary:r.salary,expense:r.expense,net:r.net,checks:r.checks,issueCounts:r.issues.reduce((a:any,i)=>({...a,[i.kind]:(a[i.kind]||0)+1}),{}),historyCount:r.history.length,business_rows_changed:false,telegram_messages_sent:false});
+  }
   if(action==='healthReport'){
    const q=await db().from('dream_accounting_jobs').select('message_id,text,status,plan,reply_text,reply_id').gte('created_at',new Date(Date.now()-24*3600000).toISOString()).order('created_at',{ascending:false}).limit(500);
    if(q.error)throw Error('Health data unavailable');return NextResponse.json({...jobReport(q.data||[]),business_rows_changed:false});
