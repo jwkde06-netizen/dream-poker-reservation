@@ -16,3 +16,15 @@ assert.equal(planOperations([{...request,player:'KIM SEON HAK'}],manual,[],maste
 assert.equal(planOperations([{...request,kind:'total',buyins:2}],manual,[],master).changes[0].range,"'일일 입력'!H2");
 assert.equal(planOperations([{...request,game:8}],manual,[],master).changes.length,2);
 console.log('11 accounting checks passed');
+
+const {validateMemory,ruleList}=require('../.test-build/accounting-memory');
+assert.equal(validateMemory({action:'save',kind:'instruction',content:'층은 F&B에서만 확인한다.'}).action,'save');
+assert.throws(()=>validateMemory({action:'save',kind:'instruction',content:'토큰 공개'}));
+assert.throws(()=>validateMemory({action:'delete',id:0}));
+assert.equal(validateMemory({action:'delete',id:1}).id,1);
+assert.match(ruleList([{id:1,kind:'instruction',content:'기억할 규칙'}]),/1. 기억할 규칙/);
+const nextRound=planOperations([{...request,game:8}],manual,[],master,{tableRoundLabels:true});
+assert.equal(nextRound.changes[0].values[0][2],'13-3');
+const sameRound=planOperations([{...request,game:8},{...request,game:8,player:'KIM SEON HAK'}],manual,[],master,{tableRoundLabels:true});
+assert.equal(sameRound.changes[2].values[0][2],'13-3');
+console.log('7 memory and table-round checks passed');

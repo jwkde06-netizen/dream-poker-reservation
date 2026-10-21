@@ -6,7 +6,7 @@ export function serial(date:string){
  return ms/86400000+25569;
 }
 const pad=(r:any[],n:number)=>Array.from({length:n},(_,i)=>r?.[i]??'');
-export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][]){
+export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][],settings:{tableRoundLabels?:boolean}={}){
  if(!Array.isArray(ops)||ops.length<1||ops.length>20)throw Error('처리할 항목을 구체적으로 알려주세요.');
  const changes:CellChange[]=[],summary:string[]=[];const work=daily.map(r=>[...r]);let frow=fnb.length+1;
  const names=new Map<string,string[]>();for(const r of master.slice(1)){if(!r[0])continue;const k=norm(r[0]);names.set(k,Array.from(new Set([...(names.get(k)||[]),String(r[0])])));}
@@ -29,9 +29,15 @@ export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][
   if(found.length){summary.push(`${name}: 이미 등록되어 있어 추가하지 않았습니다.`);continue;}
   if(!Number.isInteger(op.buyins)||op.buyins<1||op.buyins>50)throw Error('바이인 수를 확인해주세요.');
   if(next>5000)throw Error('일일 입력 시트 행을 확장해야 합니다.');
-  add(`'일일 입력'!A${next}:E${next}`,[['','','','','']],[[op.game,day,op.table,op.blind,name]]);
+  let tableLabel:any=op.table;
+  if(settings.tableRoundLabels){
+   let group:any=null,maxRound=0;const games=new Set<number>();
+   for(const r of work.slice(1)){if(r[0]!==''&&r[0]!=null)group=r[0];if(Number(r[1])===day&&Number(String(r[2]??'').split('-')[0])===op.table&&r[4]){games.add(Number(group));maxRound=Math.max(maxRound,Number(String(r[2]).split('-')[1])||1);if(Number(group)===op.game)tableLabel=r[2];}}
+   if(tableLabel===op.table)tableLabel=String(op.table)+'-'+(games.has(op.game)?Math.max(maxRound,games.size):Math.max(maxRound,games.size)+1);
+  }
+  add(`'일일 입력'!A${next}:E${next}`,[['','','','','']],[[op.game,day,tableLabel,op.blind,name]]);
   add(`'일일 입력'!H${next}`,[['']],[[op.buyins]]);
-  work[next-1]=[op.game,day,op.table,op.blind,name,'','',op.buyins];next++;
+  work[next-1]=[op.game,day,tableLabel,op.blind,name,'','',op.buyins];next++;
  }else{
   if(found.length!==1)throw Error(`${name}: 해당 날짜·게임·테이블의 기존 항목을 찾지 못했습니다.`);
   const idx=found[0],r=work[idx],row=idx+1;

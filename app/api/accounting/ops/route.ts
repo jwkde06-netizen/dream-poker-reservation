@@ -41,6 +41,11 @@ export async function POST(request:Request){
     return NextResponse.json({sheet_write_readback:true,business_rows_changed:false});
    }finally{await call({requests:[{deleteSheet:{sheetId:id}}]});}
   }
+  if(action==='memorytest'){
+   const rules=await db().from('dream_accounting_rules').select('id,kind,content').eq('active',true).order('id');if(rules.error)throw Error('Rules read failed');
+   const result=await extract('앞으로 층 정보는 F&B에서만 확인하고 게임 정산에서는 묻지 마. 업무 규칙으로 기억해줘.',undefined,{businessRules:rules.data});
+   return NextResponse.json({rules:rules.data,classification:result,business_rows_changed:false});
+  }
   if(action==='modeltest'){const result=await extract('2026-10-21 3층 대표님 말차라떼 2잔 총 150000동 F&B 추가',undefined,{});return NextResponse.json({result});}
   if(action==='connect'){
    const me=await tg('getMe');if(me.username!=='dream_poker_reservation_bot')throw Error('Wrong bot');
