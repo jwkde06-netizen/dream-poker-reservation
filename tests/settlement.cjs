@@ -19,5 +19,6 @@ const broken=daily.map(r=>r.slice());broken[2][9]='#REF!';assert(run(broken).iss
 const blank=weekly.map(r=>r.slice());blank[12]=['salary',''];assert.equal(run(daily,fnb,blank).salary,null);assert.equal(run(daily,fnb,blank,0).salary,0);
 assert(run(daily,fnb,weekly,null,[{messageId:10,question:'누적 바인?'}]).issues.some(i=>i.kind==='pending'));
 const negative=weekly.map(r=>r.slice());negative[19]=['PARTNER 3',-1000];assert(run(daily,fnb,negative).issues.some(i=>i.kind==='share'));
+const otherWeek=weekly.map(r=>r.slice());otherWeek[1]=['week',46321];assert.equal(run(daily,fnb,otherWeek,0).sourceHash,r.sourceHash);
 assert.throws(()=>run([['wrong']]));assert.throws(()=>run(daily,fnb,weekly,-1));
 console.log('Weekly boundaries, source changes, duplicates, invalid amounts, manual salary, pending tasks and share checks passed');

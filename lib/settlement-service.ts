@@ -30,7 +30,7 @@ export async function loadSettlement(day:string,salary:number|null){
  return {...r,history:(saved.data||[]).map(x=>{
   // Compare against the saved report's manager-entered adjustment, not the
   // current form's default. A blank form must not falsely invalidate a report.
-  const savedSalary=x.snapshot?.salarySource==='manager'?x.snapshot.salary:null;
+  const savedSalary=x.snapshot?.salarySource==='sheet'&&r.sameWeek?null:(x.snapshot?.salary??null);
   const current=buildSettlement(day,data.valueRanges?.[0]?.values||[],data.valueRanges?.[1]?.values||[],data.valueRanges?.[2]?.values||[],savedSalary,pending);
   return {id:x.id,status:x.status,createdAt:x.created_at,createdBy:x.created_by,changed:x.source_hash!==current.sourceHash,salary:x.snapshot?.salary??null};
  }),sheetUrl:`https://docs.google.com/spreadsheets/d/${profile.workbook}/edit`,sheetIds:profile.sheetIds};

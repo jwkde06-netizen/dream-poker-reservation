@@ -54,7 +54,9 @@ export function buildSettlement(day:string,daily:any[][],fnb:any[][],weekly:any[
  const shares=sameWeek?weekly.slice(17,20).map(r=>({label:String(r?.[0]||''),amount:r?.[1]??null})):[];
  if(shares.some(s=>typeof s.amount==='number'&&s.amount<0))issues.push({kind:'share',message:'기존 주간정산표의 배분액이 음수예요. 반올림 잔액과 배분 기준을 확인해주세요.'});
  pending.forEach(p=>issues.push({kind:'pending',message:p.question||'처리를 확인할 메시지가 있어요.'}));
- const sourceHash=createHash('sha256').update(JSON.stringify({profile, start,end,sourceDaily,sourceFnb,invalid,weekly:sameWeek?weekly.slice(0,21).map(r=>r.slice(0,2)):null,salaryValue,pending})).digest('hex');
+ // The shared weekly tab's date selector is not a source transaction. Moving it
+ // to another week must not invalidate an otherwise unchanged saved report.
+ const sourceHash=createHash('sha256').update(JSON.stringify({profile, start,end,sourceDaily,sourceFnb,invalid,salaryValue,pending})).digest('hex');
  return {room:profile.name,roomId:profile.id,start,end,today,closed:end<today,generatedAt:new Date().toISOString(),sourceHash,totals,salary:salaryValue,salarySource:salary!==null?'manager':fromSheet!==null?'sheet':'missing',expense,net,days:Object.values(days),agencies:Object.values(groups),issues,pending,checks,shares,sameWeek,sheetWeek,sourceDaily,sourceFnb,canConfirm:end<today&&issues.length===0};
 }
 export function reportText(r:ReturnType<typeof buildSettlement>){
