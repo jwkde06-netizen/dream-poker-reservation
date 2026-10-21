@@ -1,6 +1,7 @@
 import {NextResponse} from "next/server";
 import {createClient} from "@supabase/supabase-js";
 import {projectUrl,tg} from "../../../../lib/telegram";
+import {receiveStaffMessage} from "../../../../lib/staff-inbox";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 const secret=process.env.TELEGRAM_WEBHOOK_SECRET||"";
@@ -12,7 +13,13 @@ export async function POST(request:Request){
  let data:any;
  try{data=await request.json()}catch{return NextResponse.json({error:"Invalid JSON"},{status:400})}
  const cb=data?.callback_query;
- if(!cb)return NextResponse.json({ok:true});
+ if(!cb){
+  try{await receiveStaffMessage(data)}catch{
+   // A non-200 response asks Telegram to retry; never acknowledge lost work.
+   return NextResponse.json({error:"Message storage unavailable"},{status:503});
+  }
+  return NextResponse.json({ok:true});
+ }
  const id=String(cb.from?.id||"");
  const match=/^reservation:(approve|reject):([a-f0-9-]{36})$/i.exec(String(cb.data||""));
  const answer=async(message:string)=>{await tg("answerCallbackQuery",{callback_query_id:cb.id,text:message,show_alert:true}).catch(()=>{})};

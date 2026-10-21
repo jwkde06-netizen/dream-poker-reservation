@@ -104,6 +104,30 @@ end $$;
 revoke all on function public.desk_telegram_decide(uuid,text,text) from public,anon,authenticated;
 grant execute on function public.desk_telegram_decide(uuid,text,text) to service_role;
 -- Guest-facing availability includes continuing players and approved holds.
+-- Staff-room intake only. No spreadsheet writer consumes this queue yet.
+create table public.staff_message_inbox (
+ update_id bigint primary key,
+ chat_id text not null,
+ message_id bigint not null,
+ sender_id text not null,
+ sender_name text not null,
+ text text not null default '',
+ image_file_id text,
+ image_mime text,
+ media_group_id text,
+ reply_to_message_id bigint,
+ is_edit boolean not null default false,
+ status text not null default 'received' check(status in ('received','needs_review','processing','applied','ignored','failed')),
+ created_at timestamptz not null default now(),
+ applied_at timestamptz,
+ sheet_change jsonb,
+ failure_reason text
+);
+alter table public.staff_message_inbox enable row level security;
+revoke all on public.staff_message_inbox from public,anon,authenticated;
+grant select,insert,update on public.staff_message_inbox to service_role;
+create index staff_message_inbox_pending on public.staff_message_inbox(status,created_at);
+
 create or replace function public.reservation_public_stats()
 returns table(game_id uuid,confirmed_count bigint,pending_count bigint,waiting_count bigint)
 language sql stable security definer set search_path=public as $$
