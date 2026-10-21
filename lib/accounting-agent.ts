@@ -83,8 +83,8 @@ export async function handle(update:any){
    await sheet('values:batchUpdate',{valueInputOption:'RAW',data:plan.changes.map(({range,values})=>({range,values}))});
    const actual=await ranges(plan.changes.map(x=>x.range));if(!plan.changes.every((x,i)=>same(actual[i],x.values)))throw Error('Write readback mismatch');
   }
-  await save(job.update_id,{status:'applied',reply_text:'시트 반영 완료 ✅\n'+plan.summary.join('\n')});writeStarted=false;
-  const id=await reply(m.message_id,'시트 반영 완료 ✅\n'+plan.summary.join('\n'));await save(job.update_id,{reply_id:id});
+  await save(job.update_id,{status:'applied',reply_text:plan.summary.join('\n')});writeStarted=false;
+  const id=await reply(m.message_id,plan.summary.join('\n'));await save(job.update_id,{reply_id:id});
  }catch(e){
   if(writeStarted){await save(job.update_id,{status:'uncertain',failure_reason:'Write outcome requires reconciliation'});throw e;}
   const latest=await db().from('dream_accounting_jobs').select('status').eq('update_id',job.update_id).single();
