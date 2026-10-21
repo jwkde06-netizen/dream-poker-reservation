@@ -38,7 +38,14 @@ export function reconcileSheet(daily:any[][],date:string,jobs:any[],now=new Date
  const applied=jobs.filter(j=>j.status==='applied'&&!j.plan?.reconciliation&&!j.plan?.manual_handoff).slice().reverse();
  let legacy:any[][]=[[]];
  if(!prior)for(const j of applied)legacy=changedDaily(legacy,j.plan?.changes||[]);
- const before=prior?.entries||attendance(legacy,date),entries=attendance(daily,date);
+ const entries=attendance(daily,date);
+ const oldRows=attendance(legacy,date).filter(e=>applied.some(j=>(j.plan?.operations||[]).some((op:any)=>sameGame(e,op)&&norm(e.player)===norm(op.player))));
+ // Pre-upgrade logs can contain corrected/misnumbered rows. Require matching
+ // operation provenance before turning an old row into a durable override.
+ const before=prior?.entries||oldRows.map(e=>{
+  const exact=entries.filter(live=>sameGame(live,{...e,table:physical(e.tableLabel)})&&norm(live.player)===norm(e.player));
+  return exact.length===1?{...e,tableLabel:exact[0].tableLabel}:e;
+ });
  const overrides=new Map((prior?.overrides||[]).map(o=>[key(o.entry),o]));
  const aliases=new Map((prior?.aliases||[]).map(a=>[[a.date,a.fromGame,a.tableLabel,a.blind].join('|'),a]));
  for(const old of before){
