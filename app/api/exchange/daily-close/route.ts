@@ -39,12 +39,12 @@ export async function GET(request:Request) {
       const [year,month,date]=day.split('-');
       const sources=[{name:'이체수수료',value:fees},{name:'환전 차익',value:fx}].sort((a,b)=>b.value-a.value);
       const leading=sources[0].value>0?sources[0].name:'수익 없음';
-      const lines=['📊 DREAM EXCHANGE','주간 정산 · '+start+' ~ '+day','',
+      const lines=['📊 DREAM EXCHANGE','주간 정산 · '+start+' ~ '+day,'',
         '💰 이번 주 수익','이체수수료 '+num(fees)+'동','환전 차익 '+num(fx)+'동'];
       if(cost)lines.push('비용 '+num(cost)+'동');
       lines.push('','주간 순수익 '+num(net)+'동','주간 거래 '+num(count)+'건 · 최다 수익 '+leading,'',
         '이번 주 누적 '+num(weekNet)+'동');
-      if(true){
+      {
         const your=Math.floor(weekNet/2),danny=weekNet-your;
         lines.push('','📅 일요일 주간 정산','지원 50% '+num(your)+'동','Danny 50% '+num(danny)+'동',
           '※ 지급 확인 전 · 정산 예정');
