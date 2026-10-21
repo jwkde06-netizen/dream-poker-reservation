@@ -1,7 +1,9 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm'),ts=require('typescript');
 function compile(path,requireFn,extra={}){const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(path,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:requireFn,process:{env:{SUPABASE_SERVICE_ROLE_KEY:'test-service'}},...extra});return exports;}
-const model=compile('lib/reservation-agent.ts',()=>{});
+const names=compile('lib/reservation-names.ts',()=>{});
+const model=compile('lib/reservation-agent.ts',name=>{if(name==='./reservation-names')return names;throw Error(name)});
+assert(names.validBookingNames('KIM JI WON',''));assert(names.validBookingNames('','김지원'));assert(!names.validBookingNames('',''));assert.equal(names.bookingName({player_name:'KIM',player_name_en:'KIM',player_name_ko:'김지원'}),'KIM · 김지원');
 assert(model.canTransition('pending','confirmed'));assert(model.canTransition('confirmed','checked_in'));
 for(const s of ['cancelled','no_show','rejected','checked_in'])assert(!model.canTransition(s,'confirmed'));
 const payload={reservation_id:'aabbccdd-0000-4000-8000-000000000001',version:2,event:'updated',status:'confirmed',player_name:'<Player>',arrival_at:'2026-10-21T18:30:00Z',game_title:'5M',table_no:'4',game_no:'2',guest_note:'Late arrival'};
