@@ -62,7 +62,7 @@ const {canonicalPlayers,sheetContext,correctedOperations}=require('../.test-buil
 assert.deepEqual(canonicalPlayers(spacedMaster),[['KIM YOUNG IL','3430','KOREA']]);
 assert.equal(canonicalPlayers([['NAME'],['KIM YOUNG IL','3430','KOREA'],['KIM YOUN GIL','9999','UK']]).length,2);
 const ctx=sheetContext([['NUMBER'],[7,day,'13-2','5M','SEO JUN GI','','',1],['',day,'13-2','5M','KIM SEON HAK','','',2],[8,day-1,46144,'5M','OLD','','',1]],master,'2026-10-21');
-assert.equal(ctx.recentGames.length,2);assert.equal(ctx.recentGames[1][0],7);assert.equal(ctx.recentGames[0][1],'2026-10-21');
+assert.equal(ctx.games.length,1);assert.equal(ctx.games[0].gameNumber,7);assert.equal(ctx.games[0].date,'2026-10-21');assert.equal(ctx.games[0].players.length,2);assert.equal(ctx.games[0].tableNumber,13);
 assert.equal(correctedOperations([{kind:'add',game:4,player:'KIMYOUNGIL'}],'9번게임 시트반영해',spacedMaster)[0].game,9);
 assert.equal(correctedOperations([{kind:'add',game:4,player:'KIMYOUNGIL'}],'9번게임 시트반영해',spacedMaster)[0].player,'KIM YOUNG IL');
 console.log('7 business-date, alias and explicit-game checks passed');
@@ -103,3 +103,6 @@ const after=auditDaily.map(r=>[...r]);for(const c of p.changes){const start=Numb
 assert.equal(after[4][4],'KIM HYUNG WOON');assert.equal(after[4][0],'');assert.equal(after[4][2],'13-2');assert.equal(after[5][4]||'','');assert.equal(after[6][0],8);assert.equal(after[6][4],'LEE SUNG WON');assert.equal(after[6][7],1);assert(!p.changes.some(c=>/![FGI-O]\d/.test(c.range)));
 assert.equal(auditDaily[5][4],'LEE SUNG WON');
 console.log('9 late-player and following-game preservation assertions passed');
+p=planOperations([{...base,kind:'add',buyins:2}],daily,[],master,{photoSnapshot:true});assert.equal(p.changes.length,1);assert.equal(p.changes[0].range,"'일일 입력'!H2");assert.equal(p.changes[0].values[0][0],2);
+p=planOperations([{...base,kind:'total',player:'KIM SEON HAK',buyins:1}],daily,[],master,{photoSnapshot:true});assert.equal(p.changes.length,0);
+console.log('4 cumulative and stale-photo regression assertions passed');

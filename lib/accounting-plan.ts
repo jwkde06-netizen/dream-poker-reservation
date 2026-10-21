@@ -12,7 +12,7 @@ export function tableLabel(value:unknown){
  return String(value??'');
 }
 const normalizeTable=tableLabel;
-export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][],settings:{tableRoundLabels?:boolean;rebuySnapshot?:boolean;registrationApprovals?:Record<string,{agency:string;card?:string}>}={}){
+export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][],settings:{tableRoundLabels?:boolean;rebuySnapshot?:boolean;photoSnapshot?:boolean;registrationApprovals?:Record<string,{agency:string;card?:string}>}={}){
  if(!Array.isArray(ops)||ops.length<1||ops.length>20)throw Error('처리할 항목을 구체적으로 알려주세요.');
  const changes:CellChange[]=[],summary:string[]=[];const work=daily.map(r=>[...r]),masterWork=master.map(r=>[...r]);let frow=fnb.length+1,mrow=master.length+1;
  const names=new Map<string,string[]>();for(const r of master.slice(1)){if(!r[0])continue;const k=norm(r[0]);names.set(k,Array.from(new Set([...(names.get(k)||[]),String(r[0])])));}
@@ -73,6 +73,10 @@ export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][
  if(found.length>1)throw Error(`${name} 항목이 중복되어 있어 확인이 필요합니다.`);
  let displayTable:any=found.length?work[found[0]][2]:op.table;
  const previousBuyins=found.length?Number(work[found[0]][7]):0;
+ // A newer snapshot of an existing game is a cumulative update even when the
+ // recognizer calls it "add". An older image must never lower current totals.
+ if(settings.photoSnapshot&&found.length&&op.kind==='add'&&Number.isInteger(op.buyins)&&op.buyins>previousBuyins)op.kind='total';
+ if(settings.photoSnapshot&&found.length&&op.kind==='total'&&Number.isInteger(op.buyins)&&op.buyins<previousBuyins){summary.push(`${name}의 이전 사진 수량은 건너뛰었어요.`);continue;}
  if(op.kind==='add'){
   if(found.length){summary.push(`${op.table}번 테이블 ${name}은 이미 시트에 있어요.`);continue;}
   if(!Number.isInteger(op.buyins)||op.buyins<1||op.buyins>50)throw Error('바이인 수를 확인해주세요.');
