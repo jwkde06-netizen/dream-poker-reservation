@@ -1,7 +1,10 @@
+import {deskCommand,politeAcknowledgement} from './accounting-conversation';
 import {followupContext,HistoryJob} from './accounting-followup';
 
 export function shouldProcessStaffMessage(m:any,recent:HistoryJob[]=[]){
  if(m.photo||m.document)return true;
+ if(/^\//.test(String(m.text||'').trim()))return !!deskCommand(m.text);
+ if(politeAcknowledgement(String(m.text||''),!!m.reply_to_message?.from?.is_bot))return true;
  const t=String(m.text||m.caption||'').trim();
  if(/(?:아메리카노|커피|라떼|주스|박시우|콜라|아아).*(?:잔|추가|기록)/.test(t))return true;
  if(/규칙|기억해|앞으로|^\/(start|help)|정산상태|처리상태|미처리|시트|정산|F\s*&\s*B|영수증|바이?인|리바인|레벨\s*\d|LV\s*\d/i.test(t))return true;

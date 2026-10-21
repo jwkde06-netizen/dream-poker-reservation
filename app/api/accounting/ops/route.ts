@@ -1,3 +1,4 @@
+import {deskCommands} from '../../../../lib/accounting-conversation';
 import {jobReport,defaultAgency,completeNamedArrival} from '../../../../lib/accounting-workflow';
 import {needsChipVerification,verifyChipEvidence} from '../../../../lib/accounting-vision';
 import {reconcileSheet,reconcileOperation} from '../../../../lib/accounting-reconcile';
@@ -135,6 +136,14 @@ export async function POST(request:Request){
    const verified=await tg('getMyName',{});
    if(verified.name!==name)throw Error('Name verification failed');
    return NextResponse.json({name:verified.name,username:me.username});
+  }
+  if(action==='installDeskCommands'){
+   const scope={type:'chat',chat_id:process.env.STAFF_TELEGRAM_CHAT_ID};
+   if(String(scope.chat_id)!=='-5322020390')throw Error('Wrong staff group');
+   await tg('setMyCommands',{scope,commands:deskCommands});
+   const commands=await tg('getMyCommands',{scope});
+   if(JSON.stringify(commands)!==JSON.stringify(deskCommands))throw Error('Command verification failed');
+   return NextResponse.json({commands,chat_id:scope.chat_id});
   }
   if(action==='inspect'){
    const me=await tg('getMe'),chat=await tg('getChat',{chat_id:process.env.STAFF_TELEGRAM_CHAT_ID}),member=await tg('getChatMember',{chat_id:chat.id,user_id:me.id}),hook=await tg('getWebhookInfo');
