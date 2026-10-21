@@ -51,3 +51,10 @@ console.log('2 rebuy wrong-game regression checks passed');
 const spacedMaster=[['NAME'],['KIM YOUNG IL','3430','KOREA'],['KIM YOUN GIL','','KOREA']];
 assert.equal(planOperations([{...base,kind:'add',player:'KIM YOUNG IL',buyins:1}],daily,[],spacedMaster).changes[0].values[0][4],'KIM YOUNG IL');
 console.log('1 exact canonical master-name regression check passed');
+
+const layout=planOperations([{...request,game:8},{...request,game:8,player:'KIM SEON HAK'}],manual,[],master,{tableRoundLabels:true});
+assert.equal(layout.changes[0].range,"'일일 입력'!A5:E5");
+assert.equal(layout.changes[0].values[0][0],8);
+assert.equal(layout.changes[2].range,"'일일 입력'!A6:E6");
+assert.equal(layout.changes[2].values[0][0],'');
+console.log('4 game spacing and single-heading checks passed');
