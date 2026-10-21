@@ -1,10 +1,12 @@
+import {jobReport,defaultAgency,completeNamedArrival} from '../../../../lib/accounting-workflow';
+import {needsChipVerification,verifyChipEvidence} from '../../../../lib/accounting-vision';
 import {reconcileSheet,reconcileOperation} from '../../../../lib/accounting-reconcile';
 import {sheetContext,correctedOperations,focusedQuestion,certainOperations} from '../../../../lib/accounting-context';
 import {planOperations} from '../../../../lib/accounting-plan';
 import {auditCases,auditDaily,auditMaster} from '../../../../lib/accounting-regressions';
 import {continuationText,registrationApprovals,rebuyCaption} from '../../../../lib/accounting-followup';
 import {NextResponse} from 'next/server';
-import {authorized,db,extract,ranges,handle,reconciliationHistory} from '../../../../lib/accounting-agent';
+import {authorized,db,extract,ranges,handle,reconciliationHistory,readChipColumns} from '../../../../lib/accounting-agent';
 import {tg} from '../../../../lib/telegram';
 import {accessToken,accountingWorkbook} from '../../../../lib/accounting-google';
 export const runtime='nodejs';export const dynamic='force-dynamic';export const maxDuration=180;
@@ -13,6 +15,24 @@ export async function POST(request:Request){
  if(!authorized(request,'ACCOUNTING_OPS_SECRET'))return NextResponse.json({error:'Unauthorized'},{status:401});
  try{
   const {action,messageId,caseName,imageData,caption}=await request.json();
+  if(action==='healthReport'){
+   const q=await db().from('dream_accounting_jobs').select('message_id,text,status,plan,reply_text,reply_id').gte('created_at',new Date(Date.now()-24*3600000).toISOString()).order('created_at',{ascending:false}).limit(500);
+   if(q.error)throw Error('Health data unavailable');return NextResponse.json({...jobReport(q.data||[]),business_rows_changed:false});
+  }
+  if(action==='visionColumns'){
+   if(typeof imageData!=='string'||imageData.length>4000000||!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(imageData))throw Error('Invalid image fixture');
+   return NextResponse.json({evidence:await readChipColumns(imageData),business_rows_changed:false,telegram_messages_sent:false});
+  }
+  if(action==='arrivalAudit'){
+   if(!Number.isSafeInteger(messageId))throw Error('Invalid message');
+   const q=await db().from('dream_accounting_jobs').select('text,plan,source_message').eq('message_id',messageId).order('update_id',{ascending:true}).limit(1).single();if(q.error)throw Error('Source unavailable');
+   const [daily,fnb,master]=await ranges(["'일일 입력'!A1:O5000","'F&B 입력'!A1:D2000","'플레이어 명단'!A1:D2500"],true);
+   const rules=await db().from('dream_accounting_rules').select('id,kind,content').eq('active',true).order('id');if(rules.error)throw Error('Rules unavailable');
+   const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(q.data.source_message.date*1000));
+   const operations=completeNamedArrival([],q.data.text,daily,master,rules.data||[],date,q.data);
+   const plan=operations.length?planOperations(operations,daily,fnb,master,{tableRoundLabels:true,registrationApprovals:registrationApprovals(operations,q.data.text,master,q.data.plan?.pendingQuestion||'',rules.data||[])}):null;
+   return NextResponse.json({operations,changes:plan?.changes||[],business_rows_changed:false,telegram_messages_sent:false});
+  }
   if(action==='reconciliationAudit'){
    const [daily,fnb,master]=await ranges(["'일일 입력'!A1:O5000","'F&B 입력'!A1:D2000","'플레이어 명단'!A1:D2500"],true);
    const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
@@ -32,8 +52,13 @@ export async function POST(request:Request){
    let operations=correctedOperations(result.operations,caption,master,rules.data||[]);
    result.question=focusedQuestion(result.question,caption,operations);
    operations=certainOperations(operations,result.question);
+   let chipVerification:any=null;
+   if(result.documentType==='paper_game'&&needsChipVerification(operations,daily)){
+    const evidence=await readChipColumns(imageData);const verified=verifyChipEvidence(operations,evidence,rules.data||[]);
+    chipVerification={...evidence,questions:verified.questions};operations=verified.operations;result.question=verified.questions[0]||result.question;
+   }
    const plan=operations.length?planOperations(operations,daily,fnb,master,{tableRoundLabels:true,photoSnapshot:true,rebuySnapshot:rebuyCaption(caption)}):null;
-   return NextResponse.json({model:result._model,question:result.question||null,operations,plannedChanges:plan?.changes.length||0,business_rows_changed:false,telegram_messages_sent:false});
+   return NextResponse.json({model:result._model,chipVerification,question:result.question||null,operations,plannedChanges:plan?.changes.length||0,business_rows_changed:false,telegram_messages_sent:false});
   }
   if(action==='auditCase'){
    const fixture=auditCases[String(caseName)];if(!fixture)throw Error('Unknown audit case');
