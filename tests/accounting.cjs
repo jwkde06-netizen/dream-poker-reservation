@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict');const {planOperations,serial}=require('../.test-build/accounting-plan');
+const day=serial('2026-10-21');const master=[['PLAYER'],['SEO JUN GI'],['KIM SEON HAK']];
+const daily=[['NUMBER'],[1,day,4,'5M','SEO JUN GI','','',1],['',day,4,'5M','KIM SEON HAK','','',2]];
+const base={date:'2026-10-21',game:1,table:4,blind:'5M',player:'SEO JUN GI'};
+let p=planOperations([{...base,kind:'total',buyins:2}],daily,[],master);assert.deepEqual(p.changes.map(x=>x.range),["'일일 입력'!H2"]);assert.equal(p.changes[0].values[0][0],2);
+p=planOperations([{...base,kind:'add',buyins:1}],daily,[],master);assert.equal(p.changes.length,0);
+p=planOperations([{...base,kind:'cancel'}],daily,[],master);assert.equal(p.changes[0].range,"'일일 입력'!A3");assert.equal(p.changes[0].values[0][0],1);assert.deepEqual(p.changes[1].values,[['','','','','']]);assert(!p.changes.some(x=>/[FGI-O]\d/.test(x.range)));
+assert.throws(()=>planOperations([{...base,kind:'add',player:'UNKNOWN',buyins:1}],daily,[],master));
+assert.throws(()=>serial('2026-02-30'));
+p=planOperations([{kind:'fnb',date:'2026-10-21',floor:'3F',amount:150000,note:'대표님 말차라떼 2잔'}],daily,[['DATE','FLOOR','AMOUNT','NOTE']],master);assert.deepEqual(p.changes[0].values,[[day,'3F',150000,'대표님 말차라떼 2잔']]);
+assert.throws(()=>planOperations([{kind:'fnb',date:'2026-10-21',floor:'5F',amount:150000,note:'x'}],daily,[],master));
+console.log('7 accounting checks passed');
