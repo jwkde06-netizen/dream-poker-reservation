@@ -36,3 +36,5 @@ assert.deepEqual(compact.players,[['SON YOULEHO',null,'KOREA'],['CHANG YOON HO',
 assert.deepEqual(compact.games,ctx.games);assert.deepEqual(compact.previous.plan.operations,previous.plan.operations);
 assert.equal(compact.previous.plan.sheetState,undefined);assert.equal(compact.previous.plan.changes,undefined);
 console.log('Full player identity preservation and context compaction passed');
+
+assert.equal(followupContext([{...previous,plan:{pendingQuestion:'SON YOULEHO님 사진의 누적 바이인 수만 확인해주세요.'}}],{from:{id:123},text:'2바인',date:Date.parse('2026-10-21T12:05:00Z')/1000},['KOREA']).message_id,100);

@@ -20,3 +20,13 @@ assert(!needsChipVerification([{...op,game:12}],daily));
 assert(!needsChipVerification([{...op,table:13}],daily));
 assert(!needsChipVerification([{kind:'fnb'}],daily));
 console.log('Independent chip-column verification and partial withholding passed');
+
+const {confirmChipCount}=require('../.test-build/accounting-vision');
+const pending={plan:{unverifiedOperations:[op],pendingQuestion:'CHANG YOON HO님 사진의 누적 바이인 수만 확인해주세요.'}};
+assert.equal(confirmChipCount('2바인',pending).buyins,2);
+assert.equal(confirmChipCount('총 2바인',pending).chips,200000);
+assert.equal(confirmChipCount('0바인',pending),null);
+assert.equal(confirmChipCount('2바인 추가',pending),null);
+assert.equal(confirmChipCount('2바인',{plan:{...pending.plan,pendingQuestion:'사진의 누적 바이인 수를 확인해주세요.'}}),null);
+assert.equal(confirmChipCount('2바인',{plan:{...pending.plan,unverifiedOperations:[op,op]}}),null);
+console.log('Short cumulative-count reply resolves only the named withheld item');

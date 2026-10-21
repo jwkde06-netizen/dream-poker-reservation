@@ -1,4 +1,4 @@
-import {needsChipVerification,verifyChipEvidence} from './accounting-vision';
+import {needsChipVerification,verifyChipEvidence,confirmChipCount} from './accounting-vision';
 import {defaultAgency,completeNamedArrival,cosmeticNameEdit,jobReport,compactExtractionContext} from './accounting-workflow';
 import {reconcileSheet,reconcileOperation,afterVerifiedWrite} from './accounting-reconcile';
 import {sheetContext,correctedOperations,focusedQuestion,certainOperations} from './accounting-context';
@@ -103,7 +103,9 @@ export async function handle(update:any){
   const context={...sheetContext(daily,master,businessDate),businessRules,defaultRegistrationAgency:defaultAgency(businessRules,master),sheetReconciliation:{overrides:sheetState.overrides,aliases:sheetState.aliases},previous,pendingRequest:previous?.plan?.pendingQuestion?{...previous,continuationText:taskText}:null,recentMessages:recent.map(r=>({message_id:r.message_id,text:r.text,status:r.status,reply:r.reply_text,operations:r.plan?.reconciliation?null:r.plan?.operations,manualHandoff:r.plan?.manual_handoff||null,correction:r.plan?.reconciliation||null,hasPhoto:!r.plan?.manual_handoff&&!!(r.source_message?.photo||r.source_message?.document)}))};
   let photoSource:any=ownPhoto?job:null;
   if(!image&&previous?.source_message){await readPhoto(previous.source_message);if(image)photoSource=previous;}
-  let result=await extract(job.text,image,context);aiCalls++;totalTokens+=result._usage?.totalTokens||0;
+  const confirmedChips=confirmChipCount(job.text,previous);
+  let result:any=confirmedChips?{documentType:'paper_game',operations:[confirmedChips],question:null}:await extract(job.text,image,context);
+  if(!confirmedChips){aiCalls++;totalTokens+=result._usage?.totalTokens||0;}
   if(!image&&Number.isSafeInteger(result.sourceMessageId)){
    const source=recent.find(r=>r.message_id===result.sourceMessageId);
    if(source?.source_message&&!source.plan?.manual_handoff&&!source.plan?.reconciliation){await readPhoto(source.source_message);if(image){photoSource=source;result=await extract(job.text,image,{...context,photoSourceMessageId:source.message_id});aiCalls++;totalTokens+=result._usage?.totalTokens||0;}}
@@ -112,6 +114,7 @@ export async function handle(update:any){
   const taskPlan={sheetState,photoSourceDate:photoSource?.plan?.photoSourceDate||photoSource?.source_message?.date||null,contextMessageId:previous?.message_id||null,photoSourceMessageId:photoSource?.message_id||null,continuationText:taskText};
   if(photoSource&&photoSource.message_id!==m.message_id){await save(job.update_id,{source_message:{...photoSource.source_message,message_id:m.message_id,date:m.date,reply_to_message_id:m.reply_to_message?.message_id}});}
   result.operations=correctedOperations(result.operations,job.text,master,businessRules);
+  if(confirmedChips){result.operations=[confirmedChips];result.question=null;}
   result.operations=completeNamedArrival(result.operations,taskText,daily,master,businessRules,businessDate,previous);
   if(result.operations.some((o:any)=>o.kind==='add')&&result.operations.some((o:any)=>o.kind==='register')&&result.operations.filter((o:any)=>o.kind==='register').every((o:any)=>o.agency)&&/소속|agency|코드/.test(result.question||''))result.question=null;
   result.question=focusedQuestion(result.question,job.text,result.operations);

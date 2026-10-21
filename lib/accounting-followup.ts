@@ -8,7 +8,7 @@ export function followupContext(recent:HistoryJob[],message:any,agencyCodes:stri
  if(reference){const direct=recent.find(r=>r.message_id===reference||r.reply_id===reference);return direct&&!closed(direct)?direct:null;}
  if(message.photo||message.document)return null;
  const text=String(message.text||'').trim();
- const answer=text.length<=160&&(/^(네|넵|응|맞아|맞아요|그래|추가해|등록해|그렇게|국가|소속|코드|카드)/i.test(text)||/별다른.*없으면.*(코드|KOREA)|기본값|기본\s*코드/.test(text)||agencyCodes.some(c=>norm(text)===norm(c))||/^[가-힣 A-Za-z]{2,30}\s+\d{3,8}$/.test(text));
+ const answer=text.length<=160&&(/^(?:(?:총|누적)\s*)?\d{1,2}\s*바인(?:이에요|입니다|이야)?[.!]?$/.test(text)||/^(네|넵|응|맞아|맞아요|그래|추가해|등록해|그렇게|국가|소속|코드|카드)/i.test(text)||/별다른.*없으면.*(코드|KOREA)|기본값|기본\s*코드/.test(text)||agencyCodes.some(c=>norm(text)===norm(c))||/^[가-힣 A-Za-z]{2,30}\s+\d{3,8}$/.test(text));
  if(!answer)return null;
  const candidates=recent.filter(r=>!closed(r)&&!recent.some(n=>n.plan?.contextMessageId===r.message_id)&&String(r.sender_id)===String(message.from?.id)&&r.plan?.pendingQuestion&&['review','applied'].includes(r.status)&&Number(message.date)*1000-Date.parse(r.created_at||'')<=45*60000);
  // Follow the latest unresolved question only, never a task already superseded
