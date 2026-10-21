@@ -163,7 +163,7 @@ async function previousContext(config: ExchangeConfig, messageId: number | undef
 export function exchangeFeeShortcut(text: string): ExchangeIntent | null {
   const s = text.trim().replace(/@dream_poker_exchange_bot$/i, '').trim();
   const amountPart = s.startsWith('+') ? s.slice(1).trim() : /^\/fee(?:\s|$)/i.test(s) ? s.slice(4).trim() : '';
-  const match = amountPart.match(/^([0-9][0-9,]*(?:\.[0-9]+)?)\s*(만|천|백만|m|k|동|vnd)?$/i);
+  const match = amountPart.match(/^([0-9][0-9,]*(?:\.[0-9]+)?)\s*(백만동|만동|천동|만|천|백만|m|k|동|vnd)?$/i);
   if (!match) return null;
   const unit = (match[2] || '').toLowerCase();
   // Bare +50000 is VND by the owner's explicit shorthand convention.
@@ -181,7 +181,7 @@ export function cancellationAmount(text: string): number | null {
   for(const tail of ['취소해줘','취소해','취소']) if(t.endsWith(tail)) {t=t.slice(0,-tail.length).trim(); break;}
   const m=t.match(/^([0-9][0-9,]*(?:[.][0-9]+)?)[ ]*(만|천|백만|m|k|동|vnd)?$/i);
   if (!m) throw new ExchangeReview('취소할 금액을 알려주세요. 또는 완료 메시지에 답장으로 “취소”라고 보내주세요.');
-  const f:Record<string,number>={'':1,만:10000,천:1000,백만:1000000,m:1000000,k:1000,동:1,vnd:1};
+  const f:Record<string,number>={'':1,만:10000,만동:10000,천:1000,천동:1000,백만:1000000,백만동:1000000,m:1000000,k:1000,동:1,vnd:1};
   const v=Number(m[1].replace(/,/g,''))*f[(m[2]||'').toLowerCase()];
   if (!Number.isSafeInteger(v)||v<=0) throw new ExchangeReview('취소 금액을 확인해주세요.');
   return v;
