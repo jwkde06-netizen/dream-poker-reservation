@@ -35,7 +35,7 @@ const report = patch => ({ ...base, ...patch });
     let verified=false,failReport=false,reportCalls=0,sends=0;
     settings.settingsDb=()=>({
       from(table){const c={select(){return c},eq(){return c},async maybeSingle(){return {data:event,error:null}},async single(){assert.equal(table,'dream_exchange_jobs');return {data:{raw_text:'synthetic'},error:null}}};return c},
-      async rpc(name,args){assert.equal(name,'dream_exchange_report');assert.equal(verified,true);assert.equal(args.p_chat_id,'-100001');reportCalls++;return failReport?{data:null,error:{message:'synthetic'}}:{data:{...base,from:args.p_from,to:args.p_to},error:null}}
+      async rpc(name,args){assert.equal(name,'dream_exchange_report_with_carry');assert.equal(verified,true);assert.equal(args.p_chat_id,'-100001');reportCalls++;return failReport?{data:null,error:{message:'synthetic'}}:{data:{...base,from:args.p_from,to:args.p_to},error:null}}
     });
     global.fetch=async(url,opts)=>{
       if(String(url).startsWith('https://sheets.googleapis.com/')){assert.equal(opts.method,'GET');verified=true;return new Response(JSON.stringify({valueRanges:[{values:[sheets.EXCHANGE_HEADERS]},{values:[values]}]}));}
