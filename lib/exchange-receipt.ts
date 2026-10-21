@@ -21,7 +21,9 @@ export function compactExchangeStatus(report:any, tradeProfit?:number):string {
   const krw=integer(b.KRW_BANK.closing_minor,true);
   const fee=integer(report.fee_vnd),fx=integer(report.realized_fx_vnd),cost=integer(report.expense_vnd),profit=integer(report.net_known_vnd);
   if(fee+fx-cost!==profit)throw Error('Exchange totals inconsistent');
-  const [fy,fm,fd]=report.from.split('-').map(Number),[ty,tm,td]=report.to.split('-').map(Number);
+  const [fy,fm,fd]=report.from.split('-').map(Number);
+  const sunday=new Date(report.from+'T00:00:00Z'); sunday.setUTCDate(sunday.getUTCDate()+6);
+  const [ty,tm,td]=sunday.toISOString().slice(0,10).split('-').map(Number);
   const money=(n:number)=>n.toLocaleString('en-US');
   const lines=['📊 DREAM EXCHANGE','',`${fm}월 ${fd}일 ~ ${tm}월 ${td}일`,'','💵 현재 시제',
     `🇻🇳 VND ${money(vnd)}`,`🇺🇸 USD ${money(usd)}`,`🇰🇷 KRW ${money(krw)}`,'','💰 이번 주 수익',
