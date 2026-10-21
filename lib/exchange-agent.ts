@@ -179,7 +179,7 @@ export function cancellationAmount(text: string): number | null {
   if (!slash && !t.includes('취소')) return null;
   if (slash) t=t.slice(t.indexOf(' ')+1).trim();
   for(const tail of ['취소해줘','취소해','취소']) if(t.endsWith(tail)) {t=t.slice(0,-tail.length).trim(); break;}
-  const m=t.match(/^([0-9][0-9,]*(?:[.][0-9]+)?)[ ]*(만|천|백만|m|k|동|vnd)?$/i);
+  const m=t.match(/^([0-9][0-9,]*(?:[.][0-9]+)?)[ ]*(백만동|만동|천동|백만|만|천|m|k|동|vnd)?$/i);
   if (!m) throw new ExchangeReview('취소할 금액을 알려주세요. 또는 완료 메시지에 답장으로 “취소”라고 보내주세요.');
   const f:Record<string,number>={'':1,만:10000,만동:10000,천:1000,천동:1000,백만:1000000,백만동:1000000,m:1000000,k:1000,동:1,vnd:1};
   const v=Number(m[1].replace(/,/g,''))*f[(m[2]||'').toLowerCase()];
