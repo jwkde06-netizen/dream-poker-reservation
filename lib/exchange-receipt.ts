@@ -29,7 +29,7 @@ export function compactExchangeStatus(report:any, tradeProfit?:number):string {
   if(cost)lines.push(`비용 ${money(cost)}동`);
   lines.push('',`누적 수익 ${money(profit)}동`);
   if(tradeProfit!==undefined)lines.unshift(`✅ 기록 완료 · 이번 거래 ${money(tradeProfit)}동`,'');
-  return lines.join('\\n');
+  return lines.join(String.fromCharCode(10));
 }
 /** Use the single report RPC snapshot for BOTH all-currency balances and week-to-date profit. */
 export function formatExchangeBalanceReceipt(reference: string, plan: ExchangePlan, report: any): string {

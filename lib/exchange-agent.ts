@@ -39,7 +39,7 @@ export async function getExchangeReport(chatId: string, from: string, to: string
   return data;
 }
 export function formatExchangeReport(report:any):string {
-  return report.initialized ? compactExchangeStatus(report) : '기초 시제를 먼저 확정해주세요.';
+  return report.initialized ? compactExchangeStatus(report) : '기초 시제가 아직 확정되지 않았습니다.';
 }
 export function formatExchangeReceipt(reference: string, plan: ExchangePlan): string {
   const lines = [`환전 원장 기록 완료 · ${reference}`, ...plan.summary];
