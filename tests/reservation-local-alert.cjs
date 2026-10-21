@@ -1,0 +1,22 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),ts=require('typescript');
+const crypto=require('node:crypto');
+const key='test-only-local-relay-key-with-at-least-forty-characters',calls=[];
+let wrongBot=false,failSend=false;
+const fakeTg=async(method,body)=>{calls.push({method,body});if(method==='getMe')return{id:1,username:wrongBot?'wrong_bot':'dream_poker_reservation_bot'};if(method==='getChat')return{id:-12345678,type:'supergroup',title:'Test room'};if(failSend)throw Error('secret-in-upstream-error');return{message_id:37};};
+const mod={exports:{}};
+const code=ts.transpileModule(fs.readFileSync('app/api/reservation-local-alert/route.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+vm.runInNewContext(code,{exports:mod.exports,module:mod,Buffer,Date,process:{env:{LOCAL_RESERVATION_RELAY_KEY_SHA256:crypto.createHash('sha256').update(key).digest('hex'),LOCAL_RESERVATION_TELEGRAM_CHAT_ID:'-12345678'}},require:name=>{if(name==='node:crypto')return crypto;if(name==='next/server')return{NextResponse:{json:(body,init)=>Response.json(body,init)}};if(name==='../../../lib/telegram')return{tg:fakeTg,telegramToken:'fake-test-token'};throw Error(name);}});
+const route=mod.exports,request=(body,auth=true)=>new Request('https://test.invalid/api/reservation-local-alert',{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json',...(auth?{Authorization:'Bearer '+key}:{})},body:body===undefined?undefined:JSON.stringify(body)});
+(async()=>{
+assert.equal((await route.GET(request(undefined,false))).status,401);assert.equal(calls.length,0);
+assert.equal((await route.POST(request({},false))).status,401);assert.equal(calls.length,0);
+assert.equal((await route.GET(request())).status,200);
+const good={text:'DREAM POKER · RESERVATION\nName: TEST GUEST\nStatus: Waiting',delivery_id:'a'.repeat(32)+':0',sent_at:Math.floor(Date.now()/1000)};
+for(const body of [null,[],{},{...good,text:'Unrelated message'},{...good,sent_at:1},{...good,delivery_id:'bad'}])assert.equal((await route.POST(request(body))).status,400);
+assert.equal((await route.POST(request({...good,text:'x'.repeat(9000)}))).status,413);
+wrongBot=true;assert.equal((await route.GET(request())).status,503);assert.equal((await route.POST(request(good))).status,502);wrongBot=false;
+const sent=await route.POST(request({...good,chat_id:'-999999999'}));assert.equal(sent.status,200);assert.equal((await sent.json()).message_id,37);
+const sends=calls.filter(c=>c.method==='sendMessage');assert.equal(sends.length,1);assert.equal(sends[0].body.chat_id,'-12345678');
+failSend=true;const failed=await route.POST(request(good));assert.equal(failed.status,502);assert.ok(!(await failed.text()).includes('secret-in-upstream-error'));
+console.log('Relay checks passed: auth, payload validation, fixed group, bot identity and redacted failures.');
+})().catch(e=>{console.error(e);process.exitCode=1;});
