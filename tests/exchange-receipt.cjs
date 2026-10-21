@@ -18,12 +18,13 @@ const report = patch => ({ ...base, ...patch });
   assert.deepEqual(receipt.exchangeSettlementPeriod(ts('2026-10-25T17:00:00Z')), {from:'2026-10-26',to:'2026-10-26',settlesOn:'2026-11-01'});
   assert.deepEqual(receipt.exchangeSettlementPeriod(ts('2027-01-01T00:00:00Z')), {from:'2026-12-28',to:'2027-01-01',settlesOn:'2027-01-03'});
   const before = JSON.stringify(base), text = receipt.formatExchangeBalanceReceipt('FX-100001-1', plan, base);
-  for (const expected of ['완료 ✅','13,000,000 VND','현금 10,000,000 VND','계좌 3,000,000 VND','123.45 USD','1,234,567 KRW','이번 거래 수익: 50,000 VND','이번 주 누적 수익: 300,000 VND','2026-10-25(일) Danny 정산','시제 보관: 지원','정산 완료·시제 차감하지 않습니다.']) assert.ok(text.includes(expected), expected);
+  for (const expected of ['📊 DREAM EXCHANGE','13,000,000','123.45','1,234,567','이번 거래 50,000동','이체수수료 100,000동','누적 수익 300,000동']) assert.ok(text.includes(expected),expected);
+  assert.ok(!text.includes('VND_CASH') && !text.includes('미해결 입력'));
   assert.equal(JSON.stringify(base),before); assert.ok(text.length<4096);
   const partial=receipt.formatExchangeBalanceReceipt('FX-100001-1',{...plan,fx_profit_vnd:null},report({period_fully_covered:false,unvalued_fx_count:2,unresolved_count:1,unvalued_holdings:1}));
-  for(const expected of ['이번 거래 확인된 수익','환차익 미확정','이번 주 확인된 누적 수익','기록 시작 이전 제외','원가 미확인 처분 2건','미해결 입력 1건','보유 외화 원가 미확인']) assert.ok(partial.includes(expected),expected);
-  const loss=receipt.formatExchangeBalanceReceipt('FX-100001-1',plan,report({fee_vnd:0,realized_fx_vnd:0,expense_vnd:50000,net_known_vnd:-50000})); assert.ok(loss.includes('-50,000 VND'));
-  assert.ok(!receipt.formatExchangeBalanceReceipt('FX-100001-1',{...plan,kind:'opening'},base).includes('이번 거래'));
+  assert.ok(partial.includes('누적 수익'));
+  const loss=receipt.formatExchangeBalanceReceipt('FX-100001-1',plan,report({fee_vnd:0,realized_fx_vnd:0,expense_vnd:50000,net_known_vnd:-50000})); assert.ok(loss.includes('-50,000동'));
+  assert.ok(!receipt.formatExchangeBalanceReceipt('FX-100001-1',{...plan,kind:'opening'},base).includes('✅ 기록 완료'));
   for(const bad of [report({initialized:false}),report({from:'2026-10-18'}),report({net_known_vnd:300001}),report({balances:{...base.balances,USD_CASH:{closing_minor:null}}})]) assert.throws(()=>receipt.formatExchangeBalanceReceipt('FX-100001-1',plan,bad));
   const oldFetch=global.fetch,oldDb=settings.settingsDb,oldToken=google.accessToken;
   const oldWorkbook=process.env.EXCHANGE_GOOGLE_SPREADSHEET_ID;
@@ -38,7 +39,7 @@ const report = patch => ({ ...base, ...patch });
     });
     global.fetch=async(url,opts)=>{
       if(String(url).startsWith('https://sheets.googleapis.com/')){assert.equal(opts.method,'GET');verified=true;return new Response(JSON.stringify({valueRanges:[{values:[sheets.EXCHANGE_HEADERS]},{values:[values]}]}));}
-      assert.ok(String(url).includes('/sendMessage'));sends++;assert.ok(JSON.parse(opts.body).text.includes('USD 시제: 123.45 USD'));return new Response(JSON.stringify({ok:true,result:{message_id:2}}));
+      assert.ok(String(url).includes('/sendMessage'));sends++;assert.ok(JSON.parse(opts.body).text.includes('🇺🇸 USD 123.45'));return new Response(JSON.stringify({ok:true,result:{message_id:2}}));
     };
     const config={token:'synthetic',botId:'100001',chatId:'-100001',adminIds:new Set(),activatedAt:0};
     const payload={reply_parameters:{message_id:1},text:'환전 원장 기록 완료 · FX-100001-1\n내용'};

@@ -1,3 +1,4 @@
+import { compactExchangeStatus, exchangeSettlementPeriod } from './exchange-receipt';
 import { createClient } from '@supabase/supabase-js';
 import { getVercelOidcToken } from '@vercel/oidc';
 import { randomUUID } from 'node:crypto';
@@ -37,24 +38,8 @@ export async function getExchangeReport(chatId: string, from: string, to: string
   if (error || !data) throw Error('Exchange report lookup failed');
   return data;
 }
-export function formatExchangeReport(report: any): string {
-  if (!report.initialized) return '기초 시제가 아직 확정되지 않아 정산할 수 없습니다. /help에서 최초 설정을 확인해주세요.';
-  const lines = [
-    `환전 정산 초안 · ${report.from} ~ ${report.to} (베트남 기준)`,
-    `수수료 수입: ${formatMoney(report.fee_vnd, 'VND_CASH')}`,
-    `확인된 외화 처분 차익: ${formatMoney(report.realized_fx_vnd, 'VND_CASH')}`,
-    `비용: ${formatMoney(report.expense_vnd, 'VND_CASH')}`,
-    `${report.unvalued_fx_count || !report.period_fully_covered ? '기록·확인된 부분의 순수익' : '원장상 순수익'}: ${formatMoney(report.net_known_vnd, 'VND_CASH')}`,
-    `거래 ${report.transaction_count}건 · 취소 ${report.reversal_count}건`,
-    '', '기간 시작 → 종료 시제',
-    ...ACCOUNT_CODES.map(code => `${EXCHANGE_ACCOUNTS[code].label}: ${report.balances[code].opening_minor === null ? '기록 전·미확인' : formatMoney(report.balances[code].opening_minor, code)} → ${report.balances[code].closing_minor === null ? '기록 전·미확인' : formatMoney(report.balances[code].closing_minor, code)}`),
-  ];
-  if (!report.period_fully_covered) lines.push(`기록 시작: ${new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(report.opened_at))} (베트남). 이전 내역은 포함되지 않아 기간 전체 수익은 확정할 수 없습니다.`);
-  if (report.unvalued_fx_count) lines.push(`원가 미확인 외화 처분 ${report.unvalued_fx_count}건: 전체 순수익은 아직 확정할 수 없습니다.`);
-  if (report.unresolved_count) lines.push(`미해결 입력 ${report.unresolved_count}건: 거래 반영 여부를 확인해주세요.`);
-  if (report.unvalued_holdings) lines.push(`현재 취득원가 미확인 외화 시제 ${report.unvalued_holdings}개가 있습니다.`);
-  lines.push('입금·지급 원금과 시제 보충·회수는 수익에서 제외했습니다. 현금 실사·은행 내역 대조 후 마감해주세요.');
-  return lines.join('\n');
+export function formatExchangeReport(report:any):string {
+  return report.initialized ? compactExchangeStatus(report) : '기초 시제가 아직 확정되지 않았습니다.';
 }
 export function formatExchangeReceipt(reference: string, plan: ExchangePlan): string {
   const lines = [`환전 원장 기록 완료 · ${reference}`, ...plan.summary];
@@ -294,7 +279,7 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
     }
     const state = await getExchangeState(config.chatId);
     if (intent.kind === 'balance') {
-      await finish(job, config, owner, 'ignored', state.initialized ? ['현재 환전 시제', ...ACCOUNT_CODES.map(code => `${EXCHANGE_ACCOUNTS[code].label}: ${formatMoney(state.accounts[code].balance_minor, code)}${state.accounts[code].book_vnd === null ? ' · 취득원가 미확인' : ''}`), '원장 기준입니다. 현금 실사·은행 잔액과 대조해주세요.'].join('\n') : '기초 시제가 아직 확정되지 않았습니다. /help에서 최초 설정을 확인해주세요.'); return;
+      const period=exchangeSettlementPeriod(message.date); const report=await getExchangeReport(config.chatId,period.from,period.to); await finish(job,config,owner,'ignored',formatExchangeReport(report)); return;
     }
     const adminRequired = intent.kind === 'opening' || intent.kind === 'reversal' || (intent.kind === 'movement' && intent.category === 'capital');
     if (!confirmation) await authorizeActor(config, job.sender_id, adminRequired);
