@@ -1,5 +1,5 @@
 import {NextResponse} from 'next/server';
-import {authorized,db,extract,ranges} from '../../../../lib/accounting-agent';
+import {authorized,db,extract,ranges,handle} from '../../../../lib/accounting-agent';
 import {tg} from '../../../../lib/telegram';
 import {accessToken,accountingWorkbook} from '../../../../lib/accounting-google';
 export const runtime='nodejs';export const dynamic='force-dynamic';export const maxDuration=180;
@@ -7,7 +7,24 @@ const url='https://dream-poker-reservation.vercel.app/api/accounting/webhook';
 export async function POST(request:Request){
  if(!authorized(request,'ACCOUNTING_OPS_SECRET'))return NextResponse.json({error:'Unauthorized'},{status:401});
  try{
-  const {action}=await request.json();
+  const {action,messageId}=await request.json();
+  if(action==='reviewphoto'||action==='retryphoto'){
+   if(!Number.isSafeInteger(messageId))throw Error('Invalid message');
+   const q=await db().from('dream_accounting_jobs').select('*').eq('message_id',messageId).single();
+   if(q.error||q.data.status!=='review')throw Error('Only pending review photos can be recovered');
+   const sent=await tg('sendMessage',{chat_id:process.env.STAFF_TELEGRAM_CHAT_ID,reply_parameters:{message_id:messageId},text:action==='reviewphoto'?'사진 명단을 다시 확인하고 있습니다. 추가 설명 없이 기존 선수 코드와 대조하겠습니다.':'확인한 사진을 정산 시트와 대조해 반영하겠습니다.'});
+   const m=sent.reply_to_message;if(!m||String(m.chat?.id)!==process.env.STAFF_TELEGRAM_CHAT_ID||String(m.from?.id)!==q.data.sender_id)throw Error('Original message unavailable');
+   const photo=m.photo?.[m.photo.length-1];if(!photo)throw Error('Original photo unavailable');
+   if(action==='retryphoto'){
+    const changed=await db().from('dream_accounting_jobs').update({status:'received',reply_text:null,reply_id:null}).eq('update_id',q.data.update_id).eq('status','review').select('update_id');
+    if(changed.error||changed.data?.length!==1)throw Error('Review status changed');
+    await handle({update_id:q.data.update_id,message:m});
+    const result=await db().from('dream_accounting_jobs').select('status,plan,reply_text,failure_reason').eq('update_id',q.data.update_id).single();return NextResponse.json(result.data);
+   }
+   const f=await tg('getFile',{file_id:photo.file_id});if(!/^[\w/.-]+$/.test(f.file_path)||f.file_path.includes('..'))throw Error('Invalid photo path');
+   const r=await fetch('https://api.telegram.org/file/bot'+process.env.TELEGRAM_BOT_TOKEN+'/'+f.file_path);if(!r.ok)throw Error('Photo download failed');
+   return NextResponse.json({image:Buffer.from(await r.arrayBuffer()).toString('base64'),messageId});
+  }
   if(action==='inspect'){
    const me=await tg('getMe'),chat=await tg('getChat',{chat_id:process.env.STAFF_TELEGRAM_CHAT_ID}),member=await tg('getChatMember',{chat_id:chat.id,user_id:me.id}),hook=await tg('getWebhookInfo');
    const data=await ranges(["'일일 입력'!A1:O2","'F&B 입력'!A1:D1"],true);
