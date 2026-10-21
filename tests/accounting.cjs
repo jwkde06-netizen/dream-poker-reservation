@@ -121,3 +121,7 @@ const {focusedQuestion}=require('../.test-build/accounting-context');
 assert.equal(focusedQuestion('배경의 다른 영수증은 처리할까요?','3층 7만동 F&B',[{kind:'fnb'}]),null);
 assert.equal(focusedQuestion('총 금액을 알려주세요.','3층 F&B',[]),'총 금액을 알려주세요.');
 console.log('6 scoped game-alias, game identity and focused-question assertions passed');
+const {certainOperations}=require('../.test-build/accounting-context');
+assert.equal(certainOperations([{kind:'add',game:12},{kind:'fnb'}],'인쇄된 게임 번호 12를 사용할까요?').length,1);
+assert.equal(certainOperations([{kind:'add',game:12}],'신규 선수 한 명의 소속을 알려주세요.').length,1);
+console.log('2 uncertain-game transaction boundary assertions passed');
