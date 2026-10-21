@@ -1,6 +1,7 @@
 import {createHash,timingSafeEqual} from 'node:crypto';
 import {NextResponse} from 'next/server';
 import {tg,telegramToken} from '../../../lib/telegram';
+import {deliverReservationAlert,pendingReservationActions,acknowledgeReservationAction} from '../../../lib/reservation-local-actions';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -28,7 +29,7 @@ async function destination(){
 
 export async function GET(request:Request){
  if(!authorized(request))return reply({error:'Unauthorized'},401);
- try{const {bot,chat}=await destination();return reply({ok:true,bot,chat});}
+ try{const {bot,chat}=await destination();const hook=await tg('getWebhookInfo',{},6000);return reply({ok:true,bot,chat,webhook:{url:hook.url,allowed_updates:hook.allowed_updates||[]}});}
  catch{return reply({error:'Reservation bot or group unavailable'},503);}
 }
 
@@ -41,15 +42,25 @@ export async function POST(request:Request){
  let body:unknown;
  try{body=JSON.parse(raw);}catch{return reply({error:'Invalid JSON'},400);}
  if(!body||typeof body!=='object'||Array.isArray(body))return reply({error:'Invalid request'},400);
- const {text,delivery_id,sent_at}=body as Record<string,unknown>;
+ const {text,delivery_id,sent_at,operation,existing_message_id,action_id,ok,message}=body as Record<string,unknown>;
+ if(typeof sent_at!=='number'||!Number.isSafeInteger(sent_at)||Math.abs(Date.now()/1000-sent_at)>120)return reply({error:'Expired request'},400);
+ if(operation==='poll'){
+  try{return reply({ok:true,actions:await pendingReservationActions()});}catch{return reply({error:'Action queue unavailable'},503);}
+ }
+ if(operation==='ack'){
+  if(typeof action_id!=='string'||!/^[a-f0-9-]{36}$/.test(action_id)||typeof ok!=='boolean'||typeof message!=='string'||message.length>300)return reply({error:'Invalid result'},400);
+  try{await acknowledgeReservationAction(action_id,ok,message);return reply({ok:true});}catch{return reply({error:'Action result not saved'},503);}
+ }
+ if(operation!==undefined&&operation!=='sync')return reply({error:'Unknown operation'},400);
+ if(existing_message_id!==undefined&&(!Number.isSafeInteger(existing_message_id)||Number(existing_message_id)<=0))return reply({error:'Invalid receipt'},400);
  if(typeof text!=='string'||text.length>1800||!/^DREAM POKER · (RESERVATION|UPDATE)\nName: /.test(text)
    ||typeof delivery_id!=='string'||!/^[a-f0-9]{32}:[0-9]{1,6}$/.test(delivery_id)
    ||typeof sent_at!=='number'||!Number.isSafeInteger(sent_at)||Math.abs(Date.now()/1000-sent_at)>120){
    return reply({error:'Invalid or expired reservation alert'},400);
  }
  try{
-  const {target}=await destination();
-  const sent=await tg('sendMessage',{chat_id:target,text,link_preview_options:{is_disabled:true}},10000);
+  await destination();
+  const sent=await deliverReservationAlert(text,delivery_id,existing_message_id as number|undefined);
   if(!Number.isSafeInteger(sent.message_id))throw new Error('Missing receipt');
   return reply({ok:true,message_id:sent.message_id});
  }catch{
