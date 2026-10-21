@@ -12,13 +12,14 @@ export function tableLabel(value:unknown){
  return String(value??'');
 }
 const normalizeTable=tableLabel;
-export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][],settings:{tableRoundLabels?:boolean}={}){
+export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][],settings:{tableRoundLabels?:boolean;rebuySnapshot?:boolean}={}){
  if(!Array.isArray(ops)||ops.length<1||ops.length>20)throw Error('처리할 항목을 구체적으로 알려주세요.');
  const changes:CellChange[]=[],summary:string[]=[];const work=daily.map(r=>[...r]);let frow=fnb.length+1,mrow=master.length+1;
  const names=new Map<string,string[]>();for(const r of master.slice(1)){if(!r[0])continue;const k=norm(r[0]);names.set(k,Array.from(new Set([...(names.get(k)||[]),String(r[0])])));}
  let next=Math.max(3,work.length+1);
  function add(range:string,before:any[][],values:any[][]){if(changes.some(x=>x.range===range))throw Error('같은 항목을 두 번 수정하는 요청입니다. 나눠서 보내주세요.');changes.push({range,before,values});}
- for(const op of ops){
+ for(const original of ops){
+ const op={...original};
  if(op.kind==='register'){
   const name=String(op.player||'').trim().toUpperCase();
   if(!/^[A-Z][A-Z .'-]{2,79}$/.test(name))throw Error('등록할 영문 이름을 확인해주세요.');
@@ -30,6 +31,16 @@ export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][
   names.set(norm(name),[name]);summary.push(`${name} 이름을 등록했어요.`);continue;
  }
  const day=serial(op.date);
+ if(settings.rebuySnapshot&&['add','total'].includes(op.kind)){
+  let g:any=null;const games=new Set<number>();
+  for(const r of work.slice(1)){if(r[0]!==''&&r[0]!=null)g=r[0];if(Number(r[1])===day&&Number(tableLabel(r[2]).split('-')[0])===op.table&&r[3]===op.blind&&norm(r[4])===norm(op.player))games.add(Number(g));}
+  if(!games.has(op.game)){
+   if(games.size!==1)throw Error(`${op.player} 리바인을 반영할 게임 번호를 알려주세요.`);
+   op.game=Array.from(games)[0];
+  }
+  op.kind='total';
+ }
+
  if(op.kind==='fnb'){
   if(!['2F','3F','4F'].includes(op.floor)||!Number.isSafeInteger(op.amount)||op.amount<=0||op.amount>100000000||typeof op.note!=='string'||!op.note.trim()||op.note.length>500)throw Error('F&B의 날짜·층·총금액·사용자를 알려주세요.');
   if(frow>2000)throw Error('F&B 시트 행을 확장해야 합니다.');

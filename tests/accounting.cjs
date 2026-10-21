@@ -42,3 +42,8 @@ assert.equal(planOperations([{kind:'register',player:'SEOJUNGI'}],daily,[],maste
 p=planOperations([{kind:'register',player:'KIM BEONCHANG'},{...base,game:8,kind:'add',buyins:1}],daily,[],master);
 assert.equal(p.changes.length,3);
 console.log('9 context, normalized-name, registration and date-label regression checks passed');
+
+const wrongPrint=planOperations([{...request,game:8,buyins:2}],manual,[],master,{tableRoundLabels:true,rebuySnapshot:true});
+assert.equal(wrongPrint.changes.length,1);assert.equal(wrongPrint.changes[0].range,"'일일 입력'!H2");
+assert.throws(()=>planOperations([{...base,game:8,table:12,kind:'add',buyins:2}],manual,[],master,{rebuySnapshot:true}));
+console.log('2 rebuy wrong-game regression checks passed');
