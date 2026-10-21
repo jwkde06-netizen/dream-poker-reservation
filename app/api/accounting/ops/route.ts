@@ -31,7 +31,7 @@ export async function POST(request:Request){
    const [daily,fnb,master]=await ranges(["'일일 입력'!A1:O5000","'F&B 입력'!A1:D2000","'플레이어 명단'!A1:D2500"],true);
    const rules=await db().from('dream_accounting_rules').select('id,kind,content').eq('active',true).order('id');if(rules.error)throw Error('Rules unavailable');
    const businessDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(m.date*1000));
-   const result=await extract(q.data.text,'data:image/jpeg;base64,'+bytes.toString('base64'),{...sheetContext(daily,master,businessDate),businessRules:rules.data});
+   const result=await extract(q.data.text+'\n읽기 전용 판독 검증입니다. 사진에서 대상 선수와 게임을 모두 operations로 추출해주세요. 이미 시트에 있는 항목도 추출하세요. 중복 판단은 별도 검증기가 수행하며 실제 입력은 하지 않습니다.','data:image/jpeg;base64,'+bytes.toString('base64'),{...sheetContext(daily,master,businessDate),businessRules:rules.data});
    const operations=correctedOperations(result.operations,q.data.text,master);
    const plan=operations.length?planOperations(operations,daily,fnb,master,{tableRoundLabels:true,rebuySnapshot:/리바[인이]|리바이|rebuy/i.test(q.data.text)}):null;
    return NextResponse.json({business_rows_changed:false,telegram_messages_sent:false,question:result.question||null,operations,plannedChanges:plan?.changes.length||0});
