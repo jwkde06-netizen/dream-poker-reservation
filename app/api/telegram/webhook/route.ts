@@ -23,9 +23,9 @@ export async function POST(request:Request){
  const db=createClient(projectUrl,serviceKey,{auth:{persistSession:false}});
  const {data:destination,error:destError}=await db.rpc("reservation_telegram_target");
  const configuredChat=String(destination||process.env.TELEGRAM_CHAT_ID||"");
- if(destError||!chat||chat!==configuredChat){await answer("Unrecognized cashier group");return NextResponse.json({ok:true})}
+ if((destError&&!process.env.TELEGRAM_CHAT_ID)||!chat||chat!==configuredChat){await answer("Unrecognized cashier group");return NextResponse.json({ok:true})}
  const action=match[1]==="approve"?"confirmed":"rejected";
- const {data:result,error}=await db.rpc("telegram_decide_poker_reservation",{
+ const {data:result,error}=await db.rpc(process.env.DREAM_DESK_ENABLED==="true"?"desk_telegram_decide":"telegram_decide_poker_reservation",{
    p_id:match[2],p_status:action,p_actor:"telegram:"+id
  });
  if(error){await answer("처리 실패: "+error.message.slice(0,130));return NextResponse.json({ok:true})}

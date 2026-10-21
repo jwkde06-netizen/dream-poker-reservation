@@ -1,3 +1,4 @@
+import {dispatch} from "../../../lib/desk";
 import {NextResponse} from "next/server";
 import {createClient} from "@supabase/supabase-js";
 import {projectUrl,publicKey,tg} from "../../../lib/telegram";
@@ -23,6 +24,7 @@ export async function POST(request:Request){
    booking={...item,reservation_id:item.reservation_id||item.id,game_title:item.game_title||game?.title||"Reservation",table_no:item.table_no||game?.table_no,game_no:item.game_no||game?.game_no};
  }
  if(!booking)return NextResponse.json({error:"No sendable booking returned by notification claim"},{status:409});
+ if(process.env.DREAM_DESK_ENABLED==="true"){const result=await dispatch();return NextResponse.json({ok:result.failed===0,...result});}
  const name=String(booking.player_name||"").slice(0,80);
  const note=String(booking.guest_note||"").slice(0,500);
  const title=String(booking.game_title||"Game").replace(/\bTIME\s*ATTACK\b/gi,"").trim()||"Game";

@@ -1,3 +1,4 @@
+import {dispatch} from "../../../../lib/desk";
 import {NextResponse} from "next/server";
 import {createClient} from "@supabase/supabase-js";
 import {projectUrl,publicKey,tg} from "../../../../lib/telegram";
@@ -29,6 +30,7 @@ export async function POST(request:Request){
  const b=candidates[0],g=game.data;
  const eta=new Date(b.arrival_at).toLocaleTimeString("en-GB",{timeZone:"Asia/Ho_Chi_Minh",hour:"2-digit",minute:"2-digit"});
  try{
+  if(process.env.DREAM_DESK_ENABLED==="true"){const result=await dispatch();return NextResponse.json({ok:result.failed===0,...result});}
   await tg("sendMessage",{chat_id:target,text:[
    "🟡 KOREAN DESK / 한국인 데스크 예약 요청",
    (g?.title||"Game")+" · Table "+(g?.table_no||"—")+" / No."+(g?.game_no||"—"),
