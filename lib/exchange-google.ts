@@ -68,7 +68,7 @@ export async function exchangeSheetReceipt(payload: Record<string, unknown>, con
   await syncExchangeEvent(result.data as SheetEvent, source.data.raw_text);
   // Use current Vietnam date, not an old message date when delivering a delayed receipt.
   const period = exchangeSettlementPeriod();
-  const snapshot = await db.rpc('dream_exchange_report', { p_chat_id: config.chatId, p_from: period.from, p_to: period.to });
+  const snapshot = await db.rpc('dream_exchange_report_with_carry', { p_chat_id: config.chatId, p_from: period.from, p_to: period.to });
   if (snapshot.error || !snapshot.data || snapshot.data.from !== period.from || snapshot.data.to !== period.to) throw Error('Exchange receipt report lookup failed');
   return { ...payload, text: formatExchangeBalanceReceipt(result.data.reference, result.data.plan, snapshot.data) };
 }

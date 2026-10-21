@@ -34,7 +34,7 @@ export async function getExchangeState(chatId = exchangeChatId()): Promise<Excha
   return data as ExchangeState;
 }
 export async function getExchangeReport(chatId: string, from: string, to: string): Promise<any> {
-  const { data, error } = await exchangeDb().rpc('dream_exchange_report', { p_chat_id: chatId, p_from: from, p_to: to });
+  const { data, error } = await exchangeDb().rpc('dream_exchange_report_with_carry', { p_chat_id: chatId, p_from: from, p_to: to });
   if (error || !data) throw Error('Exchange report lookup failed');
   return data;
 }
