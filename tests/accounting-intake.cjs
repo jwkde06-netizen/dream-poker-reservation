@@ -1,0 +1,13 @@
+const assert=require('node:assert/strict');
+const {shouldProcessStaffMessage:gate,resolveFnb}=require('../.test-build/accounting-intake');
+for(const text of ['위에 대기하는 분들 겜 안하신데 ?','박수민 추가','9번 자리 있습니다','6번 취소','네 시간없대요'])assert.equal(gate({text}),false,text);
+for(const text of ['14번 게임 시트 반영해','우리끼리 대화하는 건 답장하지마. 규칙 저장','준기형님 아메리카노 1잔','6만동','리바인 체크'])assert.equal(gate({text}),true,text);
+assert.equal(gate({photo:[{}]}),true);
+const menu=[['메뉴','별칭','단가'],['아메리카노','아아|Cà phê americano',60000],['오렌지주스','Nước cam',60000]];
+const op={kind:'fnb',floor:'5F',amount:null,recipient:'준기형님',items:[{menu:'아메리카노',quantity:2}]};
+assert.deepEqual(resolveFnb([op],menu)[0],{...op,floor:'2F',amount:120000,note:'준기형님 아메리카노 2잔'});
+assert.equal(resolveFnb([{...op,floor:'3F',amount:100000}],menu)[0].amount,100000);
+assert.equal(resolveFnb([{...op,items:[{menu:'미등록',quantity:1}]}],menu)[0].amount,null);
+assert.equal(resolveFnb([{...op,items:[{menu:'아메리카노'}]}],menu)[0].amount,null);
+assert.equal(resolveFnb([{...op,items:[{menu:'아메리카노',quantity:1},{menu:'오렌지주스',quantity:1}]}],menu)[0].amount,120000);
+console.log('16 intake and F&B pricing checks passed');
