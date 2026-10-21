@@ -22,3 +22,6 @@ const negative=weekly.map(r=>r.slice());negative[19]=['PARTNER 3',-1000];assert(
 const otherWeek=weekly.map(r=>r.slice());otherWeek[1]=['week',46321];assert.equal(run(daily,fnb,otherWeek,0).sourceHash,r.sourceHash);
 assert.throws(()=>run([['wrong']]));assert.throws(()=>run(daily,fnb,weekly,-1));
 console.log('Weekly boundaries, source changes, duplicates, invalid amounts, manual salary, pending tasks and share checks passed');
+const floors=run(daily,[...fnb,[46316,'3F',600000,'미팅'],[46316,'4F',300000,'4층']]);
+assert.equal(floors.totals.fnb,960000);assert.equal(floors.totals.fnbExcluded,600000);assert.equal(floors.totals.fnbDeductible,360000);assert.equal(floors.net,390000);assert.match(require('../.test-build/settlement-domain').reportText(floors),/3F F&B 별도 정산/);
+console.log('3F exclusion: total retained, 2F/4F deducted, 3F separate reporting passed');
