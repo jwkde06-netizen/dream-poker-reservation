@@ -1,9 +1,9 @@
 import {norm,serial,tableLabel} from './accounting-plan';
 
 export function confirmChipCount(text:string,previous:any){
- const match=text.trim().match(/^(?:(?:총|누적)\s*)?(\d{1,2})\s*바인(?:이에요|입니다|이야)?[.!]?$/);
+ const match=text.trim().match(/^(?:(?:총|누적)\s*)?(\d{1,2})\s*(?:바인)?(?:이에요|입니다|이야)?[.!]?$/);
  const count=match?Number(match[1]):0;
- if(count<1||count>50||!/누적.*바이?인/.test(previous?.plan?.pendingQuestion||''))return null;
+ if(count<1||count>50||!/(?:누적.*바이?인|총 몇 바인)/.test(previous?.plan?.pendingQuestion||''))return null;
  const candidates=(previous?.plan?.unverifiedOperations||[]).filter((o:any)=>['add','total'].includes(o.kind)&&norm(previous.plan.pendingQuestion).includes(norm(o.player)));
  if(candidates.length!==1)return null;
  return {...candidates[0],kind:'total',buyins:count,chips:count*100000};
@@ -35,4 +35,14 @@ export function verifyChipEvidence(ops:any[],evidence:any,rules:any[]=[]){
   operations.push({...op,chips});
  }
  return {operations,questions};
+}
+
+const sameEntry=(a:any,b:any)=>a.date===b.date&&a.game===b.game&&a.table===b.table&&norm(a.player)===norm(b.player);
+export function withheldChipOperations(original:any[],verified:any[]){
+ return original.filter(o=>['add','total'].includes(o.kind)&&!verified.some(v=>sameEntry(o,v)));
+}
+export function continueChipConfirmation(text:string,previous:any){
+ const confirmed=confirmChipCount(text,previous);if(!confirmed)return null;
+ const remaining=(previous.plan.unverifiedOperations||[]).filter((o:any)=>!sameEntry(o,confirmed));
+ return {documentType:'paper_game',operations:[confirmed],unverifiedOperations:remaining,question:remaining.length?`${remaining[0].player}님은 총 몇 바인인가요?`:null};
 }

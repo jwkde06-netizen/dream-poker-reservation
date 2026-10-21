@@ -61,7 +61,10 @@ export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][
  }
  const day=serial(op.date);
  if(op.kind==='fnb'){
-  if(!['2F','3F','4F','5F'].includes(op.floor)||!Number.isSafeInteger(op.amount)||op.amount<=0||op.amount>100000000||typeof op.note!=='string'||!op.note.trim()||op.note.length>500)throw Error('F&B의 날짜·층·총금액·사용자를 알려주세요.');
+  if(!['2F','3F','4F','5F'].includes(op.floor))throw Error('이 음료는 몇 층에서 주문했나요?');
+  if(!Number.isSafeInteger(op.amount)||op.amount<=0||op.amount>100000000)throw Error('이 영수증의 총 금액만 알려주세요.');
+  if(typeof op.note!=='string'||!op.note.trim())throw Error('누가 주문한 어떤 음료인가요?');
+  if(op.note.length>500)throw Error('음료 메모를 500자 이내로 줄여주세요.');
   if(frow>2000)throw Error('F&B 시트 행을 확장해야 합니다.');
   add(`'F&B 입력'!A${frow}:D${frow}`,[['','','','']],[[day,op.floor,op.amount,op.note]]);frow++;
   summary.push(`${op.floor.replace('F','층')} ${op.note}, ${op.amount.toLocaleString('en-US')}동 지출로 적었어요.`);continue;

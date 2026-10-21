@@ -1,3 +1,4 @@
+import {resolveFnb} from '../../../../lib/accounting-intake';
 import {deskCommands} from '../../../../lib/accounting-conversation';
 import {jobReport,defaultAgency,completeNamedArrival} from '../../../../lib/accounting-workflow';
 import {needsChipVerification,verifyChipEvidence} from '../../../../lib/accounting-vision';
@@ -60,12 +61,14 @@ export async function POST(request:Request){
   }
   if(action==='dryrunImage'){
    if(typeof imageData!=='string'||imageData.length>4000000||!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(imageData)||typeof caption!=='string'||caption.length>1000)throw Error('Invalid read-only image fixture');
-   const [daily,fnb,master]=await ranges(["'일일 입력'!A1:O5000","'F&B 입력'!A1:D2000","'플레이어 명단'!A1:D2500"],true);
+   const [daily,fnb,master,fnbMenu]=await ranges(["'일일 입력'!A1:O5000","'F&B 입력'!A1:D2000","'플레이어 명단'!A1:D2500","'F&B 가격표'!A1:E100"],true);
    const rules=await db().from('dream_accounting_rules').select('id,kind,content').eq('active',true).order('id');if(rules.error)throw Error('Rules unavailable');
    const businessDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
    if(caseName==='rebuy_chang_before'){let game:any=null;for(const r of daily){if(r[0]!==''&&r[0]!=null)game=r[0];if(Number(game)===6&&Number(r[1])===46316&&r[4]==='CHANG YOON HO')r[7]=1;}}
-   const result=await extract(caption+'\n읽기 전용 판독 검증입니다. 사진에서 대상 선수와 게임을 모두 operations로 추출해주세요. 이미 시트에 있는 항목도 추출하세요. 중복 판단은 별도 검증기가 수행하며 실제 입력은 하지 않습니다.',imageData,{...sheetContext(daily,master,businessDate),businessRules:rules.data});
+   const result=await extract(caption+'\n읽기 전용 판독 검증입니다. 사진에서 대상 선수와 게임을 모두 operations로 추출해주세요. 이미 시트에 있는 항목도 추출하세요. 중복 판단은 별도 검증기가 수행하며 실제 입력은 하지 않습니다.',imageData,{fnbMenu,...sheetContext(daily,master,businessDate),businessRules:rules.data});
    let operations=correctedOperations(result.operations,caption,master,rules.data||[]);
+   operations=resolveFnb(operations,fnbMenu);
+   if(operations.length&&operations.every((o:any)=>o.kind==='fnb'&&Number.isSafeInteger(o.amount)&&o.amount>0)&&/금액|가격|단가|층/.test(result.question||'')&&!/사용자|누구|수량|몇 잔/.test(result.question||''))result.question=null;
    result.question=focusedQuestion(result.question,caption,operations);
    operations=certainOperations(operations,result.question);
    let chipVerification:any=null;
@@ -102,15 +105,17 @@ export async function POST(request:Request){
    const f=await tg('getFile',{file_id:photo.file_id});if(!/^[\w/.-]+$/.test(f.file_path)||f.file_path.includes('..'))throw Error('Invalid path');
    const response=await fetch('https://api.telegram.org/file/bot'+process.env.TELEGRAM_BOT_TOKEN+'/'+f.file_path,{signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('Photo download failed');
    const bytes=Buffer.from(await response.arrayBuffer());if(bytes.length>10000000)throw Error('Photo too large');
-   const [daily,fnb,master]=await ranges(["'일일 입력'!A1:O5000","'F&B 입력'!A1:D2000","'플레이어 명단'!A1:D2500"],true);
+   const [daily,fnb,master,fnbMenu]=await ranges(["'일일 입력'!A1:O5000","'F&B 입력'!A1:D2000","'플레이어 명단'!A1:D2500","'F&B 가격표'!A1:E100"],true);
    const rules=await db().from('dream_accounting_rules').select('id,kind,content').eq('active',true).order('id');if(rules.error)throw Error('Rules unavailable');
    const businessDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(m.date*1000));
-   const result=await extract(q.data.text+'\n읽기 전용 판독 검증입니다. 사진에서 대상 선수와 게임을 모두 operations로 추출해주세요. 이미 시트에 있는 항목도 추출하세요. 중복 판단은 별도 검증기가 수행하며 실제 입력은 하지 않습니다.','data:image/jpeg;base64,'+bytes.toString('base64'),{...sheetContext(daily,master,businessDate),businessRules:rules.data});
+   const result=await extract(q.data.text+'\n읽기 전용 판독 검증입니다. 사진에서 대상 선수와 게임을 모두 operations로 추출해주세요. 이미 시트에 있는 항목도 추출하세요. 중복 판단은 별도 검증기가 수행하며 실제 입력은 하지 않습니다.','data:image/jpeg;base64,'+bytes.toString('base64'),{fnbMenu,...sheetContext(daily,master,businessDate),businessRules:rules.data});
    let operations=correctedOperations(result.operations,q.data.text,master,rules.data||[]);
+   operations=resolveFnb(operations,fnbMenu);
+   if(operations.length&&operations.every((o:any)=>o.kind==='fnb'&&Number.isSafeInteger(o.amount)&&o.amount>0)&&/금액|가격|단가|층/.test(result.question||'')&&!/사용자|누구|수량|몇 잔/.test(result.question||''))result.question=null;
    result.question=focusedQuestion(result.question,q.data.text,operations);
    operations=certainOperations(operations,result.question);
-   const plan=operations.length?planOperations(operations,daily,fnb,master,{tableRoundLabels:true,photoSnapshot:true,rebuySnapshot:rebuyCaption(q.data.text)}):null;
-   return NextResponse.json({business_rows_changed:false,telegram_messages_sent:false,model:result._model,usage:result._usage,question:result.question||null,operations,plannedChanges:plan?.changes.length||0});
+   let plan=null;let validationQuestion=null;try{plan=operations.length?planOperations(operations,daily,fnb,master,{tableRoundLabels:true,photoSnapshot:true,rebuySnapshot:rebuyCaption(q.data.text)}):null;}catch(e){validationQuestion=e instanceof Error?e.message:'확인 필요';}
+   return NextResponse.json({business_rows_changed:false,telegram_messages_sent:false,model:result._model,usage:result._usage,question:validationQuestion||result.question||null,operations,plannedChanges:plan?.changes.length||0});
   }
   if(action==='reviewphoto'||action==='retryphoto'){
    if(!Number.isSafeInteger(messageId))throw Error('Invalid message');

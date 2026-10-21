@@ -30,3 +30,17 @@ assert.equal(confirmChipCount('2바인 추가',pending),null);
 assert.equal(confirmChipCount('2바인',{plan:{...pending.plan,pendingQuestion:'사진의 누적 바이인 수를 확인해주세요.'}}),null);
 assert.equal(confirmChipCount('2바인',{plan:{...pending.plan,unverifiedOperations:[op,op]}}),null);
 console.log('Short cumulative-count reply resolves only the named withheld item');
+
+const {withheldChipOperations,continueChipConfirmation}=require('../.test-build/accounting-vision');
+const other={...op,player:'OTHER PLAYER'},already={...op,player:'VERIFIED PLAYER'};
+assert.deepEqual(withheldChipOperations([op,other,already],[already]),[op,other]);
+const first={plan:{unverifiedOperations:[op,other],pendingQuestion:'CHANG YOON HO님 사진의 누적 바이인 수만 확인해주세요.'}};
+const resumed=continueChipConfirmation('2',first);
+assert.equal(resumed.operations[0].buyins,2);
+assert.deepEqual(resumed.unverifiedOperations,[other]);
+assert.equal(resumed.question,'OTHER PLAYER님은 총 몇 바인인가요?');
+const second=continueChipConfirmation('3바인',{plan:{...resumed,pendingQuestion:resumed.question}});
+assert.equal(second.operations[0].player,'OTHER PLAYER');assert.equal(second.operations[0].buyins,3);assert.equal(second.question,null);assert.deepEqual(second.unverifiedOperations,[]);
+assert.equal(continueChipConfirmation('2',{plan:{...first.plan,pendingQuestion:'카드 번호는 무엇인가요?'}}),null);
+assert.equal(continueChipConfirmation('2바인 추가',first),null);
+console.log('Multiple withheld players resume one-by-one without replaying verified players');

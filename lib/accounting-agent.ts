@@ -2,7 +2,7 @@ import {easyHelp,easyMenu,parseDeskAction,pendingButtons,canMarkManual,buyinGuid
 import {rulesLinkText,rulesButton} from './accounting-rules-link';
 import {deskCommand,deskHelp,politeAcknowledgement,completionReply} from './accounting-conversation';
 import {shouldProcessStaffMessage,resolveFnb} from './accounting-intake';
-import {needsChipVerification,verifyChipEvidence,confirmChipCount} from './accounting-vision';
+import {needsChipVerification,verifyChipEvidence,confirmChipCount,continueChipConfirmation,withheldChipOperations} from './accounting-vision';
 import {defaultAgency,completeNamedArrival,cosmeticNameEdit,jobReport,compactExtractionContext} from './accounting-workflow';
 import {reconcileSheet,reconcileOperation,afterVerifiedWrite} from './accounting-reconcile';
 import {sheetContext,correctedOperations,focusedQuestion,certainOperations} from './accounting-context';
@@ -114,7 +114,7 @@ export async function handle(update:any){
    await readPhoto(m);
    await save(job.update_id,{source_message:{message_id:m.message_id,date:m.date,photo:m.photo,document:m.document}});
   }
-  let [daily,fnb,master,formula]=await ranges(["'일일 입력'!A1:O5000","'F&B 입력'!A1:D2000","'플레이어 명단'!A1:D2500","'일일 입력'!A1:O2"],true);
+  let [daily,fnb,master,formula,fnbMenu]=await ranges(["'일일 입력'!A1:O5000","'F&B 입력'!A1:D2000","'플레이어 명단'!A1:D2500","'일일 입력'!A1:O2","'F&B 가격표'!A1:E100"],true);
   // Formula rendering leaves dates as serials while exposing formula anchors.
   if(![5,6,8,9,10,11,12,13,14].every(i=>String(formula[1]?.[i]||'').startsWith('=ARRAYFORMULA(')))throw Error('Sheet formula layout changed');
   let previous:any=followupContext(recent,m,master.slice(1).map((r:any[])=>String(r[2]||'')).filter(Boolean));
@@ -124,12 +124,12 @@ export async function handle(update:any){
   const auditHistory=await reconciliationHistory(businessDate);
   let sheetState=reconcileSheet(daily,businessDate,auditHistory);
   processingPlan={sheetState};await save(job.update_id,{plan:processingPlan});
-  const [fnbMenu]=await ranges(["'F&B 가격표'!A1:E100"]);
   const context={fnbMenu,...sheetContext(daily,master,businessDate),businessRules,defaultRegistrationAgency:defaultAgency(businessRules,master),sheetReconciliation:{overrides:sheetState.overrides,aliases:sheetState.aliases},previous,pendingRequest:previous?.plan?.pendingQuestion?{...previous,continuationText:taskText}:null,recentMessages:recent.map(r=>({message_id:r.message_id,text:r.text,status:r.status,reply:r.reply_text,operations:closed(r)?null:r.plan?.operations,manualHandoff:r.plan?.manual_handoff||null,correction:r.plan?.reconciliation||null,hasPhoto:!closed(r)&&!!(r.source_message?.photo||r.source_message?.document)}))};
-  let photoSource:any=ownPhoto?job:null;
-  if(!image&&previous?.source_message){await readPhoto(previous.source_message);if(image)photoSource=previous;}
-  const confirmedChips=confirmChipCount(job.text,previous);
-  let result:any=confirmedChips?{documentType:'paper_game',operations:[confirmedChips],question:null}:await extract(job.text,image,context);
+  const confirmedResult=continueChipConfirmation(job.text,previous);
+  const confirmedChips=confirmedResult?.operations[0];
+  let photoSource:any=ownPhoto?job:confirmedResult?previous:null;
+  if(!confirmedResult&&!image&&previous?.source_message){await readPhoto(previous.source_message);if(image)photoSource=previous;}
+  let result:any=confirmedResult||await extract(job.text,image,context);
   if(!confirmedChips){aiCalls++;totalTokens+=result._usage?.totalTokens||0;}
   if(!image&&Number.isSafeInteger(result.sourceMessageId)){
    const source=recent.find(r=>r.message_id===result.sourceMessageId);
@@ -139,7 +139,7 @@ export async function handle(update:any){
   const taskPlan={sheetState,photoSourceDate:photoSource?.plan?.photoSourceDate||photoSource?.source_message?.date||null,contextMessageId:previous?.message_id||null,photoSourceMessageId:photoSource?.message_id||null,continuationText:taskText};
   if(photoSource&&photoSource.message_id!==m.message_id){await save(job.update_id,{source_message:{...photoSource.source_message,message_id:m.message_id,date:m.date,reply_to_message_id:m.reply_to_message?.message_id}});}
   result.operations=correctedOperations(result.operations,job.text,master,businessRules);
-  if(confirmedChips){result.operations=[confirmedChips];result.question=null;}
+  if(confirmedChips){result.operations=[confirmedChips];result.question=confirmedResult?.question||null;}
   result.operations=resolveFnb(result.operations,fnbMenu);
   if(result.operations.length&&result.operations.every((o:any)=>o.kind==='fnb'&&Number.isSafeInteger(o.amount)&&o.amount>0)&&/금액|가격|단가|층/.test(result.question||'')&&!/사용자|누구|수량|몇 잔/.test(result.question||''))result.question=null;
   result.operations=completeNamedArrival(result.operations,taskText,daily,master,businessRules,businessDate,previous);
@@ -152,9 +152,10 @@ export async function handle(update:any){
     if(Date.now()-started>100000)throw Error('Verification time budget');
     const evidence=await readChipColumns(image);aiCalls++;totalTokens+=evidence._usage?.totalTokens||0;
     const verified=verifyChipEvidence(result.operations,evidence,businessRules);
+    result.unverifiedOperations=withheldChipOperations(result.operations,verified.operations);
     result.operations=verified.operations;result.question=verified.questions[0]||result.question;
     result.chipVerification={names:evidence.names,chipAmounts:evidence.chipAmounts,questions:verified.questions};
-   }catch{result.operations=result.operations.filter((o:any)=>!['add','total'].includes(o.kind));result.question='사진 숫자를 다시 확인하지 못했어요. 누적 바이인 수만 알려주세요.';}
+   }catch{result.operations=result.operations.filter((o:any)=>!['add','total'].includes(o.kind));result.question=result.unverifiedOperations?.[0]?.player?`${result.unverifiedOperations[0].player}님 사진의 누적 바이인 수만 확인해주세요.`:'사진 숫자를 다시 확인하지 못했어요. 누적 바이인 수만 알려주세요.';}
   }
   if(image&&businessRules.some(r=>/휴대폰.*반영하지/.test(r.content))&&result.documentType==='phone_game'){result.operations=[];result.question=null;}
   processingPlan={...taskPlan,chipVerification:result.chipVerification||null,unverifiedOperations:result.unverifiedOperations||null,operations:result.operations,pendingQuestion:result.question||null};
@@ -183,7 +184,7 @@ export async function handle(update:any){
   const registrations=(result.operations||[]).filter((op:any)=>op.kind==='register');
   const registrationEvidence=taskText+' '+businessRules.map(r=>r.content).join(' ');
   if(registrations.some((op:any)=>!norm(registrationEvidence+' '+(previous?.plan?.pendingQuestion||'')).includes(norm(op.player)))){await finish('review','새로 등록할 선수 이름을 알려주세요.');return;}
-  const makePlan=()=>planOperations(result.operations,daily,fnb,master,{tableRoundLabels:businessRules.some(r=>r.kind==='table_round_labels'),rebuySnapshot:rebuyCaption(taskText),photoSnapshot:!!image,registrationApprovals:registrationApprovals(result.operations,taskText,master,previous?.plan?.pendingQuestion||'',businessRules),reconcile:op=>reconcileOperation(op,{state:sheetState,sourceMessageId:photoSource?.plan?.photoSourceMessageId||photoSource?.message_id,sourceTime:photoSource?.plan?.photoSourceDate||photoSource?.source_message?.date||m.date,photo:!!image,text:job.text,pendingQuestion:previous?.plan?.pendingQuestion||''})});
+  const makePlan=()=>planOperations(result.operations,daily,fnb,master,{tableRoundLabels:businessRules.some(r=>r.kind==='table_round_labels'),rebuySnapshot:rebuyCaption(taskText),photoSnapshot:!!image||!!confirmedResult,registrationApprovals:registrationApprovals(result.operations,taskText,master,previous?.plan?.pendingQuestion||'',businessRules),reconcile:op=>reconcileOperation(op,{state:sheetState,sourceMessageId:photoSource?.plan?.photoSourceMessageId||photoSource?.message_id,sourceTime:photoSource?.plan?.photoSourceDate||photoSource?.source_message?.date||m.date,photo:!!image||!!confirmedResult,text:job.text,pendingQuestion:previous?.plan?.pendingQuestion||''})});
   let plan;try{plan=makePlan()}catch(e){await finish('review',e instanceof Error?e.message:'항목 확인이 필요합니다.');return;}
   // Re-read ALL daily inputs before committing, not only target cells. A human
   // can insert the same player elsewhere while OCR is running. Re-plan once
