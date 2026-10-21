@@ -160,17 +160,21 @@ async function previousContext(config: ExchangeConfig, messageId: number | undef
   return { job: previous, unresolved_texts: texts };
 }
 /** Deliberate short-hand convention authorized by the Exchange owner: +5만 = received transfer fee in VND. */
+/** Owner-approved VND transfer-fee shorthand. Internal cash ledger is the unified VND float. */
 export function exchangeFeeShortcut(text: string): ExchangeIntent | null {
-  const s = text.trim().replace(/@dream_poker_exchange_bot$/i, '').trim();
-  const amountPart = s.startsWith('+') ? s.slice(1).trim() : /^\/fee(?:\s|$)/i.test(s) ? s.slice(4).trim() : (/^(?:오만동|오만원?동?)$/.test(s) ? '5만동' : /^(?:5만동|5만|오만|50000동|이체수수료\s*5만동)$/.test(s) ? '5만동' : '');
-  const match = amountPart.match(/^([0-9][0-9,]*(?:\.[0-9]+)?)\s*(백만동|만동|천동|만|천|백만|m|k|동|vnd)?$/i);
-  if (!match) return null;
-  const unit = (match[2] || '').toLowerCase();
-  // Bare +50000 is VND by the owner's explicit shorthand convention.
-  const scale: Record<string,number> = { '':1,동:1,vnd:1,만:10000,만동:10000,천:1000,천동:1000,백만:1000000,백만동:1000000,m:1000000,k:1000 };
-  const value = Number(match[1].replace(/,/g,'')) * scale[unit];
-  if (!Number.isSafeInteger(value) || value <= 0 || value > 1000000000) throw new ExchangeReview('수수료 금액을 다시 확인해주세요.');
-  return {kind:'movement',account:'VND_CASH',amount:String(value),direction:'in',category:'fee',basis_vnd:null,note:'이체수수료',external_reference:null};
+  const t = text.trim().replace(/@dream_poker_exchange_bot$/i, '').trim();
+  const explicit = t.startsWith('+') || t.startsWith('/fee') || /(?:이체수수료|수수료(?: 수익)?|수익완료)/.test(t);
+  const plain = t.replace(/^\\+\\s*/,'').replace(/^\\/fee\\s*/i,'')
+    .replace(/^(?:이체수수료|수수료(?: 수익)?)\\s*/,'').replace(/\\s*(?:수익완료|입금완료|받음|들어옴|수익)\\s*$/,'').trim();
+  const kor:Record<string,string> = {'오만':'5만','오만동':'5만동','오만원':'5만'};
+  const amount = kor[plain] || plain;
+  // Bare colloquial amounts are fee shorthand ONLY when unambiguously VND and owner-approved.
+  const match=amount.match(/^([0-9][0-9,]*(?:[.][0-9]+)?)\\s*(백만동|만동|천동|백만|만|천|m|k|동|vnd)?$/i);
+  if(!match || (!explicit && !['오만','오만동','오만원'].includes(plain) && !/^(?:[0-9][0-9,]*\\s*(?:만동|만|천동|천|동))$/.test(plain))) return null;
+  const scale:Record<string,number>={'':1,동:1,vnd:1,만:10000,만동:10000,천:1000,천동:1000,백만:1000000,백만동:1000000,m:1000000,k:1000};
+  const v=Number(match[1].replace(/,/g,''))*scale[(match[2]||'').toLowerCase()];
+  if(!Number.isSafeInteger(v)||v<=0||v>1000000000) throw new ExchangeReview('수수료 금액을 확인해주세요.');
+  return {kind:'movement',account:'VND_CASH',amount:String(v),direction:'in',category:'fee',basis_vnd:null,note:'이체수수료',external_reference:null};
 }
 /** Undo a fee transaction by exact receipt or an unambiguous amount. */
 export function cancellationAmount(text: string): number | null {
@@ -267,6 +271,10 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
         const previous = await previousContext(config, message.reply_to_message?.message_id);
         if (isAmbiguousBareAmount(text) && !previous.unresolved_texts.length) throw new ExchangeReview('금액만으로는 거래 종류를 알 수 없어요. 수수료라면 +5만으로 적어주세요.');
         if (previous.job?.status === 'review') { resolves = previous.job.update_id; job = await patchJob(config, job.update_id, { context_update_id: resolves }, owner); }
+        // A reply that merely reiterates our agreed VND-account convention is not a second transaction.
+        if (/^(?:계좌|현금|베트남 계좌|현금 계좌 구분 없이|VND는 현금 계좌 구분 없이|수익완료\\s*계좌)$/i.test(text.trim())) {
+          await finish(job, config, owner, 'ignored', '확인했습니다. 베트남동은 통합 시제로 관리합니다. 수수료는 +5만처럼 한 줄로 입력해주세요.'); return;
+        }
         const result = await extractExchange(text, { business_date: today, default_rates_vnd: DEFAULT_EXCHANGE_RATES, previous: previous.job ? { status: previous.job.status, reference: previous.job.reference, intent: previous.job.intent } : null, unresolved_texts: previous.unresolved_texts });
         if (result?.question) throw new ExchangeReview(String(result.question).slice(0, 1000));
         if (result?.intent == null) { await finish(job, config, owner, 'ignored', ''); return; }
