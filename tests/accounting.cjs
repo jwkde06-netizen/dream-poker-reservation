@@ -47,3 +47,7 @@ const wrongPrint=planOperations([{...request,game:8,buyins:2}],manual,[],master,
 assert.equal(wrongPrint.changes.length,1);assert.equal(wrongPrint.changes[0].range,"'일일 입력'!H2");
 assert.throws(()=>planOperations([{...base,game:8,table:12,kind:'add',buyins:2}],manual,[],master,{rebuySnapshot:true}));
 console.log('2 rebuy wrong-game regression checks passed');
+
+const spacedMaster=[['NAME'],['KIM YOUNG IL','3430','KOREA'],['KIM YOUN GIL','','KOREA']];
+assert.equal(planOperations([{...base,kind:'add',player:'KIM YOUNG IL',buyins:1}],daily,[],spacedMaster).changes[0].values[0][4],'KIM YOUNG IL');
+console.log('1 exact canonical master-name regression check passed');
