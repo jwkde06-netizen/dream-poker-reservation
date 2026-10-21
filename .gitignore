@@ -2,3 +2,7 @@ node_modules
 .next
 .env*
 !.env.example
+.test-build
+*.tsbuildinfo
+supabase/.temp
+.vercel

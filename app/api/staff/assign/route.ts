@@ -19,17 +19,8 @@ export async function POST(request:Request){
  const body=await request.json().catch(()=>null);
  const reservationId=String(body?.reservation_id||""),gameId=String(body?.game_id||"");
  if(!/^[0-9a-f-]{36}$/i.test(reservationId)||!/^[0-9a-f-]{36}$/i.test(gameId))return NextResponse.json({error:"Invalid reservation or game"},{status:400});
- const {data:booking,error:bookingError}=await admin.from("reservations").select("id,game_id,status").eq("id",reservationId).maybeSingle();
- if(bookingError||!booking)return NextResponse.json({error:"Reservation not found"},{status:404});
- if(["rejected","cancelled","checked_in","no_show"].includes(booking.status))return NextResponse.json({error:"This reservation cannot be reassigned"},{status:409});
- const {data:game,error:gameError}=await admin.from("reservation_games").select("id,is_open,capacity").eq("id",gameId).maybeSingle();
- if(gameError||!game?.is_open)return NextResponse.json({error:"Target game is not open"},{status:409});
- if(["confirmed"].includes(booking.status)){
-  const {count,error}=await admin.from("reservations").select("id",{count:"exact",head:true}).eq("game_id",gameId).in("status",["confirmed","checked_in"]).neq("id",reservationId);
-  if(error)return NextResponse.json({error:error.message},{status:500});
-  if((count||0)>=Number(game.capacity))return NextResponse.json({error:"Target game is full"},{status:409});
- }
- const {error}=await admin.from("reservations").update({game_id:gameId}).eq("id",reservationId).eq("game_id",booking.game_id);
- if(error)return NextResponse.json({error:error.message},{status:500});
- return NextResponse.json({ok:true});
+ const {data,error}=await admin.rpc("dream_reservation_apply",{p_action:{kind:"assign",reservation_id:reservationId,game_id:gameId},p_actor:"staff:"+user.id,p_source:"assign:"+user.id+":"+crypto.randomUUID()});
+ if(error)return NextResponse.json({error:error.message},{status:409});
+ if(!data?.ok)return NextResponse.json({error:"Assignment outcome could not be verified"},{status:503});
+ return NextResponse.json(data);
 }
