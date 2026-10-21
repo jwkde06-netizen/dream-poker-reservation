@@ -6,7 +6,7 @@ import { exchangeTelegram, exchangeConfig } from '../../../../lib/exchange-teleg
 /** Owner-approved one-time snapshot, never booked as a ledger transaction. */
 async function handleSnapshotCommand(update: any, row: any): Promise<boolean> {
   const m = update?.message;
-  if (!m || !/^\\/fxsnapshot(?:@dream_poker_exchange_bot)?$/i.test(String(m.text || '').trim())) return false;
+  if (!m || !['/fxsnapshot','/fxsnapshot@dream_poker_exchange_bot'].includes(String(m.text || '').trim().toLowerCase())) return false;
   if (!row.enabled || !row.chat_id || String(m.chat?.id) !== row.chat_id || !Number.isSafeInteger(m.from?.id) || m.from?.is_bot || m.sender_chat || m.forward_origin || m.forward_date) return true;
   const config = exchangeConfig();
   const member = await exchangeTelegram('getChatMember', { chat_id: config.chatId, user_id: m.from.id }, config);
@@ -15,7 +15,7 @@ async function handleSnapshotCommand(update: any, row: any): Promise<boolean> {
     '', '💵 현재 시제 (잠정)', '🇻🇳 VND 44,450,000', '🇺🇸 USD 100', '🇰🇷 KRW 1,380,000',
     '', '총 시제 평가액 73,880,000동', '', '💰 이번 주 수익 (잠정)',
     '수수료 등 1,050,000동', '환전 차익 930,000동', '누적 1,980,000동'];
-  await exchangeTelegram('sendMessage', { chat_id: config.chatId, text: lines.join('\\n'), reply_parameters: { message_id: m.message_id, allow_sending_without_reply: true } }, config);
+  await exchangeTelegram('sendMessage', { chat_id: config.chatId, text: lines.join(String.fromCharCode(10)), reply_parameters: { message_id: m.message_id, allow_sending_without_reply: true } }, config);
   return true;
 }
 export const runtime = 'nodejs';
