@@ -28,16 +28,23 @@ export function sheetContext(daily:any[][],master:any[][],businessDate:string){
  return {businessDate,players,games:Object.values(games)};
 }
 export function correctedOperations(ops:any[],text:string,master:any[][],rules:any[]=[]){
- const gameNumbers=Array.from(new Set(Array.from(text.matchAll(/(\d{1,2})\s*번\s*게임/g)).map(m=>Number(m[1]))));
+ const gameNumbers=Array.from(new Set(Array.from(text.matchAll(/((?:\d{1,2}\s*[,·/]\s*)*\d{1,2})\s*(?:번째|번)\s*게임/g)).flatMap(m=>m[1].split(/[,·/]/).map(Number))));
  const game=gameNumbers.length===1?gameNumbers[0]:null;
+ const attendance=(ops||[]).filter(o=>['add','total','cancel'].includes(o.kind));
+ const tables=new Set(attendance.map(o=>Number(o.table)));
+ const mentionedTables=Array.from(new Set(Array.from(text.matchAll(/(\d{1,2})\s*번\s*테이블/g)).map(m=>Number(m[1]))));
+ const label=text.match(/(?:시트에|테이블(?:은|는)?)\s*(\d{1,2})\s*-\s*\d{1,2}/);
+ const scopedTable=mentionedTables.length===1?mentionedTables[0]:label?Number(label[1]):null;
  const players=canonicalPlayers(master);
  const floors=Array.from(text.matchAll(/([2-5])\s*층/g)).map(m=>m[1]+'F');
  const amounts=Array.from(text.matchAll(/(\d[\d,]*(?:\.\d+)?)\s*(만|천)?\s*(?:(\d+)\s*천)?\s*동/g)).map(m=>Number(m[1].replace(/,/g,''))*(m[2]==='만'?10000:m[2]==='천'?1000:1)+Number(m[3]||0)*1000);
  const onlyFnb=(ops||[]).filter(o=>o.kind==='fnb').length===1;
  return (ops||[]).map(op=>{
   const matches=players.filter(r=>norm(r[0])===norm(op.player));
-  const fixed={...op,...(matches.length===1?{player:matches[0][0]}:{}),...(game&&['add','total','cancel'].includes(op.kind)?{game:game}:{})};
-  if(!game&&Number.isInteger(op.printedGame)&&['add','total','cancel'].includes(op.kind)){
+  // A follow-up about one receipt must never renumber every receipt in a photo.
+  const applies=game&&['add','total','cancel'].includes(op.kind)&&(scopedTable?Number(op.table)===scopedTable:tables.size===1);
+  const fixed={...op,...(matches.length===1?{player:matches[0][0]}:{}),...(applies?{game:game}:{})};
+  if(!applies&&Number.isInteger(op.printedGame)&&['add','total','cancel'].includes(op.kind)){
    for(const rule of rules){if(!String(rule.content).startsWith('게임번호 대응: '))continue;try{const a=JSON.parse(rule.content.slice('게임번호 대응: '.length));if(a.date===op.date&&a.table===op.table&&a.printedGame===op.printedGame&&Number.isInteger(a.game)&&a.game>0&&a.game<=100)fixed.game=a.game;}catch{}}
   }
   if(op.kind==='fnb'&&onlyFnb){

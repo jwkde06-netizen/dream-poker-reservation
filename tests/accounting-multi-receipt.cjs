@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict');
+const {correctedOperations}=require('../.test-build/accounting-context');
+const ops=[{kind:'add',date:'2026-10-21',game:13,table:4,printedGame:14},{kind:'add',date:'2026-10-21',game:14,table:5,printedGame:15}];
+assert.deepEqual(correctedOperations(ops,'13,14 번게임 시트 반영해',[]).map(o=>o.game),[13,14]);
+assert.deepEqual(correctedOperations(ops,'14번째 게임',[]).map(o=>o.game),[13,14]);
+assert.deepEqual(correctedOperations(ops,'14번 게임은 시트에 5-4로 기록하면 돼, 5번테이블이야',[]).map(o=>o.game),[13,14]);
+assert.equal(correctedOperations([ops[0]],'12번째 게임',[])[0].game,12);
+const rules=[{content:'게임번호 대응: {"date":"2026-10-21","table":4,"printedGame":14,"game":13}'}];
+assert.deepEqual(correctedOperations(ops.map(o=>({...o,game:14})),'14번 게임은 시트에 5-4로 기록하면 돼, 5번테이블이야',[],rules).map(o=>o.game),[13,14]);
+console.log('5 multi-receipt game correction cases passed');
