@@ -105,7 +105,7 @@ revoke all on function public.desk_telegram_decide(uuid,text,text) from public,a
 grant execute on function public.desk_telegram_decide(uuid,text,text) to service_role;
 -- Guest-facing availability includes continuing players and approved holds.
 -- Staff-room intake only. No spreadsheet writer consumes this queue yet.
-create table public.staff_message_inbox (
+create table if not exists public.staff_message_inbox (
  update_id bigint primary key,
  chat_id text not null,
  message_id bigint not null,
@@ -124,9 +124,9 @@ create table public.staff_message_inbox (
  failure_reason text
 );
 alter table public.staff_message_inbox enable row level security;
-revoke all on public.staff_message_inbox from public,anon,authenticated;
+revoke all on public.staff_message_inbox from public,anon,authenticated,service_role;
 grant select,insert,update on public.staff_message_inbox to service_role;
-create index staff_message_inbox_pending on public.staff_message_inbox(status,created_at);
+create index if not exists staff_message_inbox_pending on public.staff_message_inbox(status,created_at);
 
 create or replace function public.reservation_public_stats()
 returns table(game_id uuid,confirmed_count bigint,pending_count bigint,waiting_count bigint)

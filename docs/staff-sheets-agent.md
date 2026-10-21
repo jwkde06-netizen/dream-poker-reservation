@@ -39,5 +39,18 @@ No message is reported as applied merely because it was received.
 - End-to-end verification with an isolated test tab, two distinct staff senders,
   image input, duplicate updates, unrelated chat, edited message and write timeout.
 
-Current production still has only public Supabase configuration and Telegram bot
-token. Intake, Google writes and automatic responses have NOT been activated.
+## 2026-10-21 connection checkpoint
+Production environment list now includes GOOGLE_SERVICE_ACCOUNT_JSON (secret).
+Supabase staff_message_inbox was applied independently of reservation changes.
+The server role can select/insert/update; public and signed-in browser roles
+have no access. The connection endpoint checks headers/formulas using read-only
+Google authorization and can register the fixed production webhook after admin
+authentication and readiness checks. It refuses to replace another webhook.
+The Telegram setup component exposes check/connect buttons.
+
+Still NOT activated: intake, Google writes and automatic responses. Production
+is missing SUPABASE_SERVICE_ROLE_KEY, TELEGRAM_WEBHOOK_SECRET,
+STAFF_TELEGRAM_CHAT_ID and STAFF_INBOX_ENABLED. The sheet writer and image
+interpretation worker remain to be implemented. Google credentials have been
+saved by the user, but their live server authentication has not been tested.
+Local build and mocked Google signing/schema checks passed.
