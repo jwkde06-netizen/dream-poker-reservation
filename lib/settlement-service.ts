@@ -27,5 +27,11 @@ export async function loadSettlement(day:string,salary:number|null){
  const r=buildSettlement(day,data.valueRanges?.[0]?.values||[],data.valueRanges?.[1]?.values||[],data.valueRanges?.[2]?.values||[],salary,pending);
  const saved=await client.from('dream_weekly_reports').select('id,status,source_hash,created_at,created_by,snapshot').eq('room_id',profile.id).eq('week_start',week.start).order('created_at',{ascending:false}).limit(20);
  if(saved.error)throw Error('정산 저장소를 불러오지 못했어요.');
- return {...r,history:(saved.data||[]).map(x=>({id:x.id,status:x.status,createdAt:x.created_at,createdBy:x.created_by,changed:x.source_hash!==r.sourceHash,salary:x.snapshot?.salary??null})),sheetUrl:`https://docs.google.com/spreadsheets/d/${profile.workbook}/edit`,sheetIds:profile.sheetIds};
+ return {...r,history:(saved.data||[]).map(x=>{
+  // Compare against the saved report's manager-entered adjustment, not the
+  // current form's default. A blank form must not falsely invalidate a report.
+  const savedSalary=x.snapshot?.salarySource==='manager'?x.snapshot.salary:null;
+  const current=buildSettlement(day,data.valueRanges?.[0]?.values||[],data.valueRanges?.[1]?.values||[],data.valueRanges?.[2]?.values||[],savedSalary,pending);
+  return {id:x.id,status:x.status,createdAt:x.created_at,createdBy:x.created_by,changed:x.source_hash!==current.sourceHash,salary:x.snapshot?.salary??null};
+ }),sheetUrl:`https://docs.google.com/spreadsheets/d/${profile.workbook}/edit`,sheetIds:profile.sheetIds};
 }
