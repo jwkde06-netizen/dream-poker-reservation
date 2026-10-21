@@ -7,3 +7,8 @@ export function validBookingNames(en:string,ko:string){
  const names=[en.trim(),ko.trim()].filter(Boolean);
  return names.length>0&&names.every(n=>n.length>=2&&n.length<=80);
 }
+
+export function validEnglishBookingName(value:string){
+ const name=value.trim();
+ return name.length<=80&&/^[A-Za-z .'-]+$/.test(name)&&(name.match(/[A-Za-z]/g)||[]).length>=2;
+}
