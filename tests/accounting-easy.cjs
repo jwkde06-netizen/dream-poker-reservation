@@ -1,0 +1,15 @@
+const assert=require('node:assert/strict');
+const {parseDeskAction,canMarkManual,pendingButtons}=require('../.test-build/accounting-easy');
+for(const kind of ['buyin','fnb','status','rules'])assert.equal(parseDeskAction('desk:'+kind).kind,kind);
+assert.deepEqual(parseDeskAction('desk:manual:140'),{kind:'manual',messageId:140});
+for(const s of ['desk:manual:-1','desk:manual:abc','other:status','desk:delete:1'])assert.equal(parseDeskAction(s),null);
+const j={status:'review',sender_id:'7',plan:{pendingQuestion:'누적 바인은?'}};
+assert.equal(canMarkManual(j,'7',false),true);
+assert.equal(canMarkManual(j,'8',false),false);
+assert.equal(canMarkManual(j,'8',true),true);
+for(const status of ['writing','uncertain','processing','received','ignored'])assert.equal(canMarkManual({...j,status},'7',true),false);
+assert.equal(canMarkManual({...j,status:'failed',plan:{}},'7',false),true);
+assert.equal(canMarkManual({...j,status:'applied',plan:{}},'7',true),false);
+assert.equal(canMarkManual({...j,plan:{...j.plan,manual_handoff:{by:'7'}}},'7',true),false);
+assert.equal(pendingButtons(140).inline_keyboard[0][0].callback_data,'desk:manual:140');
+console.log('Staff buttons, scoped manual handoff and uncertain-write protection passed');

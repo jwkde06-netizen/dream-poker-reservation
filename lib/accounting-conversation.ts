@@ -12,7 +12,7 @@ export function deskCommand(text:string){
  if(!m||m[2]&&m[2].toLowerCase()!=='dream_poker_reservation_bot')return null;
  return m[1].toLowerCase();
 }
-export const deskHelp='바이인 명단이나 영수증 사진을 올려주세요. 수정할 내용은 해당 사진에 답장해주시면 돼요.\n\n/status 처리 상태\n/rules 업무 규칙\n/sheet 정산 시트\n/menu 메뉴 가격표\n/fnb F&B 기록 방법';
+export {easyHelp as deskHelp} from './accounting-easy';
 export function politeAcknowledgement(text:string,replyToBot:boolean){
  if(!replyToBot)return null;
  if(/^(?:고마워|고맙습니다|감사합니다|수고했어|수고했어요)[.!~\s]*$/.test(text.trim()))return '네, 필요하시면 말씀해주세요.';
