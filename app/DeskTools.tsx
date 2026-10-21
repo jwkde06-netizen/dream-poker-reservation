@@ -1,7 +1,8 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
+import {intakeTitle,startPending} from "../lib/reservation-games";
 import {db} from "../lib/db";
-type Game={id:string;title:string;starts_at:string;is_open:boolean};
+type Game={is_default_queue?:boolean;id:string;title:string;starts_at:string;is_open:boolean};
 type Booking={id:string;game_id:string;player_name:string;arrival_at:string;status:string};
 type Message={id:number;reservation_id:string;author_name:string;body:string;translation:string;created_at:string};
 const phrases=[
@@ -30,7 +31,7 @@ export default function DeskTools({games,bookings,language,refresh}:{games:Game[
  function choosePhrase(index:number){setPhrase(index);setDraft(language==="vi"?phrases[index].vi:phrases[index].ko);setCustomTranslation(language==="vi"?phrases[index].ko:phrases[index].vi)}
  return <section className="panel deskTools">
  <h2>{labels.title}</h2><div className="deskForm">
- <label>{labels.select}<select value={game} onChange={e=>setGame(e.target.value)}><option value="">—</option>{games.filter(g=>g.is_open).map(g=><option key={g.id} value={g.id}>{g.title} · {new Date(g.starts_at).toLocaleString("ko-KR",{timeZone:"Asia/Ho_Chi_Minh"})}</option>)}</select></label>
+ <label>{labels.select}<select value={game} onChange={e=>setGame(e.target.value)}><option value="">—</option>{games.filter(g=>g.is_open).map(g=><option key={g.id} value={g.id}>{g.is_default_queue?`${intakeTitle(language)} · ${startPending(language)}`:`${g.title} · ${new Date(g.starts_at).toLocaleString("ko-KR",{timeZone:"Asia/Ho_Chi_Minh"})}`}</option>)}</select></label>
  <label>{labels.who}<input value={name} maxLength={80} onChange={e=>setName(e.target.value)} placeholder="KIM JIWON"/></label>
  <label>{labels.when}<input type="datetime-local" value={arrival} onChange={e=>setArrival(e.target.value)}/></label>
  <button className="primary" disabled={working||!game||name.trim().length<2} onClick={()=>void book()}>{labels.submit} →</button></div>
