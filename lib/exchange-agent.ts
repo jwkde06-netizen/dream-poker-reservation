@@ -177,23 +177,30 @@ export function cancellationAmount(text: string): number | null {
   return v;
 }
 async function cancellationIntent(config:ExchangeConfig, text:string, replyMessageId:number|undefined):Promise<ExchangeIntent|null> {
-  const plain = text.trim().toLowerCase();
-  const bare=plain==='취소'||plain==='/cancel'||plain==='/cancel@dream_poker_exchange_bot';
-  const amount=bare?null:cancellationAmount(text);
-  if (!bare && amount===null) return null;
+  const plain=text.trim().toLowerCase();
+  const bare=['취소','/cancel','/cancel@dream_poker_exchange_bot'].includes(plain);
+  let amount=bare?null:cancellationAmount(text);
+  if(!bare && amount===null)return null;
   const previous=await previousContext(config,replyMessageId);
-  if (previous.job?.status==='applied' && previous.job.reference && previous.job.plan) {
+  if(previous.job?.status==='applied' && previous.job.reference && previous.job.plan) {
     const p=previous.job.plan;
-    if (p.kind==='opening'||p.kind==='reversal') throw new ExchangeReview('이 거래는 단축 취소할 수 없습니다.');
-    if (amount!==null && (p.kind!=='movement'||p.fee_vnd!==amount)) throw new ExchangeReview('답장한 거래의 수수료 금액이 다릅니다.');
+    if(p.kind==='opening'||p.kind==='reversal')throw new ExchangeReview('해당 거래는 이 방식으로 취소할 수 없습니다.');
+    if(amount!==null && (p.kind!=='movement'||p.fee_vnd!==amount))throw new ExchangeReview('답장한 거래 금액과 취소 금액이 다릅니다.');
     return {kind:'reversal',reference:previous.job.reference,note:'관리자 요청으로 거래 취소'};
   }
-  if (amount===null) throw new ExchangeReview('취소할 완료 메시지에 답장으로 “취소”라고 보내주세요.');
-  const q=await exchangeDb().from('dream_exchange_events').select('reference,fee_vnd,kind').eq('chat_id',config.chatId).eq('kind','movement').eq('fee_vnd',amount).order('sequence',{ascending:false}).limit(10);
-  if(q.error) throw Error('Exchange cancellation candidate lookup failed');
-  if(!q.data?.length) throw new ExchangeReview('해당 금액의 수수료 거래가 없습니다. 원거래 완료 메시지에 답장으로 “취소”라고 보내주세요.');
-  if(q.data.length!==1) throw new ExchangeReview('같은 금액 거래가 여러 건입니다. 취소할 완료 메시지에 답장으로 “취소”라고 보내주세요.');
-  return {kind:'reversal',reference:q.data[0].reference,note:'관리자 요청으로 이체수수료 취소'};
+  // Following the bot's own cancellation review must carry over the amount.
+  if(amount===null && previous.job?.status==='review' && previous.job.raw_text) {
+    try { amount=cancellationAmount(previous.job.raw_text); } catch {}
+  }
+  if(amount===null)throw new ExchangeReview('취소할 거래의 완료 메시지에 답장하거나 “5만동 취소”라고 보내주세요.');
+  const result=await exchangeDb().from('dream_exchange_events').select('id,reference,fee_vnd,kind,reverses_id').eq('chat_id',config.chatId).order('sequence',{ascending:false}).limit(200);
+  if(result.error)throw Error('Exchange cancellation lookup failed');
+  const rows=result.data||[];
+  const reversed=new Set(rows.filter(r=>r.kind==='reversal' && r.reverses_id).map(r=>String(r.reverses_id)));
+  const active=rows.filter(r=>r.kind==='movement' && Number(r.fee_vnd)===amount && !reversed.has(String(r.id)));
+  if(!active.length)throw new ExchangeReview('해당 금액의 미취소 거래가 없습니다. 이미 취소된 내역은 다시 차감하지 않았습니다.');
+  if(active.length>1)throw new ExchangeReview('같은 금액의 미취소 거래가 여러 건입니다. 취소할 완료 메시지에 답장해주세요.');
+  return {kind:'reversal',reference:active[0].reference,note:'관리자 요청으로 이체수수료 취소'};
 }
 function simpleIntent(text: string): ExchangeIntent | null {
   const t = text.trim().replace(/@\w+(?=\s|$)/, '');
