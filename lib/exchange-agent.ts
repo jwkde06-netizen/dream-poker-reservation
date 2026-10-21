@@ -162,7 +162,8 @@ async function previousContext(config: ExchangeConfig, messageId: number | undef
 /** Deliberate short-hand convention authorized by the Exchange owner: +5만 = received transfer fee in VND. */
 export function exchangeFeeShortcut(text: string): ExchangeIntent | null {
   const s = text.trim().replace(/@dream_poker_exchange_bot$/i, '').trim();
-  const match = s.match(/^(?:\\/fee\\s*|\\+\\s*)([0-9][0-9,]*(?:\\.[0-9]+)?)\\s*(만|천|백만|m|k|동|vnd)?$/i);
+  const amountPart = s.startsWith('+') ? s.slice(1).trim() : /^\/fee(?:\s|$)/i.test(s) ? s.slice(4).trim() : '';
+  const match = amountPart.match(/^([0-9][0-9,]*(?:\.[0-9]+)?)\s*(만|천|백만|m|k|동|vnd)?$/i);
   if (!match) return null;
   const unit = (match[2] || '').toLowerCase();
   // Bare +50000 is VND by the owner's explicit shorthand convention.
