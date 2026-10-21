@@ -53,7 +53,7 @@ export async function withSavedExchange<T>(fn: (row: ExchangeSettings) => Promis
   return exchangeRuntime.run(runtimeFromSettings(row), () => fn(row));
 }
 /** Telegram error payloads and credential-bearing URLs are never logged or returned. */
-export async function setupTelegram(token: string, method: 'getMe' | 'getWebhookInfo' | 'setWebhook' | 'getChatMember' | 'sendMessage', payload: Record<string, unknown> = {}): Promise<any> {
+export async function setupTelegram(token: string, method: 'getMe' | 'getWebhookInfo' | 'setWebhook' | 'getChatMember' | 'sendMessage' | 'setMyCommands', payload: Record<string, unknown> = {}): Promise<any> {
   const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
     cache: 'no-store', signal: AbortSignal.timeout(15000),
