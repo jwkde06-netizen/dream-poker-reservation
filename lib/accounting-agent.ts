@@ -182,7 +182,7 @@ export async function handle(update:any){
   }
   sheetState=afterVerifiedWrite(sheetState,daily,plan.changes);
   processingPlan={...processingPlan,sheetState,metrics:metrics()};
-  const completion=result.question?`확인된 항목은 반영했어요. ${String(result.question)}`:'완료 ✅';
+  const completion=result.question?`확인된 항목은 반영했어요. ${String(result.question)}`:result.operations?.length&&result.operations.every((op:any)=>op.kind==='fnb')?'F&B 기록 완료 ✅':'완료 ✅';
   await save(job.update_id,{status:'applied',reply_text:completion,plan:processingPlan});writeStarted=false;
   const id=await reply(m.message_id,completion);await save(job.update_id,{reply_id:id});
  }catch(e){
