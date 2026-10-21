@@ -21,7 +21,7 @@ export async function POST(request:Request){
   const created=await client.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{username,display_name:displayName}});
   if(created.error||!created.data.user)return NextResponse.json({error:created.error?.message||"Failed to create account"},{status:409});
   const userId=created.data.user.id;
-  const stored=await client.from("user_profiles").upsert({user_id:userId,role,display_name:displayName,active:true},{onConflict:"user_id"});
+  const stored=await client.from("user_profiles").upsert({user_id:userId,username,email,role,display_name:displayName,active:true},{onConflict:"user_id"});
   if(stored.error){await client.auth.admin.deleteUser(userId);return NextResponse.json({error:"Profile creation failed: "+stored.error.message},{status:500})}
   return NextResponse.json({ok:true,username,role});
 }

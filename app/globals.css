@@ -773,3 +773,5 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
  .guestExpressShell .guestExpressTimes button{min-height:40px}
  .guestExpressShell .guestExpressSubmit{min-height:46px}
 }
+
+.reservationAgent{padding:12px 16px;border:1px solid #354153;border-radius:12px;margin:12px 0;font-size:13px;display:flex;gap:10px 20px;flex-wrap:wrap;align-items:center}.reservationAgent>span{color:#97b9aa}.agentCounts{display:flex;gap:18px;flex-wrap:wrap}.agentCounts b{color:#eac47b}.reservationAgent details{width:100%}.reservationAgent summary{cursor:pointer}.agentJob{display:flex;gap:18px;align-items:center;padding:8px 0;border-bottom:1px solid #354153}.agentJob button{margin-left:auto}.reservationAgent p{width:100%;color:#eea58e}

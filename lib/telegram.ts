@@ -11,10 +11,10 @@ export async function requireAdmin(request:Request){
  const {data:profile}=await client.from("user_profiles").select("role,active").eq("user_id",user.id).maybeSingle();
  return profile?.active&&profile.role==="admin"?user:null;
 }
-export async function tg(method:string,payload?:Record<string,unknown>){
+export async function tg(method:string,payload?:Record<string,unknown>,timeoutMs?:number){
  if(!telegramToken)throw Error("TELEGRAM_BOT_TOKEN is not configured");
  const res=await fetch(`https://api.telegram.org/bot${telegramToken}/${method}`,{
- method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload||{}),cache:"no-store"});
+ method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload||{}),cache:"no-store",signal:timeoutMs?AbortSignal.timeout(timeoutMs):undefined});
  const json=await res.json();
  if(!res.ok||!json.ok)throw Error(json.description||"Telegram request failed");
  return json.result;
