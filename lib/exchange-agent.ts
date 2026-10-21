@@ -20,7 +20,7 @@ interface Job {
   reply_id: number | null; reply_state: string; context_update_id: number | null;
 }
 
-export const EXCHANGE_HELP = `Dream Poker Exchange\n\n실제로 받은 돈과 지급한 돈을 이 방에 적으면 시제와 수익 원장에 기록합니다. 은행 이체를 실행하지는 않습니다.\n\n거래 예시\n• 베트남 계좌로 550만동 받고 현금 550만동 지급. 수수료 5만동은 계좌로 별도 받음\n• 원화 계좌 30만원 입금, 18레이트로 동 현금 지급 완료\n• 100USD 현금 받고 동 현금 250만동 지급 완료\n• 베트남 계좌 수수료 수입 5만동, 별도 수수료 정산\n\n조회: 시제 / 오늘 정산 / 이번 주 정산 / 지난주 정산\n기본 환율: 1 KRW = 18 VND, 1 USD = 25,000 VND. 실제 지급액이 있으면 함께 적어주세요.\n환전 원금은 수익에 포함하지 않습니다. 외화 차익은 확인된 취득원가로 처분 시 계산합니다.\n\n최초 설정(관리자): “기초 시제 동 현금 …, 베트남 계좌 …, 원화 계좌 …, 달러 현금 …”을 적고 미리보기의 확정 명령을 보내주세요. 외화의 동 기준 총 취득원가도 알면 함께 적어주세요. 없는 통화는 0입니다.\n\n단축입력: +5만 = 이체수수료 50,000동 수령 / /fee 50000 = 동일. /status = 시제 조회. 금액만 있는 음수는 자동 차감하지 않습니다.\n취소(관리자): “FX-봇번호-업데이트번호 취소, 사유 …”. 기존 메시지를 수정해도 원장은 덮어쓰지 않습니다.`;
+export const EXCHANGE_HELP = `Dream Poker Exchange\n\n실제로 받은 돈과 지급한 돈을 이 방에 적으면 시제와 수익 원장에 기록합니다. 은행 이체를 실행하지는 않습니다.\n\n거래 예시\n• 베트남 계좌로 550만동 받고 현금 550만동 지급. 수수료 5만동은 계좌로 별도 받음\n• 원화 계좌 30만원 입금, 18레이트로 동 현금 지급 완료\n• 100USD 현금 받고 동 현금 250만동 지급 완료\n• 베트남 계좌 수수료 수입 5만동, 별도 수수료 정산\n\n조회: 시제 / 오늘 정산 / 이번 주 정산 / 지난주 정산\n기본 환율: 1 KRW = 18 VND, 1 USD = 25,000 VND. 실제 지급액이 있으면 함께 적어주세요.\n환전 원금은 수익에 포함하지 않습니다. 외화 차익은 확인된 취득원가로 처분 시 계산합니다.\n\n최초 설정(관리자): “기초 시제 동 현금 …, 베트남 계좌 …, 원화 계좌 …, 달러 현금 …”을 적고 미리보기의 확정 명령을 보내주세요. 외화의 동 기준 총 취득원가도 알면 함께 적어주세요. 없는 통화는 0입니다.\n\n단축입력: +5만 = 이체수수료 50,000동 수령 / /fee 50000 = 동일. 5만동 취소 또는 수수료 완료 메시지에 답장으로 취소(관리자 전용). /status = 시제 조회. 금액만 있는 음수는 자동 차감하지 않습니다.\n취소(관리자): “FX-봇번호-업데이트번호 취소, 사유 …”. 기존 메시지를 수정해도 원장은 덮어쓰지 않습니다.`;
 
 export async function getExchangeState(chatId = exchangeChatId()): Promise<ExchangeState> {
   const { data, error } = await exchangeDb().rpc('dream_exchange_state', { p_chat_id: chatId });
@@ -163,7 +163,7 @@ async function previousContext(config: ExchangeConfig, messageId: number | undef
 export function exchangeFeeShortcut(text: string): ExchangeIntent | null {
   const s = text.trim().replace(/@dream_poker_exchange_bot$/i, '').trim();
   const amountPart = s.startsWith('+') ? s.slice(1).trim() : /^\/fee(?:\s|$)/i.test(s) ? s.slice(4).trim() : '';
-  const match = amountPart.match(/^([0-9][0-9,]*(?:\.[0-9]+)?)\s*(만|천|백만|m|k|동|vnd)?$/i);
+  const match = amountPart.match(/^([0-9][0-9,]*(?:\.[0-9]+)?)\s*(백만동|만동|천동|만|천|백만|m|k|동|vnd)?$/i);
   if (!match) return null;
   const unit = (match[2] || '').toLowerCase();
   // Bare +50000 is VND by the owner's explicit shorthand convention.
@@ -171,6 +171,39 @@ export function exchangeFeeShortcut(text: string): ExchangeIntent | null {
   const value = Number(match[1].replace(/,/g,'')) * scale[unit];
   if (!Number.isSafeInteger(value) || value <= 0 || value > 1000000000) throw new ExchangeReview('수수료 금액을 다시 확인해주세요.');
   return {kind:'movement',account:'VND_CASH',amount:String(value),direction:'in',category:'fee',basis_vnd:null,note:'이체수수료',external_reference:null};
+}
+/** Undo a fee transaction by exact receipt or an unambiguous amount. */
+export function cancellationAmount(text: string): number | null {
+  let t=text.trim();
+  const slash=t.toLowerCase().startsWith('/cancel');
+  if (!slash && !t.includes('취소')) return null;
+  if (slash) t=t.slice(t.indexOf(' ')+1).trim();
+  for(const tail of ['취소해줘','취소해','취소']) if(t.endsWith(tail)) {t=t.slice(0,-tail.length).trim(); break;}
+  const m=t.match(/^([0-9][0-9,]*(?:[.][0-9]+)?)[ ]*(백만동|만동|천동|백만|만|천|m|k|동|vnd)?$/i);
+  if (!m) throw new ExchangeReview('취소할 금액을 알려주세요. 또는 완료 메시지에 답장으로 “취소”라고 보내주세요.');
+  const f:Record<string,number>={'':1,만:10000,만동:10000,천:1000,천동:1000,백만:1000000,백만동:1000000,m:1000000,k:1000,동:1,vnd:1};
+  const v=Number(m[1].replace(/,/g,''))*f[(m[2]||'').toLowerCase()];
+  if (!Number.isSafeInteger(v)||v<=0) throw new ExchangeReview('취소 금액을 확인해주세요.');
+  return v;
+}
+async function cancellationIntent(config:ExchangeConfig, text:string, replyMessageId:number|undefined):Promise<ExchangeIntent|null> {
+  const plain = text.trim().toLowerCase();
+  const bare=plain==='취소'||plain==='/cancel'||plain==='/cancel@dream_poker_exchange_bot';
+  const amount=bare?null:cancellationAmount(text);
+  if (!bare && amount===null) return null;
+  const previous=await previousContext(config,replyMessageId);
+  if (previous.job?.status==='applied' && previous.job.reference && previous.job.plan) {
+    const p=previous.job.plan;
+    if (p.kind==='opening'||p.kind==='reversal') throw new ExchangeReview('이 거래는 단축 취소할 수 없습니다.');
+    if (amount!==null && (p.kind!=='movement'||p.fee_vnd!==amount)) throw new ExchangeReview('답장한 거래의 수수료 금액이 다릅니다.');
+    return {kind:'reversal',reference:previous.job.reference,note:'관리자 요청으로 거래 취소'};
+  }
+  if (amount===null) throw new ExchangeReview('취소할 완료 메시지에 답장으로 “취소”라고 보내주세요.');
+  const q=await exchangeDb().from('dream_exchange_events').select('reference,fee_vnd,kind').eq('chat_id',config.chatId).eq('kind','movement').eq('fee_vnd',amount).order('sequence',{ascending:false}).limit(10);
+  if(q.error) throw Error('Exchange cancellation candidate lookup failed');
+  if(!q.data?.length) throw new ExchangeReview('해당 금액의 수수료 거래가 없습니다. 원거래 완료 메시지에 답장으로 “취소”라고 보내주세요.');
+  if(q.data.length!==1) throw new ExchangeReview('같은 금액 거래가 여러 건입니다. 취소할 완료 메시지에 답장으로 “취소”라고 보내주세요.');
+  return {kind:'reversal',reference:q.data[0].reference,note:'관리자 요청으로 이체수수료 취소'};
 }
 function simpleIntent(text: string): ExchangeIntent | null {
   const t = text.trim().replace(/@\w+(?=\s|$)/, '');
@@ -227,7 +260,8 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
       intent = validateExchangeIntent(pending.data.intent); resolves = id;
       job = await patchJob(config, job.update_id, { intent, context_update_id: id }, owner);
     } else {
-      const fast = simpleIntent(text) || exchangeFeeShortcut(text);
+      const cancel = await cancellationIntent(config, text, message.reply_to_message?.message_id);
+      const fast = cancel || simpleIntent(text) || exchangeFeeShortcut(text);
       if (fast) intent = fast;
       else {
         const previous = await previousContext(config, message.reply_to_message?.message_id);
