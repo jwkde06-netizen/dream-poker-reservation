@@ -25,6 +25,14 @@ export async function POST(request:Request){
    const r=await fetch('https://api.telegram.org/file/bot'+process.env.TELEGRAM_BOT_TOKEN+'/'+f.file_path);if(!r.ok)throw Error('Photo download failed');
    return NextResponse.json({image:Buffer.from(await r.arrayBuffer()).toString('base64'),messageId});
   }
+  if(action==='renameBuyinDesk'){
+   const me=await tg('getMe');if(me.username!=='dream_poker_reservation_bot')throw Error('Wrong bot');
+   const name='Dream Buy-in Desk';
+   for(const language_code of ['', 'en', 'ko', 'vi'])await tg('setMyName',{name,language_code});
+   const verified=await tg('getMyName',{});
+   if(verified.name!==name)throw Error('Name verification failed');
+   return NextResponse.json({name:verified.name,username:me.username});
+  }
   if(action==='inspect'){
    const me=await tg('getMe'),chat=await tg('getChat',{chat_id:process.env.STAFF_TELEGRAM_CHAT_ID}),member=await tg('getChatMember',{chat_id:chat.id,user_id:me.id}),hook=await tg('getWebhookInfo');
    const data=await ranges(["'일일 입력'!A1:O2","'F&B 입력'!A1:D1"],true);
