@@ -1,5 +1,5 @@
 import {createClient} from "@supabase/supabase-js";
-import {projectUrl} from "./telegram";
+import {projectUrl,tg} from "./telegram";
 
 // Group membership is the initial staff boundary. Bots and anonymous senders
 // cannot issue work. Edited messages are retained as separate review requests.
@@ -36,4 +36,14 @@ export async function receiveStaffMessage(update:unknown){
  // Duplicate delivery must never reset a completed request or repeat a write.
  const {error}=await db.from("staff_message_inbox").upsert(row,{onConflict:"update_id",ignoreDuplicates:true});
  if(error)throw new Error("Inbox persistence failed");
+ // A connectivity command confirms durable intake, never spreadsheet writes.
+ // Replayed /start commands may repeat this harmless acknowledgement; they
+ // must never enqueue a financial operation or claim accounting is active.
+ if(!row.is_edit&&/^\/start(?:@dream_poker_reservation_bot)?(?:\s|$)/i.test(row.text.trim())){
+  await tg("sendMessage",{chat_id:row.chat_id,
+   reply_parameters:{message_id:row.message_id,allow_sending_without_reply:true},
+   text:"Dream Desk 연결 확인 ✅\n직원방 메시지 수신·저장이 연결되었습니다.\n현재는 접수 단계이며, 사진 해석과 구글 시트 자동 입력은 아직 준비 중입니다.\n\nĐã kết nối nhận và lưu tin nhắn. Chưa bật đọc ảnh và tự động ghi Google Sheets."});
+  const {error:markError}=await db.from("staff_message_inbox").update({status:"ignored"}).eq("update_id",row.update_id).eq("status","received");
+  if(markError)throw new Error("Inbox status update failed");
+ }
 }
