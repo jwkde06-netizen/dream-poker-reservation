@@ -28,3 +28,11 @@ assert.equal(followupContext([previous],{from:{id:123},text:'별다른 멘션없
 const report=jobReport([{...previous,reply_text:'코드?',reply_id:101},{message_id:103,status:'applied',plan:{contextMessageId:100,metrics:{durationMs:1000,totalTokens:200}},reply_text:'완료 ✅',reply_id:104},{message_id:105,status:'review',text:'photo',plan:{pendingQuestion:'게임 번호?'}},{message_id:106,status:'applied',reply_text:'완료 ✅',plan:{metrics:{durationMs:2000,totalTokens:300}}}]);
 assert.deepEqual(report.pending.map(x=>x.messageId),[105]);assert.deepEqual(report.missingReplies,[106]);assert.equal(report.p95Ms,2000);assert.equal(report.recordedTokens,500);
 console.log('Registration defaults, edited-name safety, pending-task continuation and metrics passed');
+
+const {compactExtractionContext}=require('../.test-build/accounting-workflow');
+const ctx={players:[{name:'SON YOULEHO',cardNumber:null,agency:'KOREA'},{name:'CHANG YOON HO',cardNumber:'12',agency:'KOREA2'}],games:[{gameNumber:11}],previous:{...previous,plan:{...previous.plan,sheetState:{privateHugeHistory:'omit'},changes:[{values:['omit']}]}}};
+const compact=compactExtractionContext(ctx);
+assert.deepEqual(compact.players,[['SON YOULEHO',null,'KOREA'],['CHANG YOON HO','12','KOREA2']]);
+assert.deepEqual(compact.games,ctx.games);assert.deepEqual(compact.previous.plan.operations,previous.plan.operations);
+assert.equal(compact.previous.plan.sheetState,undefined);assert.equal(compact.previous.plan.changes,undefined);
+console.log('Full player identity preservation and context compaction passed');

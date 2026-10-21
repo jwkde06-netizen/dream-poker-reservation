@@ -73,7 +73,7 @@ export async function POST(request:Request){
     chipVerification={...evidence,questions:verified.questions};operations=verified.operations;result.question=verified.questions[0]||result.question;
    }
    const plan=operations.length?planOperations(operations,daily,fnb,master,{tableRoundLabels:true,photoSnapshot:true,rebuySnapshot:rebuyCaption(caption)}):null;
-   return NextResponse.json({model:result._model,chipVerification,question:result.question||null,operations,plannedChanges:plan?.changes.length||0,business_rows_changed:false,telegram_messages_sent:false});
+   return NextResponse.json({model:result._model,usage:result._usage,chipVerification,question:result.question||null,operations,plannedChanges:plan?.changes.length||0,business_rows_changed:false,telegram_messages_sent:false});
   }
   if(action==='auditCase'){
    const fixture=auditCases[String(caseName)];if(!fixture)throw Error('Unknown audit case');
@@ -81,7 +81,7 @@ export async function POST(request:Request){
    const result=await extract(fixture.text,undefined,{...sheetContext(auditDaily,auditMaster,'2026-10-21'),businessRules:fixture.rules||[],previous:fixture.previous||null,pendingRequest:fixture.previous?{...fixture.previous,continuationText:evidence}:null});
    const operations=correctedOperations(result.operations,fixture.text,auditMaster);
    const plan=operations.length?planOperations(operations,auditDaily,[],auditMaster,{tableRoundLabels:true,rebuySnapshot:rebuyCaption(evidence),registrationApprovals:registrationApprovals(operations,evidence,auditMaster,fixture.previous?.plan?.pendingQuestion||'')}):null;
-   return NextResponse.json({caseName,model:result._model,expected:fixture.expected,question:result.question||null,operations,changes:plan?.changes||[],business_rows_changed:false,telegram_messages_sent:false});
+   return NextResponse.json({caseName,model:result._model,usage:result._usage,expected:fixture.expected,question:result.question||null,operations,changes:plan?.changes||[],business_rows_changed:false,telegram_messages_sent:false});
   }
   if(action==='notifyApplied'){
    if(!Number.isSafeInteger(messageId))throw Error('Invalid message');
@@ -109,7 +109,7 @@ export async function POST(request:Request){
    result.question=focusedQuestion(result.question,q.data.text,operations);
    operations=certainOperations(operations,result.question);
    const plan=operations.length?planOperations(operations,daily,fnb,master,{tableRoundLabels:true,photoSnapshot:true,rebuySnapshot:rebuyCaption(q.data.text)}):null;
-   return NextResponse.json({business_rows_changed:false,telegram_messages_sent:false,model:result._model,question:result.question||null,operations,plannedChanges:plan?.changes.length||0});
+   return NextResponse.json({business_rows_changed:false,telegram_messages_sent:false,model:result._model,usage:result._usage,question:result.question||null,operations,plannedChanges:plan?.changes.length||0});
   }
   if(action==='reviewphoto'||action==='retryphoto'){
    if(!Number.isSafeInteger(messageId))throw Error('Invalid message');

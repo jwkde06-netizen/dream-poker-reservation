@@ -1,5 +1,20 @@
 import {norm,tableLabel,serial} from './accounting-plan';
 
+// Keep every master identity, but avoid repeating field names thousands of
+// times and never feed full sheet snapshots / write audit trails back to AI.
+export function compactExtractionContext(context:any){
+ if(!context||typeof context!=='object')return context;
+ const task=(j:any)=>j?{
+  message_id:j.message_id,text:j.text,status:j.status,reply_text:j.reply_text,
+  continuationText:j.continuationText,
+  plan:j.plan?{operations:j.plan.operations,unverifiedOperations:j.plan.unverifiedOperations,pendingQuestion:j.plan.pendingQuestion,continuationText:j.plan.continuationText,photoSourceMessageId:j.plan.photoSourceMessageId}:undefined
+ }:j;
+ return {...context,
+  ...(Array.isArray(context.players)?{playerColumns:['name','cardNumber','agency'],players:context.players.map((p:any)=>Array.isArray(p)?p:[p.name,p.cardNumber,p.agency])}:{}),
+  previous:task(context.previous),pendingRequest:task(context.pendingRequest)
+ };
+}
+
 // A manager's saved default applies only to explicitly named registrations.
 // It never assigns a code by nationality or changes an existing nonempty code.
 export function defaultAgency(rules:any[],master:any[][]){
