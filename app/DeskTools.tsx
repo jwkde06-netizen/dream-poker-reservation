@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
 import {db} from "../lib/db";
+import ReservationDeskControls from "./ReservationDeskControls";
 type Game={id:string;title:string;starts_at:string;is_open:boolean};
 type Booking={id:string;game_id:string;player_name:string;arrival_at:string;status:string};
 type Message={id:number;reservation_id:string;author_name:string;body:string;translation:string;created_at:string};
@@ -29,7 +30,7 @@ export default function DeskTools({games,bookings,language,refresh}:{games:Game[
  async function send(){if(!db||!active||!draft.trim())return;setWorking(true);const {error}=await db.from("reservation_messages").insert({reservation_id:active,body:draft.trim().slice(0,500),translation:customTranslation.trim().slice(0,500),author_name:language==="vi"?"Cashier":"Desk"});setWorking(false);if(error){setMessage(error.message);return}setDraft("");setCustomTranslation("");await load();}
  function choosePhrase(index:number){setPhrase(index);setDraft(language==="vi"?phrases[index].vi:phrases[index].ko);setCustomTranslation(language==="vi"?phrases[index].ko:phrases[index].vi)}
  return <section className="panel deskTools">
- <h2>{labels.title}</h2><div className="deskForm">
+ <h2>{labels.title}</h2><ReservationDeskControls games={games} lang={language} onChanged={refresh}/><div className="deskForm">
  <label>{labels.select}<select value={game} onChange={e=>setGame(e.target.value)}><option value="">—</option>{games.filter(g=>g.is_open).map(g=><option key={g.id} value={g.id}>{g.title} · {new Date(g.starts_at).toLocaleString("ko-KR",{timeZone:"Asia/Ho_Chi_Minh"})}</option>)}</select></label>
  <label>{labels.who}<input value={name} maxLength={80} onChange={e=>setName(e.target.value)} placeholder="KIM JIWON"/></label>
  <label>{labels.when}<input type="datetime-local" value={arrival} onChange={e=>setArrival(e.target.value)}/></label>
