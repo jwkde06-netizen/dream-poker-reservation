@@ -11,14 +11,24 @@ const url='https://dream-poker-reservation.vercel.app/api/accounting/webhook';
 export async function POST(request:Request){
  if(!authorized(request,'ACCOUNTING_OPS_SECRET'))return NextResponse.json({error:'Unauthorized'},{status:401});
  try{
-  const {action,messageId,caseName}=await request.json();
+  const {action,messageId,caseName,imageData,caption}=await request.json();
+  if(action==='dryrunImage'){
+   if(typeof imageData!=='string'||imageData.length>4000000||!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(imageData)||typeof caption!=='string'||caption.length>1000)throw Error('Invalid read-only image fixture');
+   const [daily,fnb,master]=await ranges(["'일일 입력'!A1:O5000","'F&B 입력'!A1:D2000","'플레이어 명단'!A1:D2500"],true);
+   const rules=await db().from('dream_accounting_rules').select('id,kind,content').eq('active',true).order('id');if(rules.error)throw Error('Rules unavailable');
+   const businessDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+   const result=await extract(caption+'\n읽기 전용 판독 검증입니다. 이미 시트에 있는 항목도 모두 추출하세요. 실제 입력은 하지 않습니다.',imageData,{...sheetContext(daily,master,businessDate),businessRules:rules.data});
+   const operations=correctedOperations(result.operations,caption,master);
+   const plan=operations.length?planOperations(operations,daily,fnb,master,{tableRoundLabels:true,photoSnapshot:true,rebuySnapshot:rebuyCaption(caption)}):null;
+   return NextResponse.json({model:result._model,question:result.question||null,operations,plannedChanges:plan?.changes.length||0,business_rows_changed:false,telegram_messages_sent:false});
+  }
   if(action==='auditCase'){
    const fixture=auditCases[String(caseName)];if(!fixture)throw Error('Unknown audit case');
    const evidence=continuationText(fixture.text,fixture.previous||null);
    const result=await extract(fixture.text,undefined,{...sheetContext(auditDaily,auditMaster,'2026-10-21'),businessRules:fixture.rules||[],previous:fixture.previous||null,pendingRequest:fixture.previous?{...fixture.previous,continuationText:evidence}:null});
    const operations=correctedOperations(result.operations,fixture.text,auditMaster);
    const plan=operations.length?planOperations(operations,auditDaily,[],auditMaster,{tableRoundLabels:true,rebuySnapshot:rebuyCaption(evidence),registrationApprovals:registrationApprovals(operations,evidence,auditMaster,fixture.previous?.plan?.pendingQuestion||'')}):null;
-   return NextResponse.json({caseName,expected:fixture.expected,question:result.question||null,operations,changes:plan?.changes||[],business_rows_changed:false,telegram_messages_sent:false});
+   return NextResponse.json({caseName,model:result._model,expected:fixture.expected,question:result.question||null,operations,changes:plan?.changes||[],business_rows_changed:false,telegram_messages_sent:false});
   }
   if(action==='notifyApplied'){
    if(!Number.isSafeInteger(messageId))throw Error('Invalid message');
@@ -44,7 +54,7 @@ export async function POST(request:Request){
    const result=await extract(q.data.text+'\n읽기 전용 판독 검증입니다. 사진에서 대상 선수와 게임을 모두 operations로 추출해주세요. 이미 시트에 있는 항목도 추출하세요. 중복 판단은 별도 검증기가 수행하며 실제 입력은 하지 않습니다.','data:image/jpeg;base64,'+bytes.toString('base64'),{...sheetContext(daily,master,businessDate),businessRules:rules.data});
    const operations=correctedOperations(result.operations,q.data.text,master);
    const plan=operations.length?planOperations(operations,daily,fnb,master,{tableRoundLabels:true,photoSnapshot:true,rebuySnapshot:rebuyCaption(q.data.text)}):null;
-   return NextResponse.json({business_rows_changed:false,telegram_messages_sent:false,question:result.question||null,operations,plannedChanges:plan?.changes.length||0});
+   return NextResponse.json({business_rows_changed:false,telegram_messages_sent:false,model:result._model,question:result.question||null,operations,plannedChanges:plan?.changes.length||0});
   }
   if(action==='reviewphoto'||action==='retryphoto'){
    if(!Number.isSafeInteger(messageId))throw Error('Invalid message');

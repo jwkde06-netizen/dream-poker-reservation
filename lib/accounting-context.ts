@@ -30,8 +30,25 @@ export function sheetContext(daily:any[][],master:any[][],businessDate:string){
 export function correctedOperations(ops:any[],text:string,master:any[][]){
  const game=text.match(/(?:^|\s)(\d{1,2})\s*번\s*게임/);
  const players=canonicalPlayers(master);
+ const floors=Array.from(text.matchAll(/([2-5])\s*층/g)).map(m=>m[1]+'F');
+ const amounts=Array.from(text.matchAll(/(\d[\d,]*(?:\.\d+)?)\s*(만|천)?\s*(?:(\d+)\s*천)?\s*동/g)).map(m=>Number(m[1].replace(/,/g,''))*(m[2]==='만'?10000:m[2]==='천'?1000:1)+Number(m[3]||0)*1000);
+ const onlyFnb=(ops||[]).filter(o=>o.kind==='fnb').length===1;
  return (ops||[]).map(op=>{
   const matches=players.filter(r=>norm(r[0])===norm(op.player));
-  return {...op,...(matches.length===1?{player:matches[0][0]}:{}),...(game&&['add','total','cancel'].includes(op.kind)?{game:Number(game[1])}:{})};
+  const fixed={...op,...(matches.length===1?{player:matches[0][0]}:{}),...(game&&['add','total','cancel'].includes(op.kind)?{game:Number(game[1])}:{})};
+  if(op.kind==='fnb'&&onlyFnb){
+   if(new Set(floors).size===1)fixed.floor=floors[0];
+   if(amounts.length===1)fixed.amount=amounts[0];
+  }
+  if(['add','total'].includes(op.kind)){
+   const explicitDelta=/(?:한\s*번|한\s*바인|\d+\s*회|\d+\s*바인)\s*(?:더|추가)/.test(text);
+   if(!explicitDelta&&Number.isInteger(op.chips)&&op.chips>=100000&&op.chips<=5000000&&op.chips%100000===0)fixed.buyins=op.chips/100000;
+   // Ground arithmetic in the staff's literal chip amount where available.
+   // This fixes 100000 mistakenly interpreted as an additional buyin (=2).
+   const clean=norm(text),name=norm(op.player),at=clean.indexOf(name);
+   const chips=at>=0?clean.slice(at+name.length).match(/^(\d{5,8})(?!\d)/):null;
+   if(chips&&Number(chips[1])%100000===0&&Number(chips[1])>=100000&&Number(chips[1])<=5000000)fixed.buyins=Number(chips[1])/100000;
+  }
+  return fixed;
  });
 }
