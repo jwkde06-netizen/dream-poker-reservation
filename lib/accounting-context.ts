@@ -60,3 +60,9 @@ export function focusedQuestion(question:unknown,text:string,ops:any[]){
  if(/F\s*&\s*B/i.test(text)&&ops.some(o=>o.kind==='fnb')&&/배경|다른\s*(영수증|게임)/.test(String(question)))return null;
  return String(question);
 }
+export function certainOperations(ops:any[],question:unknown){
+ // Partial execution is safe for an unknown player, but not for an uncertain
+ // game identity shared by every row. Never write the guessed game first.
+ if(question&&/게임.{0,12}번호|몇\s*번째|테이블.{0,6}번호|날짜|영업일/.test(String(question)))return ops.filter(op=>!['add','total','cancel'].includes(op.kind));
+ return ops;
+}
