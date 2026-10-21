@@ -167,7 +167,7 @@ export function exchangeFeeShortcut(text: string): ExchangeIntent | null {
   if (!match) return null;
   const unit = (match[2] || '').toLowerCase();
   // Bare +50000 is VND by the owner's explicit shorthand convention.
-  const scale: Record<string,number> = { '':1,동:1,vnd:1,만:10000,천:1000,백만:1000000,m:1000000,k:1000 };
+  const scale: Record<string,number> = { '':1,동:1,vnd:1,만:10000,만동:10000,천:1000,천동:1000,백만:1000000,백만동:1000000,m:1000000,k:1000 };
   const value = Number(match[1].replace(/,/g,'')) * scale[unit];
   if (!Number.isSafeInteger(value) || value <= 0 || value > 1000000000) throw new ExchangeReview('수수료 금액을 다시 확인해주세요.');
   return {kind:'movement',account:'VND_CASH',amount:String(value),direction:'in',category:'fee',basis_vnd:null,note:'이체수수료',external_reference:null};
