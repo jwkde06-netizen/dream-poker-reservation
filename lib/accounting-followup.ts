@@ -2,15 +2,18 @@ import {defaultAgency} from './accounting-workflow';
 import {norm} from './accounting-plan';
 
 export type HistoryJob={message_id:number;sender_id?:string;text:string;status:string;reply_id?:number;reply_text?:string;created_at?:string;source_message?:any;plan?:any};
-const closed=(r:HistoryJob)=>!!(r.plan?.manual_handoff||r.plan?.reconciliation||r.plan?.resolvedBy);
+export const closed=(r:HistoryJob)=>!!(r.plan?.manual_handoff||r.plan?.reconciliation||r.plan?.resolvedBy);
 export function followupContext(recent:HistoryJob[],message:any,agencyCodes:string[]){
+ const current=String(message.text||'').trim();
+ // A new standing rule does not resume the quoted transaction.
+ if(/규칙.*저장|기억해|앞으로/.test(current)&&!/(?:지금|이번|\d+번).*?(?:반영|적용|수정)/.test(current))return null;
  const reference=message.reply_to_message?.message_id;
  if(reference){const direct=recent.find(r=>r.message_id===reference||r.reply_id===reference);return direct&&!closed(direct)?direct:null;}
  if(message.photo||message.document)return null;
  const text=String(message.text||'').trim();
- const answer=text.length<=160&&(/^(?:(?:총|누적)\s*)?\d{1,2}\s*바인(?:이에요|입니다|이야)?[.!]?$/.test(text)||/^(네|넵|응|맞아|맞아요|그래|추가해|등록해|그렇게|국가|소속|코드|카드)/i.test(text)||/별다른.*없으면.*(코드|KOREA)|기본값|기본\s*코드/.test(text)||agencyCodes.some(c=>norm(text)===norm(c))||/^[가-힣 A-Za-z]{2,30}\s+\d{3,8}$/.test(text));
+ const answer=text.length<=160&&(/^(?:(?:총|누적)\s*)?\d{1,2}\s*바인(?:이에요|입니다|이야)?[.!]?$/.test(text)||/^(?:네|넵|응|예|맞아|맞아요|그래|추가해|등록해|그렇게)(?:[.!]|요|주세요| 해줘| 추가해| 등록해)*$/.test(text)||/^(?:국가|소속|코드|카드)(?:가|는|은|번호| 번호|\s)/.test(text)||/^\d+(?:[.,]\d+)?\s*(?:만|천)?\s*동[.!]?$/.test(text)||/^\d{3,8}$/.test(text)||/^[234]\s*(?:층|F)$/i.test(text)||/별다른.*없으면.*(코드|KOREA)|기본값|기본\s*코드/.test(text)||agencyCodes.some(c=>norm(text)===norm(c))||/^[가-힣 A-Za-z]{2,30}\s+\d{3,8}$/.test(text));
  if(!answer)return null;
- const candidates=recent.filter(r=>!closed(r)&&!recent.some(n=>n.plan?.contextMessageId===r.message_id)&&String(r.sender_id)===String(message.from?.id)&&r.plan?.pendingQuestion&&['review','applied'].includes(r.status)&&Number(message.date)*1000-Date.parse(r.created_at||'')<=45*60000);
+ const candidates=recent.filter(r=>!closed(r)&&!recent.some(n=>n.status!=='ignored'&&n.plan?.contextMessageId===r.message_id)&&String(r.sender_id)===String(message.from?.id)&&r.plan?.pendingQuestion&&['review','applied'].includes(r.status)&&Number(message.date)*1000-Date.parse(r.created_at||'')>=0&&Number(message.date)*1000-Date.parse(r.created_at||'')<=45*60000);
  // Follow the latest unresolved question only, never a task already superseded
  // by another photo or explicit handoff from the same staff member.
  const pending=candidates[0];if(!pending)return null;

@@ -3,7 +3,7 @@ import {needsChipVerification,verifyChipEvidence,confirmChipCount} from './accou
 import {defaultAgency,completeNamedArrival,cosmeticNameEdit,jobReport,compactExtractionContext} from './accounting-workflow';
 import {reconcileSheet,reconcileOperation,afterVerifiedWrite} from './accounting-reconcile';
 import {sheetContext,correctedOperations,focusedQuestion,certainOperations} from './accounting-context';
-import {followupContext,continuationText,registrationApprovals,rebuyCaption} from './accounting-followup';
+import {closed,followupContext,continuationText,registrationApprovals,rebuyCaption} from './accounting-followup';
 import {getVercelOidcToken} from '@vercel/oidc';
 import {createClient} from '@supabase/supabase-js';
 import {randomUUID,timingSafeEqual} from 'node:crypto';
@@ -51,7 +51,12 @@ export async function handle(update:any){
  const ins=await db().from('dream_accounting_jobs').upsert({update_id:update.update_id,message_id:m.message_id,sender_id:String(m.from.id),text:String(m.text||m.caption||'').slice(0,4096),status:'received',source_message:{message_id:m.message_id,date:m.date,photo:m.photo,document:m.document,reply_to_message_id:m.reply_to_message?.message_id}},{onConflict:'update_id',ignoreDuplicates:true});if(ins.error)throw Error('Job insert failed');
  const {data:job,error}=await db().from('dream_accounting_jobs').select('*').eq('update_id',update.update_id).single();if(error)throw Error('Job read failed');
  if(['applied','review','ignored','failed'].includes(job.status)){if(job.reply_text&&!job.reply_id){const id=await reply(m.message_id,job.reply_text);await save(job.update_id,{reply_id:id});}return;}
- if(!shouldProcessStaffMessage(m)){await save(job.update_id,{status:'ignored',reply_text:'',plan:{casualConversation:true}});return;}
+ let intakeHistory:any[]|undefined;
+ if(!shouldProcessStaffMessage(m)){
+  const h=await db().from('dream_accounting_jobs').select('message_id,sender_id,text,plan,status,reply_text,reply_id,source_message,created_at').lt('update_id',job.update_id).gte('created_at',new Date(Date.now()-12*3600000).toISOString()).order('created_at',{ascending:false}).limit(48);
+  if(h.error)throw Error('Intake context unavailable');intakeHistory=h.data||[];
+  if(!shouldProcessStaffMessage(m,intakeHistory)){await save(job.update_id,{status:'ignored',reply_text:'',plan:{casualConversation:true}});return;}
+ }
  const owner=randomUUID();const {data:lock,error:le}=await db().rpc('dream_accounting_acquire',{p_owner:owner});if(le||!lock)throw Error('Workbook busy or requires reconciliation');
  let writeStarted=false;
  try{
@@ -74,7 +79,7 @@ export async function handle(update:any){
    const report=jobReport(q.data||[]);await finish('ignored',report.pending.length?'확인할 항목 '+report.pending.length+'건\n'+report.pending.slice(0,8).map(x=>String(x.question||x.text).slice(0,160)).join('\n'):'지금 확인할 항목은 없어요.');return;
   }
   if(/^(기억한|저장된|업무)?\s*규칙(\s*(목록|보여줘|알려줘|확인))?[.!?]?$/.test(job.text.trim())){await finish('ignored',ruleList(businessRules));return;}
-  const history=await db().from('dream_accounting_jobs').select('message_id,sender_id,text,plan,status,reply_text,reply_id,source_message,created_at').lt('update_id',job.update_id).gte('created_at',new Date(Date.now()-12*3600000).toISOString()).order('created_at',{ascending:false}).limit(48);
+  const history=intakeHistory?{data:intakeHistory,error:null}:await db().from('dream_accounting_jobs').select('message_id,sender_id,text,plan,status,reply_text,reply_id,source_message,created_at').lt('update_id',job.update_id).gte('created_at',new Date(Date.now()-12*3600000).toISOString()).order('created_at',{ascending:false}).limit(48);
   if(history.error)throw Error('History lookup failed');
   const recent=history.data||[];
   let image:string|undefined,imageKey:string|undefined;
@@ -96,14 +101,14 @@ export async function handle(update:any){
   // Formula rendering leaves dates as serials while exposing formula anchors.
   if(![5,6,8,9,10,11,12,13,14].every(i=>String(formula[1]?.[i]||'').startsWith('=ARRAYFORMULA(')))throw Error('Sheet formula layout changed');
   let previous:any=followupContext(recent,m,master.slice(1).map((r:any[])=>String(r[2]||'')).filter(Boolean));
-  if(!previous&&m.reply_to_message?.message_id){const q=await db().from('dream_accounting_jobs').select('message_id,sender_id,text,plan,status,source_message,reply_text').or(`message_id.eq.${Number(m.reply_to_message.message_id)},reply_id.eq.${Number(m.reply_to_message.message_id)}`).order('created_at',{ascending:false}).limit(1);if(q.error)throw Error('Context lookup failed');const found=q.data?.[0];if(found&&!found.plan?.manual_handoff&&!found.plan?.reconciliation)previous=found;}
+  if(!previous&&m.reply_to_message?.message_id&&!recent.some(r=>r.message_id===m.reply_to_message.message_id||r.reply_id===m.reply_to_message.message_id)){const q=await db().from('dream_accounting_jobs').select('message_id,sender_id,text,plan,status,source_message,reply_text').or(`message_id.eq.${Number(m.reply_to_message.message_id)},reply_id.eq.${Number(m.reply_to_message.message_id)}`).order('created_at',{ascending:false}).limit(1);if(q.error)throw Error('Context lookup failed');const found=q.data?.[0];if(found)previous=followupContext([found],m,master.slice(1).map((r:any[])=>String(r[2]||'')));}
   const businessDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(m.date*1000));
   const taskText=continuationText(job.text,previous);
   const auditHistory=await reconciliationHistory(businessDate);
   let sheetState=reconcileSheet(daily,businessDate,auditHistory);
   processingPlan={sheetState};await save(job.update_id,{plan:processingPlan});
   const [fnbMenu]=await ranges(["'F&B 가격표'!A1:E100"]);
-  const context={fnbMenu,...sheetContext(daily,master,businessDate),businessRules,defaultRegistrationAgency:defaultAgency(businessRules,master),sheetReconciliation:{overrides:sheetState.overrides,aliases:sheetState.aliases},previous,pendingRequest:previous?.plan?.pendingQuestion?{...previous,continuationText:taskText}:null,recentMessages:recent.map(r=>({message_id:r.message_id,text:r.text,status:r.status,reply:r.reply_text,operations:r.plan?.reconciliation?null:r.plan?.operations,manualHandoff:r.plan?.manual_handoff||null,correction:r.plan?.reconciliation||null,hasPhoto:!r.plan?.manual_handoff&&!!(r.source_message?.photo||r.source_message?.document)}))};
+  const context={fnbMenu,...sheetContext(daily,master,businessDate),businessRules,defaultRegistrationAgency:defaultAgency(businessRules,master),sheetReconciliation:{overrides:sheetState.overrides,aliases:sheetState.aliases},previous,pendingRequest:previous?.plan?.pendingQuestion?{...previous,continuationText:taskText}:null,recentMessages:recent.map(r=>({message_id:r.message_id,text:r.text,status:r.status,reply:r.reply_text,operations:closed(r)?null:r.plan?.operations,manualHandoff:r.plan?.manual_handoff||null,correction:r.plan?.reconciliation||null,hasPhoto:!closed(r)&&!!(r.source_message?.photo||r.source_message?.document)}))};
   let photoSource:any=ownPhoto?job:null;
   if(!image&&previous?.source_message){await readPhoto(previous.source_message);if(image)photoSource=previous;}
   const confirmedChips=confirmChipCount(job.text,previous);
@@ -111,7 +116,7 @@ export async function handle(update:any){
   if(!confirmedChips){aiCalls++;totalTokens+=result._usage?.totalTokens||0;}
   if(!image&&Number.isSafeInteger(result.sourceMessageId)){
    const source=recent.find(r=>r.message_id===result.sourceMessageId);
-   if(source?.source_message&&!source.plan?.manual_handoff&&!source.plan?.reconciliation){await readPhoto(source.source_message);if(image){photoSource=source;result=await extract(job.text,image,{...context,photoSourceMessageId:source.message_id});aiCalls++;totalTokens+=result._usage?.totalTokens||0;}}
+   if(source?.source_message&&!closed(source)){await readPhoto(source.source_message);if(image){photoSource=source;result=await extract(job.text,image,{...context,photoSourceMessageId:source.message_id});aiCalls++;totalTokens+=result._usage?.totalTokens||0;}}
    else {await finish('review','그 사진에 답장으로 요청해주세요.');return;}
   }
   const taskPlan={sheetState,photoSourceDate:photoSource?.plan?.photoSourceDate||photoSource?.source_message?.date||null,contextMessageId:previous?.message_id||null,photoSourceMessageId:photoSource?.message_id||null,continuationText:taskText};
