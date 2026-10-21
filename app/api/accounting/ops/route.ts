@@ -8,6 +8,16 @@ export async function POST(request:Request){
  if(!authorized(request,'ACCOUNTING_OPS_SECRET'))return NextResponse.json({error:'Unauthorized'},{status:401});
  try{
   const {action,messageId}=await request.json();
+  if(action==='notifyApplied'){
+   if(!Number.isSafeInteger(messageId))throw Error('Invalid message');
+   const q=await db().from('dream_accounting_jobs').select('*').eq('message_id',messageId).single();
+   if(q.error||q.data.status!=='applied'||!q.data.reply_text)throw Error('Applied result required');
+   if(q.data.reply_id)return NextResponse.json({sent:true,messageId:q.data.reply_id});
+   const sent=await tg('sendMessage',{chat_id:process.env.STAFF_TELEGRAM_CHAT_ID,reply_parameters:{message_id:messageId},text:q.data.reply_text.slice(0,4000)});
+   const saved=await db().from('dream_accounting_jobs').update({reply_id:sent.message_id}).eq('update_id',q.data.update_id);
+   if(saved.error)throw Error('Notification sent; persistence failed');
+   return NextResponse.json({sent:true,messageId:sent.message_id});
+  }
   if(action==='reviewphoto'||action==='retryphoto'){
    if(!Number.isSafeInteger(messageId))throw Error('Invalid message');
    const q=await db().from('dream_accounting_jobs').select('*').eq('message_id',messageId).single();
