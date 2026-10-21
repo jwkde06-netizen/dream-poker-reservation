@@ -33,7 +33,8 @@ export class ExchangeTelegramFailure extends Error {
 }
 /** Only ledger receipts and membership reads. No payments, invitations or arbitrary URLs. */
 export async function exchangeTelegram(method: 'sendMessage' | 'getChatMember', payload: Record<string, unknown>, config = exchangeConfig()): Promise<any> {
-  if (method === 'sendMessage') {
+  // Edited-message warnings and clarification replies must never become success receipts.
+  if (method === 'sendMessage' && typeof payload.text === 'string' && /^환전 원장 기록 완료 · FX-\d+-\d+(?:\n|$)/.test(payload.text)) {
     try { payload = await exchangeSheetReceipt(payload, config); }
     catch { throw new ExchangeTelegramFailure(false); }
   }
