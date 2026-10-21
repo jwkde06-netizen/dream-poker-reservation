@@ -161,20 +161,21 @@ async function previousContext(config: ExchangeConfig, messageId: number | undef
 }
 /** Deliberate short-hand convention authorized by the Exchange owner: +5만 = received transfer fee in VND. */
 /** Owner-approved VND transfer-fee shorthand. Internal cash ledger is the unified VND float. */
-export function exchangeFeeShortcut(text: string): ExchangeIntent | null {
-  const t = text.trim().replace(/@dream_poker_exchange_bot$/i, '').trim();
-  const explicit = t.startsWith('+') || t.startsWith('/fee') || /(?:이체수수료|수수료(?: 수익)?|수익완료)/.test(t);
-  const plain = t.replace(/^\\+\\s*/,'').replace(/^\\/fee\\s*/i,'')
-    .replace(/^(?:이체수수료|수수료(?: 수익)?)\\s*/,'').replace(/\\s*(?:수익완료|입금완료|받음|들어옴|수익)\\s*$/,'').trim();
-  const kor:Record<string,string> = {'오만':'5만','오만동':'5만동','오만원':'5만'};
-  const amount = kor[plain] || plain;
-  // Bare colloquial amounts are fee shorthand ONLY when unambiguously VND and owner-approved.
-  const match=amount.match(/^([0-9][0-9,]*(?:[.][0-9]+)?)\\s*(백만동|만동|천동|백만|만|천|m|k|동|vnd)?$/i);
-  if(!match || (!explicit && !['오만','오만동','오만원'].includes(plain) && !/^(?:[0-9][0-9,]*\\s*(?:만동|만|천동|천|동))$/.test(plain))) return null;
+export function exchangeFeeShortcut(text:string):ExchangeIntent|null {
+  const t=text.trim().replace(/@dream_poker_exchange_bot$/i,'').trim();
+  let p=t, explicit=false;
+  if(p.startsWith('+')){p=p.slice(1).trim();explicit=true;}
+  else if(p.startsWith('/fee ')){p=p.slice(5).trim();explicit=true;}
+  else if(p.startsWith('이체수수료 ')){p=p.slice(6).trim();explicit=true;}
+  else if(p.startsWith('수수료 ')){p=p.slice(4).trim();explicit=true;}
+  if(['오만','오만동','오만원'].includes(p))p='5만동';
+  if(p.endsWith(' 수익완료'))p=p.slice(0,-5).trim();
+  const m=p.match(/^([0-9][0-9,]*(?:[.][0-9]+)?)[ ]*(백만동|만동|천동|백만|만|천|m|k|동|vnd)?$/i);
+  if(!m || (!explicit && !/^(?:[0-9][0-9,]*[ ]*(?:만동|만|천동|천|동))$/.test(p)))return null;
   const scale:Record<string,number>={'':1,동:1,vnd:1,만:10000,만동:10000,천:1000,천동:1000,백만:1000000,백만동:1000000,m:1000000,k:1000};
-  const v=Number(match[1].replace(/,/g,''))*scale[(match[2]||'').toLowerCase()];
-  if(!Number.isSafeInteger(v)||v<=0||v>1000000000) throw new ExchangeReview('수수료 금액을 확인해주세요.');
-  return {kind:'movement',account:'VND_CASH',amount:String(v),direction:'in',category:'fee',basis_vnd:null,note:'이체수수료',external_reference:null};
+  const amount=Number(m[1].replace(/,/g,''))*scale[(m[2]||'').toLowerCase()];
+  if(!Number.isSafeInteger(amount)||amount<=0||amount>1000000000)throw new ExchangeReview('수수료 금액을 확인해주세요.');
+  return {kind:'movement',account:'VND_CASH',amount:String(amount),direction:'in',category:'fee',basis_vnd:null,note:'이체수수료',external_reference:null};
 }
 /** Undo a fee transaction by exact receipt or an unambiguous amount. */
 export function cancellationAmount(text: string): number | null {
