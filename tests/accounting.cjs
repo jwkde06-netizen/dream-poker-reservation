@@ -8,7 +8,7 @@ p=planOperations([{...base,kind:'cancel'}],daily,[],master);assert.equal(p.chang
 assert.throws(()=>planOperations([{...base,kind:'add',player:'UNKNOWN',buyins:1}],daily,[],master));
 assert.throws(()=>serial('2026-02-30'));
 p=planOperations([{kind:'fnb',date:'2026-10-21',floor:'3F',amount:150000,note:'대표님 말차라떼 2잔'}],daily,[['DATE','FLOOR','AMOUNT','NOTE']],master);assert.deepEqual(p.changes[0].values,[[day,'3F',150000,'대표님 말차라떼 2잔']]);
-assert.throws(()=>planOperations([{kind:'fnb',date:'2026-10-21',floor:'5F',amount:150000,note:'x'}],daily,[],master));
+assert.throws(()=>planOperations([{kind:'fnb',date:'2026-10-21',floor:'6F',amount:150000,note:'x'}],daily,[],master));
 const manual=[['NUMBER'],[7,day,'13-2','5M','SEO JUN GI','','',1],['',day,'13-2','5M','KIM SEON HAK','','',1]];
 const request={...base,game:7,table:13,kind:'add',buyins:1};
 assert.equal(planOperations([request],manual,[],master).changes.length,0);
@@ -66,3 +66,40 @@ assert.equal(ctx.recentGames.length,2);assert.equal(ctx.recentGames[1][0],7);ass
 assert.equal(correctedOperations([{kind:'add',game:4,player:'KIMYOUNGIL'}],'9번게임 시트반영해',spacedMaster)[0].game,9);
 assert.equal(correctedOperations([{kind:'add',game:4,player:'KIMYOUNGIL'}],'9번게임 시트반영해',spacedMaster)[0].player,'KIM YOUNG IL');
 console.log('7 business-date, alias and explicit-game checks passed');
+
+const {followupContext,continuationText,registrationApprovals,rebuyCaption}=require('../.test-build/accounting-followup');
+const {auditDaily,auditMaster}=require('../.test-build/accounting-regressions');
+const pending={message_id:61,sender_id:'123',text:'KIM BEONCHANG 신규 등록하고 시트에 추가해',status:'review',reply_id:62,created_at:'2026-10-21T10:00:00Z',source_message:{photo:[{file_id:'photo'}]},plan:{pendingQuestion:'KIM BEONCHANG 소속 코드를 알려주세요.'}};
+const follow={message_id:63,date:Date.parse('2026-10-21T10:05:00Z')/1000,from:{id:123},text:'국가가 KOREA임'};
+assert.equal(followupContext([pending],follow,['KOREA']).message_id,61);
+assert.equal(followupContext([pending],{...follow,from:{id:999}},['KOREA']),null);
+assert.equal(followupContext([pending],{...follow,date:follow.date+3600},['KOREA']),null);
+assert.equal(followupContext([pending],{...follow,photo:[{}]},['KOREA']),null);
+assert.equal(followupContext([{...pending,plan:{manual_handoff:true}}],{...follow,reply_to_message:{message_id:62}},['KOREA']),null);
+assert.equal(followupContext([{...pending,message_id:64,plan:{contextMessageId:61}},pending],follow,['KOREA']),null);
+const evidence=continuationText(follow.text,pending);
+const reg={kind:'register',player:'KIM BEONCHANG',agency:'KOREA'};
+const approvals=registrationApprovals([reg],evidence,auditMaster);
+assert.equal(approvals.KIMBEONCHANG.agency,'KOREA');
+assert.throws(()=>registrationApprovals([{...reg,agency:'UK'}],evidence,auditMaster));
+assert.throws(()=>registrationApprovals([{...reg,card:'1234'}],evidence,auditMaster));
+const newEntry={...base,kind:'add',game:8,table:12,player:'KIM BEONCHANG',buyins:1};
+p=planOperations([newEntry,reg],auditDaily,[],auditMaster,{tableRoundLabels:true,registrationApprovals:approvals});
+assert.equal(p.changes[0].values[0][2],'KOREA');assert.equal(p.changes[1].values[0][4],'KIM BEONCHANG');assert.equal(p.changes[1].values[0][0],'');
+const blankMaster=[...auditMaster,['KIM BEONCHANG','','']];
+p=planOperations([reg,newEntry],auditDaily,[],blankMaster,{registrationApprovals:approvals});assert.match(p.changes[0].range,/명단'!C/);assert.equal(p.changes[0].values[0][0],'KOREA');
+assert.throws(()=>planOperations([{...reg,player:'KIM HYUNG WOON'}],auditDaily,[],auditMaster,{registrationApprovals:{KIMHYUNGWOON:{agency:'KOREA'}}}));
+const rebuy=[['LEE KWANG TAE',2],['KIM SEON HAK',1],['CORDINGLEY OLIVER JAMES',4]].map(([player,buyins])=>({...base,kind:'add',game:8,table:13,player,buyins}));
+p=planOperations(rebuy,auditDaily,[],auditMaster,{rebuySnapshot:true});
+assert.deepEqual(p.changes.map(x=>x.range),["'일일 입력'!H2","'일일 입력'!H4"]);assert.deepEqual(p.changes.map(x=>x.values[0][0]),[2,4]);
+assert.equal(rebuyCaption('레벨4 체크'),true);
+p=planOperations([{kind:'fnb',date:'2026-10-21',floor:'5F',amount:60000,note:'대진형님 아메 1잔'}],auditDaily,[],auditMaster);assert.equal(p.changes[0].values[0][1],'5F');
+assert.equal(planOperations([{...base,kind:'total',buyins:1}],daily,[],master).changes.length,0);
+console.log('20 staff conversation and accounting regression assertions passed');
+
+const late={...base,kind:'add',game:7,table:13,player:'KIM HYUNG WOON',buyins:1};
+p=planOperations([late],auditDaily,[],auditMaster,{tableRoundLabels:true});
+const after=auditDaily.map(r=>[...r]);for(const c of p.changes){const start=Number(c.range.match(/![AH](\d+)/)[1])-1;after[start]||=[];const col=c.range.includes('!H')?7:0;c.values[0].forEach((v,j)=>after[start][col+j]=v);}
+assert.equal(after[4][4],'KIM HYUNG WOON');assert.equal(after[4][0],'');assert.equal(after[4][2],'13-2');assert.equal(after[5][4]||'','');assert.equal(after[6][0],8);assert.equal(after[6][4],'LEE SUNG WON');assert.equal(after[6][7],1);assert(!p.changes.some(c=>/![FGI-O]\d/.test(c.range)));
+assert.equal(auditDaily[5][4],'LEE SUNG WON');
+console.log('9 late-player and following-game preservation assertions passed');

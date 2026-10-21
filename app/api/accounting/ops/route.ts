@@ -1,5 +1,7 @@
 import {sheetContext,correctedOperations} from '../../../../lib/accounting-context';
 import {planOperations} from '../../../../lib/accounting-plan';
+import {auditCases,auditDaily,auditMaster} from '../../../../lib/accounting-regressions';
+import {continuationText,registrationApprovals,rebuyCaption} from '../../../../lib/accounting-followup';
 import {NextResponse} from 'next/server';
 import {authorized,db,extract,ranges,handle} from '../../../../lib/accounting-agent';
 import {tg} from '../../../../lib/telegram';
@@ -9,7 +11,15 @@ const url='https://dream-poker-reservation.vercel.app/api/accounting/webhook';
 export async function POST(request:Request){
  if(!authorized(request,'ACCOUNTING_OPS_SECRET'))return NextResponse.json({error:'Unauthorized'},{status:401});
  try{
-  const {action,messageId}=await request.json();
+  const {action,messageId,caseName}=await request.json();
+  if(action==='auditCase'){
+   const fixture=auditCases[String(caseName)];if(!fixture)throw Error('Unknown audit case');
+   const evidence=continuationText(fixture.text,fixture.previous||null);
+   const result=await extract(fixture.text,undefined,{...sheetContext(auditDaily,auditMaster,'2026-10-21'),businessRules:fixture.rules||[],previous:fixture.previous||null,pendingRequest:fixture.previous?{...fixture.previous,continuationText:evidence}:null});
+   const operations=correctedOperations(result.operations,fixture.text,auditMaster);
+   const plan=operations.length?planOperations(operations,auditDaily,[],auditMaster,{tableRoundLabels:true,rebuySnapshot:rebuyCaption(evidence),registrationApprovals:registrationApprovals(operations,evidence,auditMaster,fixture.previous?.plan?.pendingQuestion||'')}):null;
+   return NextResponse.json({caseName,expected:fixture.expected,question:result.question||null,operations,changes:plan?.changes||[],business_rows_changed:false,telegram_messages_sent:false});
+  }
   if(action==='notifyApplied'){
    if(!Number.isSafeInteger(messageId))throw Error('Invalid message');
    const q=await db().from('dream_accounting_jobs').select('*').eq('message_id',messageId).single();

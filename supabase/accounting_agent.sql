@@ -1,7 +1,7 @@
 create table if not exists public.dream_accounting_jobs (
  update_id bigint primary key, message_id bigint not null, sender_id text not null,
  text text not null, status text not null default 'received', image_key text,
- plan jsonb, reply_text text, reply_id bigint, failure_reason text,
+ source_message jsonb, plan jsonb, reply_text text, reply_id bigint, failure_reason text,
  created_at timestamptz not null default now()
 );
 alter table public.dream_accounting_jobs enable row level security;
@@ -25,3 +25,6 @@ begin
 end;$$;
 revoke all on function public.dream_accounting_acquire(uuid),public.dream_accounting_release(uuid) from public,anon,authenticated;
 grant execute on function public.dream_accounting_acquire(uuid),public.dream_accounting_release(uuid) to service_role;
+
+-- Idempotent upgrade for installations created before source retention.
+alter table public.dream_accounting_jobs add column if not exists source_message jsonb;
