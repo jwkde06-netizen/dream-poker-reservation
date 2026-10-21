@@ -112,3 +112,12 @@ assert.equal(correctedOperations([{...base,kind:'total',player:'KIM SEON HAK',bu
 assert.equal(correctedOperations([{...base,kind:'total',buyins:9,chips:200000}], '',master)[0].buyins,2);
 assert.equal(correctedOperations([{kind:'fnb',floor:'2F'},{kind:'fnb',floor:'3F'}], '2층 6만동 3층 7만동',master)[0].floor,'2F');
 console.log('6 literal floor, VND, and chip-count regression assertions passed');
+const mapping=[{content:'게임번호 대응: {"date":"2026-10-21","table":13,"printedGame":8,"game":7}'}];
+assert.equal(correctedOperations([{...base,game:8,table:13,kind:'add',printedGame:8}], '',master,mapping)[0].game,7);
+assert.equal(correctedOperations([{...base,game:8,table:13,kind:'add',printedGame:8,date:'2026-10-22'}], '',master,mapping)[0].game,8);
+assert.equal(correctedOperations([{...base,game:8,table:13,kind:'add',printedGame:8}], '9번게임으로 정정',master,mapping)[0].game,9);
+assert.throws(()=>planOperations([{...base,game:8,table:13,kind:'add',player:'KIM SEON HAK',buyins:1}],auditDaily,[],auditMaster),/12-2/);
+const {focusedQuestion}=require('../.test-build/accounting-context');
+assert.equal(focusedQuestion('배경의 다른 영수증은 처리할까요?','3층 7만동 F&B',[{kind:'fnb'}]),null);
+assert.equal(focusedQuestion('총 금액을 알려주세요.','3층 F&B',[]),'총 금액을 알려주세요.');
+console.log('6 scoped game-alias, game identity and focused-question assertions passed');

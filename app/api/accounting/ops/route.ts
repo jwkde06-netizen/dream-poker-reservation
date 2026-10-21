@@ -1,4 +1,4 @@
-import {sheetContext,correctedOperations} from '../../../../lib/accounting-context';
+import {sheetContext,correctedOperations,focusedQuestion} from '../../../../lib/accounting-context';
 import {planOperations} from '../../../../lib/accounting-plan';
 import {auditCases,auditDaily,auditMaster} from '../../../../lib/accounting-regressions';
 import {continuationText,registrationApprovals,rebuyCaption} from '../../../../lib/accounting-followup';
@@ -17,8 +17,10 @@ export async function POST(request:Request){
    const [daily,fnb,master]=await ranges(["'일일 입력'!A1:O5000","'F&B 입력'!A1:D2000","'플레이어 명단'!A1:D2500"],true);
    const rules=await db().from('dream_accounting_rules').select('id,kind,content').eq('active',true).order('id');if(rules.error)throw Error('Rules unavailable');
    const businessDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-   const result=await extract(caption+'\n읽기 전용 판독 검증입니다. 이미 시트에 있는 항목도 모두 추출하세요. 실제 입력은 하지 않습니다.',imageData,{...sheetContext(daily,master,businessDate),businessRules:rules.data});
-   const operations=correctedOperations(result.operations,caption,master);
+   if(caseName==='rebuy_chang_before'){let game:any=null;for(const r of daily){if(r[0]!==''&&r[0]!=null)game=r[0];if(Number(game)===6&&Number(r[1])===46316&&r[4]==='CHANG YOON HO')r[7]=1;}}
+   const result=await extract(caption+'\n읽기 전용 판독 검증입니다. 사진에서 대상 선수와 게임을 모두 operations로 추출해주세요. 이미 시트에 있는 항목도 추출하세요. 중복 판단은 별도 검증기가 수행하며 실제 입력은 하지 않습니다.',imageData,{...sheetContext(daily,master,businessDate),businessRules:rules.data});
+   const operations=correctedOperations(result.operations,caption,master,rules.data||[]);
+   result.question=focusedQuestion(result.question,caption,operations);
    const plan=operations.length?planOperations(operations,daily,fnb,master,{tableRoundLabels:true,photoSnapshot:true,rebuySnapshot:rebuyCaption(caption)}):null;
    return NextResponse.json({model:result._model,question:result.question||null,operations,plannedChanges:plan?.changes.length||0,business_rows_changed:false,telegram_messages_sent:false});
   }
@@ -52,7 +54,8 @@ export async function POST(request:Request){
    const rules=await db().from('dream_accounting_rules').select('id,kind,content').eq('active',true).order('id');if(rules.error)throw Error('Rules unavailable');
    const businessDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(m.date*1000));
    const result=await extract(q.data.text+'\n읽기 전용 판독 검증입니다. 사진에서 대상 선수와 게임을 모두 operations로 추출해주세요. 이미 시트에 있는 항목도 추출하세요. 중복 판단은 별도 검증기가 수행하며 실제 입력은 하지 않습니다.','data:image/jpeg;base64,'+bytes.toString('base64'),{...sheetContext(daily,master,businessDate),businessRules:rules.data});
-   const operations=correctedOperations(result.operations,q.data.text,master);
+   const operations=correctedOperations(result.operations,q.data.text,master,rules.data||[]);
+   result.question=focusedQuestion(result.question,q.data.text,operations);
    const plan=operations.length?planOperations(operations,daily,fnb,master,{tableRoundLabels:true,photoSnapshot:true,rebuySnapshot:rebuyCaption(q.data.text)}):null;
    return NextResponse.json({business_rows_changed:false,telegram_messages_sent:false,model:result._model,question:result.question||null,operations,plannedChanges:plan?.changes.length||0});
   }

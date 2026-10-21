@@ -11,4 +11,8 @@ export function validateMemory(value:any){
  if(/https?:|api.?key|token|secret|password|비밀번호|토큰|인증|권한|보안|웹훅|시스템.?프롬프트|system.?prompt/i.test(content))throw Error('인증·보안·연결 설정은 업무 규칙으로 변경할 수 없습니다.');
  return {action:'save' as const,kind:value.kind,content};
 }
-export function ruleList(rules:BusinessRule[]){return rules.length?'기억한 업무 규칙\n'+rules.map(r=>`${r.id}. ${r.content}`).join('\n'):'저장된 업무 규칙이 없습니다.';}
+export function ruleList(rules:BusinessRule[]){return rules.length?'기억한 업무 규칙\n'+rules.map(r=>{
+ let content=r.content;
+ if(content.startsWith('게임번호 대응: ')){try{const a=JSON.parse(content.slice('게임번호 대응: '.length));content=`${a.date} · ${a.table}번 테이블: 인쇄 No.${a.printedGame}는 ${a.game}번 게임. 해당 날짜에만 적용.`;}catch{}}
+ return `${r.id}. ${content}`;
+}).join('\n'):'저장된 업무 규칙이 없습니다.';}

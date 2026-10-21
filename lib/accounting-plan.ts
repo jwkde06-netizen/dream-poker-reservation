@@ -68,6 +68,11 @@ export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][
  if(!['add','total','cancel'].includes(op.kind)||!Number.isInteger(op.game)||op.game<1||op.game>100||!Number.isInteger(op.table)||op.table<1||op.table>100||!['3M','5M','10M','15M'].includes(op.blind))throw Error('게임 번호·테이블·블라인드를 알려주세요.');
  const candidates=names.get(norm(op.player))||[];const exact=candidates.filter(n=>n===String(op.player).trim());const matching=exact.length===1?exact:candidates;if(matching.length!==1)throw Error(`명단에서 ${String(op.player).slice(0,80)} 이름을 하나로 찾지 못했습니다. 영문명 또는 카드 번호를 알려주세요.`);
  const name=matching[0];let game:any=null;const found:number[]=[];
+ let identityGame:any=null;
+ for(const r of work.slice(1)){
+  if(r[0]!==''&&r[0]!=null)identityGame=r[0];
+  if(r[4]&&Number(r[1])===day&&Number(identityGame)===op.game&&Number(tableLabel(r[2]).split('-')[0])!==op.table)throw Error(`${op.game}번 게임은 시트에서 ${tableLabel(r[2])} 테이블이에요. 사진의 ${op.table}번 테이블은 몇 번째 게임인가요?`);
+ }
  if(op.kind==='add'&&!masterWork.slice(1).some(r=>norm(r[0])===norm(name)&&String(r[2]||'').trim()))throw Error(`${name} 소속 코드를 알려주세요.`);
  for(let i=1;i<work.length;i++){const r=work[i];if(r[0]!==''&&r[0]!=null)game=r[0];if(Number(r[1])===day&&Number(game)===op.game&&Number(tableLabel(r[2]).split('-')[0])===op.table&&r[3]===op.blind&&norm(r[4])===norm(name))found.push(i);}
  if(found.length>1)throw Error(`${name} 항목이 중복되어 있어 확인이 필요합니다.`);
