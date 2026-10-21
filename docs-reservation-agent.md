@@ -1,6 +1,6 @@
 # Dream reservation agent
 
-Players submit a one-seat request on `/`. Reservations start pending. Active Korean desk and cashier accounts can review the same queue at `/desk` or `/staff`; admin and existing staff retain access. No reservation is automatically confirmed. Game creation/opening remains with admin/staff accounts.
+Players submit a one-seat request on `/`. Reservations start pending. Active Korean desk and cashier accounts can review the same queue at `/desk` or `/staff`; admin and existing staff retain access. No reservation is automatically confirmed. Admin, staff and cashier accounts can create/open scheduled games.
 
 ## Workflow
 
@@ -29,3 +29,11 @@ The worker endpoint receives only a random, single-job token. It cannot select a
 ## Verification
 
 `node tests/reservation-agent.cjs` checks legal UI transitions, Vietnam midnight formatting, worker claim failures, duplicate claims, privacy, successful delivery, retry and receipt failure. `node tests/telegram-setup.cjs` checks existing group setup/webhook preservation. `tests/reservation-agent.sql` is a rollback-only integration suite for permissions, seat capacity, review versions, atomic assignment, cancellation, queue leases/receipts and event ordering. It requires an existing active admin and disabled dispatch. `next build` checks production compilation and types.
+
+## Always-open next 5M intake
+
+The public page shows “Next 5M game / start time to be announced” whenever no eligible scheduled 5M game is open. Its stored creation date never expires the queue. It does not advertise a start time, table number or available seat count. Other games remain visible. Once a cashier opens a scheduled 5M game, that game replaces the generic 5M intake on the public page; closing/expiring scheduled 5M games reveals the intake again.
+
+Advance requests stay pending/waitlisted until staff assign them to a scheduled game. Assignment uses the existing version checks; confirmation then applies actual capacity. The intake itself cannot be closed or used as a confirmation destination.
+
+Apply `supabase/next_5m_queue.sql`, deploy the UI, then apply `supabase/next_5m_queue_enable.sql` to create the intake. Validate with `node tests/reservation-games.cjs` and the rollback-only `tests/next-5m-queue.sql` suite.

@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),ts=require('typescript');
+const exportsForTest={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/reservation-games.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:exportsForTest});
+const {guestGames}=exportsForTest,now=Date.parse('2026-10-21T12:00:00Z');
+const fallback={id:'fallback',title:'다음 5M 게임',starts_at:'2000-01-01T00:00:00Z',is_open:true,is_default_queue:true};
+const actual={id:'scheduled',title:'5M TIME ATTACK',starts_at:new Date(now+3600000).toISOString(),is_open:true};
+assert.equal(guestGames([fallback],now)[0].id,'fallback');
+assert.equal(guestGames([fallback,actual],now).length,1);assert.equal(guestGames([fallback,actual],now)[0].id,'scheduled');
+assert.equal(guestGames([fallback,{...actual,is_open:false}],now)[0].id,'fallback');
+assert.equal(guestGames([fallback,{...actual,starts_at:'2026-10-20T00:00:00Z'}],now)[0].id,'fallback');
+assert.equal(guestGames([fallback,{...actual,title:'15M TIME ATTACK'}],now).length,2);
+console.log('PASS: evergreen queue, scheduled 5M priority, closed/expired fallback, 15M does not hide 5M');
