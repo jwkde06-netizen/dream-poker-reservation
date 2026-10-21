@@ -1,5 +1,6 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
+import {bookingName} from "../lib/reservation-names";
 import {intakeTitle,startPending} from "../lib/reservation-games";
 import {db} from "../lib/db";
 type Game={is_default_queue?:boolean;id:string;title:string;starts_at:string;is_open:boolean};
@@ -37,7 +38,7 @@ export default function DeskTools({games,bookings,language,refresh}:{games:Game[
  <button className="primary" disabled={working||!game||name.trim().length<2} onClick={()=>void book()}>{labels.submit} →</button></div>
  {message&&<p className="muted" role="status">{message}</p>}
  <div className="deskChatHead"><h2>{labels.chat}</h2><button className="outline" onClick={()=>setShowMessages(!showMessages)}>{showMessages?"−":"+"}</button></div>
- {showMessages&&<><p className="muted">{labels.hint}</p><select aria-label="Reservation conversation" value={active} onChange={e=>setActive(e.target.value)}><option value="">예약 건을 선택하세요 / Chọn đặt chỗ</option>{bookings.slice(0,100).map(b=><option value={b.id} key={b.id}>{b.player_name} · {games.find(g=>g.id===b.game_id)?.title||"Game"} · {b.status}</option>)}</select>
+ {showMessages&&<><p className="muted">{labels.hint}</p><select aria-label="Reservation conversation" value={active} onChange={e=>setActive(e.target.value)}><option value="">예약 건을 선택하세요 / Chọn đặt chỗ</option>{bookings.slice(0,100).map(b=><option value={b.id} key={b.id}>{bookingName(b)} · {games.find(g=>g.id===b.game_id)?.title||"Game"} · {b.status}</option>)}</select>
  {active&&<><div className="chatMessages">{!items.length?<p className="muted">메시지가 없습니다 / Chưa có tin nhắn</p>:items.map(m=><div className="chatBubble" key={m.id}><strong>{m.author_name||"Staff"}</strong><p>{m.body}</p>{m.translation&&<small>{m.translation}</small>}<time>{new Date(m.created_at).toLocaleTimeString(language==="vi"?"vi-VN":"ko-KR",{timeZone:"Asia/Ho_Chi_Minh",hour:"2-digit",minute:"2-digit"})}</time></div>)}</div>
  <select aria-label="Quick bilingual phrase" value={phrase} onChange={e=>choosePhrase(Number(e.target.value))}><option value="" disabled>빠른 번역 문구 · Câu có sẵn</option>{phrases.map((p,i)=><option value={i} key={i}>{language==="vi"?p.vi:p.ko}</option>)}</select>
  <div className="chatCompose"><textarea rows={2} maxLength={500} value={draft} onChange={e=>{setDraft(e.target.value);setCustomTranslation("")}} placeholder="메시지 / Tin nhắn"/><textarea rows={2} maxLength={500} value={customTranslation} onChange={e=>setCustomTranslation(e.target.value)} placeholder="번역 (직접 입력 또는 빠른 문구 선택) / Bản dịch"/></div>
