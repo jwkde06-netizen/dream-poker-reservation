@@ -7,7 +7,7 @@ assert(names.validBookingNames('KIM JI WON',''));assert(names.validBookingNames(
 assert(model.canTransition('pending','confirmed'));assert(model.canTransition('confirmed','checked_in'));
 for(const s of ['cancelled','no_show','rejected','checked_in'])assert(!model.canTransition(s,'confirmed'));
 const payload={reservation_id:'aabbccdd-0000-4000-8000-000000000001',version:2,event:'updated',status:'confirmed',player_name:'<Player>',arrival_at:'2026-10-21T18:30:00Z',game_title:'5M',table_no:'4',game_no:'2',guest_note:'Late arrival'};
-const message=model.reservationMessage(payload);assert(message.includes('22/10'));assert(message.includes('01:30'));assert(message.includes('예약 확정'));assert(!message.includes('undefined'));
+const message=model.reservationMessage(payload);assert(message.includes('22/10'));assert(message.includes('01:30'));assert(message.includes('Status: Confirmed'));assert(!message.includes('undefined'));
 async function run({token='aabbccdd-0000-4000-8000-000000000001',job=true,sendFails=false,receiptFails=false,claimFails=false}={}){
  const calls=[];let sent=0;
  const route=compile('app/api/reservation-agent/deliver/route.ts',name=>{
