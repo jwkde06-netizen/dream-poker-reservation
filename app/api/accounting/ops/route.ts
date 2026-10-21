@@ -1,3 +1,5 @@
+import {sheetContext,correctedOperations} from '../../../../lib/accounting-context';
+import {planOperations} from '../../../../lib/accounting-plan';
 import {NextResponse} from 'next/server';
 import {authorized,db,extract,ranges,handle} from '../../../../lib/accounting-agent';
 import {tg} from '../../../../lib/telegram';
@@ -17,6 +19,22 @@ export async function POST(request:Request){
    const saved=await db().from('dream_accounting_jobs').update({reply_id:sent.message_id}).eq('update_id',q.data.update_id);
    if(saved.error)throw Error('Notification sent; persistence failed');
    return NextResponse.json({sent:true,messageId:sent.message_id});
+  }
+  if(action==='dryrunphoto'){
+   if(!Number.isSafeInteger(messageId))throw Error('Invalid message');
+   const q=await db().from('dream_accounting_jobs').select('text,source_message').eq('message_id',messageId).order('update_id',{ascending:false}).limit(1).single();
+   if(q.error||!q.data?.source_message)throw Error('Saved photo unavailable');
+   const m=q.data.source_message,photo=m.photo?.[m.photo.length-1]||m.document;if(!photo)throw Error('Saved photo unavailable');
+   const f=await tg('getFile',{file_id:photo.file_id});if(!/^[\w/.-]+$/.test(f.file_path)||f.file_path.includes('..'))throw Error('Invalid path');
+   const response=await fetch('https://api.telegram.org/file/bot'+process.env.TELEGRAM_BOT_TOKEN+'/'+f.file_path,{signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('Photo download failed');
+   const bytes=Buffer.from(await response.arrayBuffer());if(bytes.length>10000000)throw Error('Photo too large');
+   const [daily,fnb,master]=await ranges(["'일일 입력'!A1:O5000","'F&B 입력'!A1:D2000","'플레이어 명단'!A1:D2500"],true);
+   const rules=await db().from('dream_accounting_rules').select('id,kind,content').eq('active',true).order('id');if(rules.error)throw Error('Rules unavailable');
+   const businessDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(m.date*1000));
+   const result=await extract(q.data.text,'data:image/jpeg;base64,'+bytes.toString('base64'),{...sheetContext(daily,master,businessDate),businessRules:rules.data});
+   const operations=correctedOperations(result.operations,q.data.text,master);
+   const plan=operations.length?planOperations(operations,daily,fnb,master,{tableRoundLabels:true,rebuySnapshot:/리바[인이]|리바이|rebuy/i.test(q.data.text)}):null;
+   return NextResponse.json({business_rows_changed:false,telegram_messages_sent:false,question:result.question||null,operations,plannedChanges:plan?.changes.length||0});
   }
   if(action==='reviewphoto'||action==='retryphoto'){
    if(!Number.isSafeInteger(messageId))throw Error('Invalid message');

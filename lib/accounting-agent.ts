@@ -1,3 +1,4 @@
+import {sheetContext,correctedOperations} from './accounting-context';
 import {getVercelOidcToken} from '@vercel/oidc';
 import {createClient} from '@supabase/supabase-js';
 import {randomUUID,timingSafeEqual} from 'node:crypto';
@@ -68,16 +69,20 @@ export async function handle(update:any){
   if(![5,6,8,9,10,11,12,13,14].every(i=>String(formula[1]?.[i]||'').startsWith('=ARRAYFORMULA(')))throw Error('Sheet formula layout changed');
   let previous:any=null;
   if(m.reply_to_message?.message_id){const q=await db().from('dream_accounting_jobs').select('text,plan,status').or(`message_id.eq.${Number(m.reply_to_message.message_id)},reply_id.eq.${Number(m.reply_to_message.message_id)}`).order('created_at',{ascending:false}).limit(1);if(q.error)throw Error('Context lookup failed');previous=q.data?.[0]||null;}
-  let group:any=null;
-  const recentGames=daily.map((r:any)=>{if(r[0]!==''&&r[0]!=null)group=r[0];return [group,r[1],tableLabel(r[2]),r[3],r[4],r[7]];}).filter((r:any)=>r[4]).slice(-150);
-  const context={businessRules,businessDate:new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(m.date*1000)),previous,players:master.slice(1).filter((r:any)=>r[0]).map((r:any)=>[r[0],r[1],r[2]]),recentGames,recentMessages:recent.map(r=>({message_id:r.message_id,text:r.text,status:r.status,reply:r.reply_text,operations:r.plan?.operations,hasPhoto:!!(r.source_message?.photo||r.source_message?.document)}))};
+  const businessDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(m.date*1000));
+  const context={...sheetContext(daily,master,businessDate),businessRules,previous,recentMessages:recent.map(r=>({message_id:r.message_id,text:r.text,status:r.status,reply:r.reply_text,operations:r.plan?.reconciliation?null:r.plan?.operations,manualHandoff:r.plan?.manual_handoff||null,correction:r.plan?.reconciliation||null,hasPhoto:!r.plan?.manual_handoff&&!!(r.source_message?.photo||r.source_message?.document)}))};
+  // Replies can reload their actual photo directly without a second model call.
+  const reference=m.reply_to_message?.message_id;
+  const linked=reference?recent.find(r=>r.message_id===reference||r.reply_id===reference):null;
+  if(!image&&linked?.source_message&&!linked.plan?.manual_handoff)await readPhoto(linked.source_message);
   let result=await extract(job.text,image,context);
   if(!image&&Number.isSafeInteger(result.sourceMessageId)){
    const source=recent.find(r=>r.message_id===result.sourceMessageId);
-   if(source?.source_message){await readPhoto(source.source_message);if(image)result=await extract(job.text,image,{...context,photoSourceMessageId:source.message_id});}
+   if(source?.source_message&&!source.plan?.manual_handoff){await readPhoto(source.source_message);if(image)result=await extract(job.text,image,{...context,photoSourceMessageId:source.message_id});}
    else {await finish('review','그 사진에 답장으로 요청해주세요.');return;}
   }
-  await save(job.update_id,{image_key:imageKey||null});
+  result.operations=correctedOperations(result.operations,job.text,master);
+  await save(job.update_id,{image_key:imageKey||null,plan:{operations:result.operations,pendingQuestion:result.question||null}});
   if(result.memory&&job.text.trim()){
    const member=await tg('getChatMember',{chat_id:process.env.STAFF_TELEGRAM_CHAT_ID,user_id:m.from.id});
    let rule;try{rule=validateMemory(result.memory)}catch(e){await finish('review',e instanceof Error?e.message:'규칙 확인이 필요합니다.');return;}
@@ -108,7 +113,7 @@ export async function handle(update:any){
    await sheet('values:batchUpdate',{valueInputOption:'RAW',data:plan.changes.map(({range,values})=>({range,values}))});
    const actual=await ranges(plan.changes.map(x=>x.range));if(!plan.changes.every((x,i)=>same(actual[i],x.values)))throw Error('Write readback mismatch');
   }
-  const completion=result.question?`확인된 항목은 반영했어요. ${String(result.question)}`:plan.changes.length?'완료 ✅':plan.summary.join('\n');
+  const completion=result.question?`확인된 항목은 반영했어요. ${String(result.question)}`:'완료 ✅';
   await save(job.update_id,{status:'applied',reply_text:completion});writeStarted=false;
   const id=await reply(m.message_id,completion);await save(job.update_id,{reply_id:id});
  }catch(e){
