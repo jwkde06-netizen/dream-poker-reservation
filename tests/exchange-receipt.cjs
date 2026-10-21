@@ -39,7 +39,7 @@ const report = patch => ({ ...base, ...patch });
     });
     global.fetch=async(url,opts)=>{
       if(String(url).startsWith('https://sheets.googleapis.com/')){assert.equal(opts.method,'GET');verified=true;return new Response(JSON.stringify({valueRanges:[{values:[sheets.EXCHANGE_HEADERS]},{values:[values]}]}));}
-      assert.ok(String(url).includes('/sendMessage'));sends++;assert.ok(JSON.parse(opts.body).text.includes('USD 시제: 123.45 USD'));return new Response(JSON.stringify({ok:true,result:{message_id:2}}));
+      assert.ok(String(url).includes('/sendMessage'));sends++;assert.ok(JSON.parse(opts.body).text.includes('🇺🇸 USD 123.45'));return new Response(JSON.stringify({ok:true,result:{message_id:2}}));
     };
     const config={token:'synthetic',botId:'100001',chatId:'-100001',adminIds:new Set(),activatedAt:0};
     const payload={reply_parameters:{message_id:1},text:'환전 원장 기록 완료 · FX-100001-1\n내용'};
