@@ -12,15 +12,16 @@ export function tableLabel(value:unknown){
  return String(value??'');
 }
 const normalizeTable=tableLabel;
-export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][],settings:{tableRoundLabels?:boolean;rebuySnapshot?:boolean;photoSnapshot?:boolean;registrationApprovals?:Record<string,{agency:string;card?:string}>}={}){
+export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][],settings:{tableRoundLabels?:boolean;rebuySnapshot?:boolean;photoSnapshot?:boolean;registrationApprovals?:Record<string,{agency:string;card?:string}>;reconcile?:(op:any)=>{op:any;question?:string;skip?:boolean}}={}){
  if(!Array.isArray(ops)||ops.length<1||ops.length>20)throw Error('처리할 항목을 구체적으로 알려주세요.');
- const changes:CellChange[]=[],summary:string[]=[];const work=daily.map(r=>[...r]),masterWork=master.map(r=>[...r]);let frow=fnb.length+1,mrow=master.length+1;
+ const changes:CellChange[]=[],summary:string[]=[],review:string[]=[];const work=daily.map(r=>[...r]),masterWork=master.map(r=>[...r]);let frow=fnb.length+1,mrow=master.length+1;
  const names=new Map<string,string[]>();for(const r of master.slice(1)){if(!r[0])continue;const k=norm(r[0]);names.set(k,Array.from(new Set([...(names.get(k)||[]),String(r[0])])));}
  let next=Math.max(3,work.length+1),reflow=false;
  function add(range:string,before:any[][],values:any[][]){if(changes.some(x=>x.range===range))throw Error('같은 항목을 두 번 수정하는 요청입니다. 나눠서 보내주세요.');changes.push({range,before,values});}
  // Resolve a rebuy photograph as ONE table session. Never put individual
  // players from a single snapshot into different games or create a new game.
- const resolved=ops.map(op=>({...op}));
+ const check=(op:any)=>{const checked=settings.reconcile?.(op)||{op};if(checked.question&&!review.includes(checked.question))review.push(checked.question);return checked;};
+ const resolved=ops.map(op=>check({...op})).filter(x=>!x.skip).map(x=>x.op);
  if(settings.rebuySnapshot){
   const groups=new Map<string,any[]>();
   for(const op of resolved.filter(o=>['add','total'].includes(o.kind))){const key=[op.date,op.table,op.blind].join('|');groups.set(key,[...(groups.get(key)||[]),op]);}
@@ -36,7 +37,7 @@ export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][
  // Register first so an explicitly supplied agency can be used by the same
  // atomic batch's daily entries, regardless of model operation ordering.
  for(const original of [...resolved.filter(o=>o.kind==='register'),...resolved.filter(o=>o.kind!=='register')]){
- const op={...original};
+ const checked=check({...original});if(checked.skip)continue;const op=checked.op;
  if(op.kind==='register'){
   const name=String(op.player||'').trim().toUpperCase();
   if(!/^[A-Z][A-Z .'-]{2,79}$/.test(name))throw Error('등록할 영문 이름을 확인해주세요.');
@@ -138,7 +139,7 @@ export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][
    if(before.slice(0,5).some((v,j)=>v!==after[j]))other.push({range:`'일일 입력'!A${i+1}:E${i+1}`,before:[before.slice(0,5)],values:[after.slice(0,5)]});
    if(before[7]!==after[7])other.push({range:`'일일 입력'!H${i+1}`,before:[[before[7]]],values:[[after[7]]]});
   }
-  return {changes:other,summary};
+  return {changes:other,summary,review};
  }
- return {changes,summary};
+ return {changes,summary,review};
 }

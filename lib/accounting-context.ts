@@ -28,14 +28,15 @@ export function sheetContext(daily:any[][],master:any[][],businessDate:string){
  return {businessDate,players,games:Object.values(games)};
 }
 export function correctedOperations(ops:any[],text:string,master:any[][],rules:any[]=[]){
- const game=text.match(/(?:^|\s)(\d{1,2})\s*번\s*게임/);
+ const gameNumbers=Array.from(new Set(Array.from(text.matchAll(/(\d{1,2})\s*번\s*게임/g)).map(m=>Number(m[1]))));
+ const game=gameNumbers.length===1?gameNumbers[0]:null;
  const players=canonicalPlayers(master);
  const floors=Array.from(text.matchAll(/([2-5])\s*층/g)).map(m=>m[1]+'F');
  const amounts=Array.from(text.matchAll(/(\d[\d,]*(?:\.\d+)?)\s*(만|천)?\s*(?:(\d+)\s*천)?\s*동/g)).map(m=>Number(m[1].replace(/,/g,''))*(m[2]==='만'?10000:m[2]==='천'?1000:1)+Number(m[3]||0)*1000);
  const onlyFnb=(ops||[]).filter(o=>o.kind==='fnb').length===1;
  return (ops||[]).map(op=>{
   const matches=players.filter(r=>norm(r[0])===norm(op.player));
-  const fixed={...op,...(matches.length===1?{player:matches[0][0]}:{}),...(game&&['add','total','cancel'].includes(op.kind)?{game:Number(game[1])}:{})};
+  const fixed={...op,...(matches.length===1?{player:matches[0][0]}:{}),...(game&&['add','total','cancel'].includes(op.kind)?{game:game}:{})};
   if(!game&&Number.isInteger(op.printedGame)&&['add','total','cancel'].includes(op.kind)){
    for(const rule of rules){if(!String(rule.content).startsWith('게임번호 대응: '))continue;try{const a=JSON.parse(rule.content.slice('게임번호 대응: '.length));if(a.date===op.date&&a.table===op.table&&a.printedGame===op.printedGame&&Number.isInteger(a.game)&&a.game>0&&a.game<=100)fixed.game=a.game;}catch{}}
   }

@@ -1,9 +1,10 @@
-import {sheetContext,correctedOperations,focusedQuestion} from '../../../../lib/accounting-context';
+import {reconcileSheet,reconcileOperation} from '../../../../lib/accounting-reconcile';
+import {sheetContext,correctedOperations,focusedQuestion,certainOperations} from '../../../../lib/accounting-context';
 import {planOperations} from '../../../../lib/accounting-plan';
 import {auditCases,auditDaily,auditMaster} from '../../../../lib/accounting-regressions';
 import {continuationText,registrationApprovals,rebuyCaption} from '../../../../lib/accounting-followup';
 import {NextResponse} from 'next/server';
-import {authorized,db,extract,ranges,handle} from '../../../../lib/accounting-agent';
+import {authorized,db,extract,ranges,handle,reconciliationHistory} from '../../../../lib/accounting-agent';
 import {tg} from '../../../../lib/telegram';
 import {accessToken,accountingWorkbook} from '../../../../lib/accounting-google';
 export const runtime='nodejs';export const dynamic='force-dynamic';export const maxDuration=180;
@@ -12,6 +13,15 @@ export async function POST(request:Request){
  if(!authorized(request,'ACCOUNTING_OPS_SECRET'))return NextResponse.json({error:'Unauthorized'},{status:401});
  try{
   const {action,messageId,caseName,imageData,caption}=await request.json();
+  if(action==='reconciliationAudit'){
+   const [daily,fnb,master]=await ranges(["'일일 입력'!A1:O5000","'F&B 입력'!A1:D2000","'플레이어 명단'!A1:D2500"],true);
+   const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+   const history=await reconciliationHistory(date),state=reconcileSheet(daily,date,history);
+   const job=Number.isSafeInteger(messageId)?history.find(j=>j.message_id===messageId):null;
+   const operations=job?.plan?.operations||[];
+   const plan=operations.length?planOperations(operations,daily,fnb,master,{tableRoundLabels:true,photoSnapshot:true,reconcile:op=>reconcileOperation(op,{state,sourceMessageId:job?.plan?.photoSourceMessageId||job?.message_id,sourceTime:job?.source_message?.date,photo:true,text:''})}):null;
+   return NextResponse.json({state,sourceMessageId:job?.message_id||null,plannedChanges:plan?.changes.length||0,review:plan?.review||[],business_rows_changed:false,telegram_messages_sent:false});
+  }
   if(action==='dryrunImage'){
    if(typeof imageData!=='string'||imageData.length>4000000||!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(imageData)||typeof caption!=='string'||caption.length>1000)throw Error('Invalid read-only image fixture');
    const [daily,fnb,master]=await ranges(["'일일 입력'!A1:O5000","'F&B 입력'!A1:D2000","'플레이어 명단'!A1:D2500"],true);
@@ -19,8 +29,9 @@ export async function POST(request:Request){
    const businessDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
    if(caseName==='rebuy_chang_before'){let game:any=null;for(const r of daily){if(r[0]!==''&&r[0]!=null)game=r[0];if(Number(game)===6&&Number(r[1])===46316&&r[4]==='CHANG YOON HO')r[7]=1;}}
    const result=await extract(caption+'\n읽기 전용 판독 검증입니다. 사진에서 대상 선수와 게임을 모두 operations로 추출해주세요. 이미 시트에 있는 항목도 추출하세요. 중복 판단은 별도 검증기가 수행하며 실제 입력은 하지 않습니다.',imageData,{...sheetContext(daily,master,businessDate),businessRules:rules.data});
-   const operations=correctedOperations(result.operations,caption,master,rules.data||[]);
+   let operations=correctedOperations(result.operations,caption,master,rules.data||[]);
    result.question=focusedQuestion(result.question,caption,operations);
+   operations=certainOperations(operations,result.question);
    const plan=operations.length?planOperations(operations,daily,fnb,master,{tableRoundLabels:true,photoSnapshot:true,rebuySnapshot:rebuyCaption(caption)}):null;
    return NextResponse.json({model:result._model,question:result.question||null,operations,plannedChanges:plan?.changes.length||0,business_rows_changed:false,telegram_messages_sent:false});
   }
@@ -54,8 +65,9 @@ export async function POST(request:Request){
    const rules=await db().from('dream_accounting_rules').select('id,kind,content').eq('active',true).order('id');if(rules.error)throw Error('Rules unavailable');
    const businessDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(m.date*1000));
    const result=await extract(q.data.text+'\n읽기 전용 판독 검증입니다. 사진에서 대상 선수와 게임을 모두 operations로 추출해주세요. 이미 시트에 있는 항목도 추출하세요. 중복 판단은 별도 검증기가 수행하며 실제 입력은 하지 않습니다.','data:image/jpeg;base64,'+bytes.toString('base64'),{...sheetContext(daily,master,businessDate),businessRules:rules.data});
-   const operations=correctedOperations(result.operations,q.data.text,master,rules.data||[]);
+   let operations=correctedOperations(result.operations,q.data.text,master,rules.data||[]);
    result.question=focusedQuestion(result.question,q.data.text,operations);
+   operations=certainOperations(operations,result.question);
    const plan=operations.length?planOperations(operations,daily,fnb,master,{tableRoundLabels:true,photoSnapshot:true,rebuySnapshot:rebuyCaption(q.data.text)}):null;
    return NextResponse.json({business_rows_changed:false,telegram_messages_sent:false,model:result._model,question:result.question||null,operations,plannedChanges:plan?.changes.length||0});
   }
