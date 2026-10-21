@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict');const {planOperations,serial}=require('../.test-build/accounting-plan');
-const day=serial('2026-10-21');const master=[['PLAYER'],['SEO JUN GI'],['KIM SEON HAK']];
+const day=serial('2026-10-21');const master=[['PLAYER'],['SEO JUN GI','','KOREA'],['KIM SEON HAK','','KOREA']];
 const daily=[['NUMBER'],[1,day,4,'5M','SEO JUN GI','','',1],['',day,4,'5M','KIM SEON HAK','','',2]];
 const base={date:'2026-10-21',game:1,table:4,blind:'5M',player:'SEO JUN GI'};
 let p=planOperations([{...base,kind:'total',buyins:2}],daily,[],master);assert.deepEqual(p.changes.map(x=>x.range),["'일일 입력'!H2"]);assert.equal(p.changes[0].values[0][0],2);
@@ -28,3 +28,17 @@ assert.equal(nextRound.changes[0].values[0][2],'13-3');
 const sameRound=planOperations([{...request,game:8},{...request,game:8,player:'KIM SEON HAK'}],manual,[],master,{tableRoundLabels:true});
 assert.equal(sameRound.changes[2].values[0][2],'13-3');
 console.log('7 memory and table-round checks passed');
+
+const dateLabel=[['NUMBER'],[6,day,46144,'5M','SEO JUN GI','','',1]];
+assert.equal(planOperations([{...base,game:6,table:5,kind:'total',buyins:2}],dateLabel,[],master).changes[0].range,"'일일 입력'!H2");
+assert.equal(planOperations([{...base,game:6,table:5,kind:'add',buyins:1}],dateLabel,[],master).changes.length,0);
+assert.equal(planOperations([{...base,game:9,table:5,kind:'add',buyins:1}],dateLabel,[],master,{tableRoundLabels:true}).changes[0].values[0][2],'5-3');
+assert.equal(planOperations([{...base,player:'SEOJUNGI',kind:'add',buyins:1}],daily,[],master).changes.length,0);
+p=planOperations([{kind:'register',player:'KIM BEONCHANG'}],daily,[],master);
+assert.deepEqual(p.changes[0].values,[['KIM BEONCHANG','','','소속 코드 확인 대기']]);
+assert.throws(()=>planOperations([{kind:'register',player:'KIM BEONCHANG',agency:'KOREA'}],daily,[],master));
+assert.throws(()=>planOperations([{kind:'register',player:'KIM BEONCHANG'},{...base,kind:'add',player:'KIM BEONCHANG',buyins:1}],daily,[],master));
+assert.equal(planOperations([{kind:'register',player:'SEOJUNGI'}],daily,[],master).changes.length,0);
+p=planOperations([{kind:'register',player:'KIM BEONCHANG'},{...base,game:8,kind:'add',buyins:1}],daily,[],master);
+assert.equal(p.changes.length,3);
+console.log('9 context, normalized-name, registration and date-label regression checks passed');
