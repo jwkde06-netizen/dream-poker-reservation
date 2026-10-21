@@ -33,6 +33,21 @@ export async function POST(request:Request){
    const plan=operations.length?planOperations(operations,daily,fnb,master,{tableRoundLabels:true,registrationApprovals:registrationApprovals(operations,q.data.text,master,q.data.plan?.pendingQuestion||'',rules.data||[])}):null;
    return NextResponse.json({operations,changes:plan?.changes||[],business_rows_changed:false,telegram_messages_sent:false});
   }
+  if(action==='resumeRegistration'){
+   if(!Number.isSafeInteger(messageId))throw Error('Invalid message');
+   const q=await db().from('dream_accounting_jobs').select('*').eq('message_id',messageId).order('update_id',{ascending:true}).limit(1).single();
+   const j=q.data,ops=j?.plan?.operations;
+   if(q.error||j?.status!=='applied'||!j.plan?.pendingQuestion||!Array.isArray(ops)||!ops.length||ops.some((o:any)=>o.kind!=='register')||!/소속|agency|코드/.test(j.plan.pendingQuestion)||!j.source_message?.date||!/^\d+$/.test(j.sender_id))throw Error('Only an incomplete named registration can resume');
+   const snapshot={status:j.status,plan:j.plan,reply_text:j.reply_text,reply_id:j.reply_id};
+   const reset=await db().from('dream_accounting_jobs').update({status:'received',reply_text:null,reply_id:null}).eq('update_id',j.update_id).eq('status','applied').select('update_id');
+   if(reset.error||reset.data?.length!==1)throw Error('Job changed');
+   await handle({update_id:j.update_id,message:{message_id:j.message_id,date:j.source_message.date,text:j.text,from:{id:Number(j.sender_id),is_bot:false},chat:{id:Number(process.env.STAFF_TELEGRAM_CHAT_ID),type:'group'}}});
+   const after=await db().from('dream_accounting_jobs').select('status,plan,reply_text,reply_id').eq('update_id',j.update_id).single();
+   if(after.error)throw Error('Recovery readback failed');
+   const audit=await db().from('dream_accounting_jobs').update({plan:{...after.data.plan,recoveredFrom:snapshot}}).eq('update_id',j.update_id);
+   if(audit.error)throw Error('Recovery audit save failed');
+   return NextResponse.json(after.data);
+  }
   if(action==='reconciliationAudit'){
    const [daily,fnb,master]=await ranges(["'일일 입력'!A1:O5000","'F&B 입력'!A1:D2000","'플레이어 명단'!A1:D2500"],true);
    const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
