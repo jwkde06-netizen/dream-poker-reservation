@@ -174,10 +174,13 @@ export function exchangeFeeShortcut(text: string): ExchangeIntent | null {
 }
 /** Undo a fee transaction by exact receipt or an unambiguous amount. */
 export function cancellationAmount(text: string): number | null {
-  const t=text.trim().replace(/^\\/cancel(?:@dream_poker_exchange_bot)?\\s*/i,'').replace(/\\s*(취소|취소해|취소해줘)\\s*$/,'').trim();
-  if (!/(?:취소|cancel)/i.test(text) && !/^\\/cancel(?:@dream_poker_exchange_bot)?/i.test(text)) return null;
-  const m=t.match(/^([0-9][0-9,]*(?:\\.[0-9]+)?)\\s*(만|천|백만|m|k|동|vnd)?$/i);
-  if (!m) throw new ExchangeReview('취소할 금액을 알려주세요. 또는 원거래 완료 메시지에 답장으로 “취소”라고 보내주세요.');
+  let t=text.trim();
+  const slash=t.toLowerCase().startsWith('/cancel');
+  if (!slash && !t.includes('취소')) return null;
+  if (slash) t=t.slice(t.indexOf(' ')+1).trim();
+  for(const tail of ['취소해줘','취소해','취소']) if(t.endsWith(tail)) {t=t.slice(0,-tail.length).trim(); break;}
+  const m=t.match(/^([0-9][0-9,]*(?:[.][0-9]+)?)[ ]*(만|천|백만|m|k|동|vnd)?$/i);
+  if (!m) throw new ExchangeReview('취소할 금액을 알려주세요. 또는 완료 메시지에 답장으로 “취소”라고 보내주세요.');
   const f:Record<string,number>={'':1,만:10000,천:1000,백만:1000000,m:1000000,k:1000,동:1,vnd:1};
   const v=Number(m[1].replace(/,/g,''))*f[(m[2]||'').toLowerCase()];
   if (!Number.isSafeInteger(v)||v<=0) throw new ExchangeReview('취소 금액을 확인해주세요.');
