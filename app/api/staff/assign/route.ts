@@ -9,7 +9,7 @@ export async function POST(request:Request){
  const {data:{user},error:authError}=await caller.auth.getUser(token);
  if(authError||!user)return NextResponse.json({error:"Authentication required"},{status:401});
  const key=process.env.SUPABASE_SERVICE_ROLE_KEY;
- if(!key)return NextResponse.json({error:"Server admin key not configured"},{status:503});
+ if(!key)return NextResponse.json({error:"서버 설정 누락: Vercel의 SUPABASE_SERVICE_ROLE_KEY를 등록하고 재배포해야 합니다. (Server service-role key missing)"},{status:503});
  // Resolve trusted roles with server credentials so a restrictive RLS policy cannot hide a valid account.
  const admin=createClient(projectUrl,key,{auth:{persistSession:false,autoRefreshToken:false}});
  const {data:profile,error:profileError}=await admin.from("user_profiles").select("role,active").eq("user_id",user.id).maybeSingle();

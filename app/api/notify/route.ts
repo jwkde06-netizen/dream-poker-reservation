@@ -1,3 +1,4 @@
+import {dispatch} from "../../../lib/desk";
 import {NextResponse} from "next/server";
 import {createClient} from "@supabase/supabase-js";
 import {projectUrl,publicKey,tg} from "../../../lib/telegram";
@@ -23,11 +24,20 @@ export async function POST(request:Request){
    booking={...item,reservation_id:item.reservation_id||item.id,game_title:item.game_title||game?.title||"Reservation",table_no:item.table_no||game?.table_no,game_no:item.game_no||game?.game_no};
  }
  if(!booking)return NextResponse.json({error:"No sendable booking returned by notification claim"},{status:409});
+ if(process.env.DREAM_DESK_ENABLED==="true"){const result=await dispatch();return NextResponse.json({ok:result.failed===0,...result});}
  const name=String(booking.player_name||"").slice(0,80);
  const note=String(booking.guest_note||"").slice(0,500);
  const title=String(booking.game_title||"Game").replace(/\bTIME\s*ATTACK\b/gi,"").trim()||"Game";
  const lines=["🟢 NEW BOOKING / ĐẶT CHỖ MỚI",`${title} · Table ${booking.table_no||"—"} / No.${booking.game_no||"—"}`,`👤 ${name}`,`🕒 ETA ${fmt(booking.arrival_at)} (VN)`,note?`📝 ${note.slice(0,100)}`:""].filter(Boolean);
- await tg("sendMessage",{chat_id:target,text:lines.join("\n"),reply_markup:{inline_keyboard:[[{text:"📋 Open cashier / Mở trang thu ngân",url:"https://dream-poker-reservation.vercel.app/staff"}]]}});
+ const reservationId=String(booking.reservation_id||booking.id||"");
+ const actionButtons=/^[a-f0-9-]{36}$/i.test(reservationId)?[
+   {text:"✅ 승인 / Duyệt",callback_data:"reservation:approve:"+reservationId},
+   {text:"❌ 거절 / Từ chối",callback_data:"reservation:reject:"+reservationId}
+ ]:[];
+ await tg("sendMessage",{chat_id:target,text:lines.join("\n"),reply_markup:{inline_keyboard:[
+   ...(actionButtons.length?[actionButtons]:[]),
+   [{text:"📋 캐셔 화면 / Cashier",url:process.env.NEXT_PUBLIC_SITE_URL||"https://dream-poker-reservation.vercel.app/staff"}]
+ ]}});
  if(!error){const receipt=await db.rpc("confirm_poker_telegram_notification",{p_token:token});
  if(receipt.error)return NextResponse.json({ok:true,warning:"Telegram delivered; receipt update failed"});}
  return NextResponse.json({ok:true});
