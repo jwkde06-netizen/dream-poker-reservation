@@ -48,7 +48,7 @@ const telegram = require('../.test-build/exchange-telegram');
     assert.equal(job.status, 'review'); assert.match(job.reply_text, /수정된 메시지/);
     await agent.handleExchangeUpdate({ ...base, update_id: 3, message: { ...base.message, forward_origin: { type: 'user' } } });
     assert.equal(job.status, 'review'); assert.match(job.reply_text, /과거 내역/);
-    await agent.handleExchangeUpdate({ ...base, update_id: 4, message: { ...base.message, text: '+50000' } });
+    await agent.handleExchangeUpdate({ ...base, update_id: 4, message: { ...base.message, text: '+50000?' } });
     assert.equal(job.status, 'review'); assert.match(job.reply_text, /통화/);
     assert.equal(committed, 0); assert.equal(aiCalls, 0); assert.equal(replyCalls, 3);
     console.log('exchange webhook: wrong-room, pre-activation, bot, auth, forwarded/edited and ambiguous-message boundaries passed');
