@@ -35,7 +35,7 @@ export function exchangeSheetRow(event: SheetEvent, sourceText: string): { row: 
   const labels: Record<string, string> = { opening: '기초 시제', exchange: '환전', movement: '시제 입출금', reversal: '취소' };
   if (!labels[event.kind]) throw Error('Invalid exchange kind');
   const at = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date(event.source_date));
-  const values = [event.reference, at, serial, labels[event.kind], plan.summary.join('\n'), plan.fee_vnd, plan.fx_profit_vnd ?? '', plan.expense_vnd, ...deltas, plan.note, plan.valuation_incomplete ? '미확인' : '확인', event.sender_id, sourceText, plan.reverses_reference || '', plan.external_reference || ''];
+  const values = [event.reference, at, serial, labels[event.kind], plan.summary.join('\n'), plan.fee_vnd, plan.fx_profit_vnd ?? '', plan.expense_vnd, ...deltas, (plan.note + (plan.postings.some(p => p.account === 'KRW_CASH') ? ' | 원화 현금 증감 ' + plan.postings.filter(p=>p.account==='KRW_CASH').reduce((s,p)=>s+p.amount_minor,0) + ' KRW' : '')), plan.valuation_incomplete ? '미확인' : '확인', event.sender_id, sourceText, plan.reverses_reference || '', plan.external_reference || ''];
   if (values.some(v => typeof v === 'number' && !Number.isFinite(v))) throw Error('Invalid exchange money');
   return { row: sequence + 1, values };
 }

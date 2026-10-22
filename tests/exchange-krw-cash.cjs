@@ -1,0 +1,17 @@
+const assert=require('node:assert/strict');
+const domain=require('../.test-build/exchange-domain');
+const agent=require('../.test-build/exchange-agent');
+const receipt=require('../.test-build/exchange-receipt');
+const cash=agent.directKrwExchange('5만5천원 현금으로 받고 100만동 줌');
+assert.equal(cash?.received?.account,'KRW_CASH');
+assert.equal(cash?.received?.amount,'55000');
+assert.equal(agent.directKrwExchange('5만5000원 원화받고 100만동드림')?.received.amount,'55000');
+assert.equal(agent.confirmedKrwExchange(['5만5천원 원화받고 100만동드림','5만5000원은 계좌 아니고 현금으로 받아서 분리해야 함'])?.received.account,'KRW_CASH');
+const state={initialized:true,version:1,opened_at:'2026-10-21T12:00:00Z',accounts:{VND_CASH:{balance_minor:44450000,book_vnd:44450000},VND_BANK:{balance_minor:0,book_vnd:0},KRW_BANK:{balance_minor:1380000,book_vnd:26930000},KRW_CASH:{balance_minor:0,book_vnd:0},USD_CASH:{balance_minor:10000,book_vnd:2500000}}};
+const plan=domain.planExchange(cash,state);
+assert.equal(plan.postings.find(x=>x.account==='KRW_CASH').after_minor,55000);
+assert.equal(plan.postings.find(x=>x.account==='VND_CASH').after_minor,43450000);
+assert.equal(plan.postings.some(x=>x.account==='KRW_BANK'),false);
+const report={initialized:true,from:'2026-10-19',to:'2026-10-22',fee_vnd:1050000,realized_fx_vnd:930000,expense_vnd:0,net_known_vnd:1980000,balances:{VND_CASH:{closing_minor:43450000},VND_BANK:{closing_minor:0},KRW_BANK:{closing_minor:1380000},KRW_CASH:{closing_minor:55000},USD_CASH:{closing_minor:10000}}};
+assert.match(receipt.compactExchangeStatus(report),/KRW 1,435,000/);
+console.log('KRW cash separate posting and combined summary PASS');
