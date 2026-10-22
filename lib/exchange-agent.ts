@@ -290,16 +290,17 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
         }
         // An explicit yes confirms the specific payment fields in the unanswered quoted request.
         // Do not send a one-word approval to the model as an isolated money instruction.
+        let cashMatched=false;
         const cashCorrection=/^(?:원화\\s*)?현금(?:으로\\s*받았어|으로\\s*받음|으로\\s*받았습니다|으로\\s*수령|입니다)?$/i.test(text.trim());
         if(cashCorrection && previous.job?.status==='review') {
           const base=confirmedKrwExchange(previous.unresolved_texts);
-          if(base){intent={...base,received:{...base.received,account:'KRW_CASH'},note:'원화 현금 수령·동 지급 완료'};job=await patchJob(config,job.update_id,{intent},owner);}
+          if(base){intent={...base,received:{...base.received,account:'KRW_CASH'},note:'원화 현금 수령·동 지급 완료'};cashMatched=true;job=await patchJob(config,job.update_id,{intent},owner);}
         }
         const yes=/^(?:네|예|응|맞아|맞습니다|확인|yes|y)$/i.test(text.trim());
         if (yes && previous.job && previous.job.status !== 'review') throw new ExchangeReview('이미 처리된 요청입니다. 중복 기록하지 않았습니다.');
         const confirmed = yes ? confirmedKrwExchange(previous.unresolved_texts) : null;
         if (yes && !confirmed) throw new ExchangeReview('확인할 미처리 환전 원문을 찾지 못했습니다. 해당 원문에 답장해주세요.');
-        if(cashCorrection && intent?.kind==='exchange') { /* matched original confirmed payment */ }
+        if(cashCorrection && cashMatched) { /* matched original confirmed payment */ }
         else if (confirmed && previous.job?.status === 'review') {
           intent = confirmed;
           job = await patchJob(config, job.update_id, { intent }, owner);
