@@ -1,0 +1,17 @@
+const fs=require('fs'),ts=require('typescript'),assert=require('assert');
+require.extensions['.ts']=(m,f)=>m._compile(ts.transpileModule(fs.readFileSync(f,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,f);
+const {parseAIResponse}=require('../lib/accounting-ai-response.ts');
+const {completePhotoRoster,verifyChipEvidence}=require('../lib/accounting-vision.ts');
+const parse=v=>parseAIResponse({choices:[{finish_reason:'stop',message:{content:JSON.stringify(v)}}]},'columns');
+const paper={date:'2026-10-22',table:5,printedGame:16,handwrittenGame:15,names:['KIM SUNG HWAN','PARK WAN SEUNG','SEO JUN GI'],chipAmounts:[100000,100000,100000],selected:[true,true,true],hasSelectionMarkers:true};
+const ops=paper.names.map(player=>({kind:'add',date:paper.date,game:15,printedGame:16,table:5,blind:'5M',player,buyins:1}));
+const evidence=parse({documents:[paper]});
+const covered=completePhotoRoster(ops,evidence,[['name'],...paper.names.map(n=>[n,'','KOREA'])]);
+const verified=verifyChipEvidence(covered.operations,evidence);
+assert.equal(covered.questions.length,0);assert.equal(verified.questions.length,0);assert.equal(verified.operations.length,3);
+assert.equal(parse(paper).names.length,3);
+assert.equal(parse({documents:[paper,{...paper,table:12,printedGame:14,handwrittenGame:14}]}).documents.length,2);
+assert.throws(()=>parse({documents:[]}));
+assert.throws(()=>parse({documents:[{...paper,selected:[true]}]}));
+assert.throws(()=>parse({documents:[{...paper,table:'5'}]}));
+console.log('Photo response parsing through roster/chip verification passed');
