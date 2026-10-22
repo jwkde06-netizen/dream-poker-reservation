@@ -39,7 +39,7 @@ export function formatExchangeBalanceReceipt(reference: string, plan: ExchangePl
   const period = exchangeSettlementPeriod(Math.floor(Date.parse(report.to + 'T00:00:00+07:00') / 1000));
   if (period.from !== report.from) throw Error('Exchange receipt period mismatch');
   const balances = {} as Record<ExchangeAccount, number>;
-  for (const account of ACCOUNT_CODES) balances[account] = integer(report.balances?.[account]?.closing_minor, true);
+  for (const account of ACCOUNT_CODES) balances[account] = integer(account === 'KRW_CASH' && report.balances?.[account] == null ? 0 : report.balances?.[account]?.closing_minor, true);
   const fee = integer(report.fee_vnd), fx = integer(report.realized_fx_vnd), expense = integer(report.expense_vnd);
   const profit = integer(report.net_known_vnd);
   if (integer(fee + fx - expense) !== profit) throw Error('Exchange receipt profit mismatch');

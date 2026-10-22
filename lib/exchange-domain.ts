@@ -204,7 +204,7 @@ export function planExchange(intent: Exclude<ExchangeIntent, { kind: 'reversal' 
     const plan = newPlan('opening', state, intent.note);
     let capital: number | null = 0;
     for (const code of ACCOUNT_CODES) {
-      const balance = toMinor(intent.balances[code], code, true);
+      const balance = toMinor(code === 'KRW_CASH' && intent.balances[code] == null ? '0' : intent.balances[code], code, true);
       const basisText = isVnd(code) ? null : intent.basis_vnd[code as 'KRW_BANK' | 'KRW_CASH' | 'USD_CASH'];
       const book = isVnd(code) ? balance : balance === 0 ? 0 : basisText == null ? null : toMinor(basisText, 'VND_CASH');
       if (balance === 0 && basisText != null && toMinor(basisText, 'VND_CASH', true) !== 0) throw new ExchangeReview('잔액이 0인 외화의 취득원가도 0이어야 합니다.');
