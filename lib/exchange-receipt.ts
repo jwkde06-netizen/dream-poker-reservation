@@ -18,7 +18,7 @@ export function compactExchangeStatus(report:any, tradeProfit?:number):string {
   const b=report.balances;
   const vnd=integer(b.VND_CASH.closing_minor,true)+integer(b.VND_BANK.closing_minor,true);
   const usd=integer(b.USD_CASH.closing_minor,true)/100;
-  const krw=integer(b.KRW_BANK.closing_minor,true)+integer(b.KRW_CASH.closing_minor,true);
+  const krw=integer(b.KRW_BANK.closing_minor,true)+integer(b.KRW_CASH?.closing_minor ?? 0,true);
   const fee=integer(report.fee_vnd),fx=integer(report.realized_fx_vnd),cost=integer(report.expense_vnd),profit=integer(report.net_known_vnd);
   if(fee+fx-cost!==profit)throw Error('Exchange totals inconsistent');
   const [fy,fm,fd]=report.from.split('-').map(Number);
@@ -39,7 +39,7 @@ export function formatExchangeBalanceReceipt(reference: string, plan: ExchangePl
   const period = exchangeSettlementPeriod(Math.floor(Date.parse(report.to + 'T00:00:00+07:00') / 1000));
   if (period.from !== report.from) throw Error('Exchange receipt period mismatch');
   const balances = {} as Record<ExchangeAccount, number>;
-  for (const account of ACCOUNT_CODES) balances[account] = integer(report.balances?.[account]?.closing_minor, true);
+  for (const account of ACCOUNT_CODES) balances[account] = integer(report.balances?.[account]?.closing_minor ?? (account === 'KRW_CASH' ? 0 : undefined), true);
   const fee = integer(report.fee_vnd), fx = integer(report.realized_fx_vnd), expense = integer(report.expense_vnd);
   const profit = integer(report.net_known_vnd);
   if (integer(fee + fx - expense) !== profit) throw Error('Exchange receipt profit mismatch');
