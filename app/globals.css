@@ -775,3 +775,17 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
 }
 
 .reservationAgent{padding:12px 16px;border:1px solid #354153;border-radius:12px;margin:12px 0;font-size:13px;display:flex;gap:10px 20px;flex-wrap:wrap;align-items:center}.reservationAgent>span{color:#97b9aa}.agentCounts{display:flex;gap:18px;flex-wrap:wrap}.agentCounts b{color:#eac47b}.reservationAgent details{width:100%}.reservationAgent summary{cursor:pointer}.agentJob{display:flex;gap:18px;align-items:center;padding:8px 0;border-bottom:1px solid #354153}.agentJob button{margin-left:auto}.reservationAgent p{width:100%;color:#eea58e}
+
+.playerAccount{margin:0 0 22px;padding:0 0 20px;border-bottom:1px solid var(--line,#343434)}
+.playerLoginButtons{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.playerLoginButtons button{display:flex;align-items:center;justify-content:center;gap:9px;min-height:46px;border-radius:10px;font-size:14px;font-weight:600;padding:10px;border:1px solid transparent}
+.playerLoginButtons svg{width:20px;height:20px;flex-shrink:0}
+.playerLoginButtons .playerGoogle{background:#fff;color:#1f1f1f;border-color:#747775}
+.playerLoginButtons .playerKakao{background:#fee500;color:#191919}
+.playerLoginButtons button:disabled{opacity:.65;cursor:not-allowed}
+.playerAccount small{display:block;color:var(--muted,#aaa);font-size:12px;margin-top:9px;line-height:1.5}
+.playerAccountSignedIn{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px}
+.playerAccountSignedIn button{padding:7px 10px;font-size:12px}
+.playerAccount p{font-size:13px;color:#e7a591;margin-bottom:0}
+.playerCallback{min-height:100vh;display:grid;place-items:center;background:#111;color:#eee;font-family:system-ui}
+@media(max-width:380px){.playerLoginButtons{grid-template-columns:1fr}}
