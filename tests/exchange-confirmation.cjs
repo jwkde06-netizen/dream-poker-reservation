@@ -1,0 +1,11 @@
+const assert = require('node:assert/strict');
+const { directKrwExchange, confirmedKrwExchange } = require('../.test-build/exchange-agent');
+const source = '5만5천원 원화받고 100만동드림';
+const intent = confirmedKrwExchange([source, '네', '네']);
+assert.equal(intent.received.amount, '55000');
+assert.equal(intent.paid.amount, '1000000');
+assert.equal(confirmedKrwExchange(['네']), null);
+assert.equal(directKrwExchange('예시 ' + source), null);
+assert.equal(directKrwExchange(source + ' 예정'), null);
+assert.throws(() => confirmedKrwExchange([source, '6만5천원 원화받고 100만동드림']));
+console.log('exchange confirmation: exact amounts, chained replies and ambiguous sources passed');
