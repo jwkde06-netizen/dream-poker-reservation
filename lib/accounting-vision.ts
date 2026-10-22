@@ -1,9 +1,35 @@
 import {norm,serial,tableLabel} from './accounting-plan';
 import {correctedOperations,playerIdentity} from './accounting-context';
 
+// Bind each independent paper to exactly one extraction group. Never borrow
+// a name/chip row from another game, even when the same player appears twice.
+function paperFor(op:any,documents:any[]){
+ const matches=documents.filter(d=>d.date===op.date&&d.table===op.table&&
+  (Number.isInteger(d.handwrittenGame)&&d.handwrittenGame>0?d.handwrittenGame===op.game:
+   Number.isInteger(op.printedGame)?d.printedGame===op.printedGame:d.printedGame===op.game));
+ return matches.length===1?matches[0]:null;
+}
+function groupedPapers(ops:any[],evidence:any,run:(ops:any[],paper:any)=>any){
+ const documents=evidence.documents;
+ if(!Array.isArray(documents)||!documents.length||documents.length>6)return {operations:ops.filter(o=>!['add','total'].includes(o.kind)),questions:['사진의 게임별 명단을 확인하지 못했어요.']};
+ const groups=new Map<any,any[]>(),operations=ops.filter(o=>!['add','total'].includes(o.kind)),questions:string[]=[];
+ for(const op of ops.filter(o=>['add','total'].includes(o.kind))){
+  const paper=paperFor(op,documents);
+  if(!paper){questions.push(`${op.game}번 게임의 용지 번호를 확인해주세요.`);continue;}
+  groups.set(paper,[...(groups.get(paper)||[]),op]);
+ }
+ for(const paper of documents){
+  const group=groups.get(paper);
+  if(!group){questions.push(`${paper.handwrittenGame||paper.printedGame||''}번 게임 명단을 다시 확인해야 해요.`);continue;}
+  const result=run(group,paper);operations.push(...result.operations);questions.push(...result.questions);
+ }
+ return {operations,questions:Array.from(new Set(questions))};
+}
+
 // Reconcile every independently transcribed seat against the master, rather
 // than trusting the first model to have included every eligible player.
 export function completePhotoRoster(ops:any[],evidence:any,master:any[][],rules:any[]=[]){
+ if(evidence?.documents!==undefined)return groupedPapers(ops,evidence,(group,paper)=>completePhotoRoster(group,paper,master,rules));
  const names=evidence?.names,amounts=evidence?.chipAmounts,selected=evidence?.selected;
  const attendance=ops.filter(o=>['add','total'].includes(o.kind));
  const groups=new Set(attendance.map(o=>[o.date,o.game,o.table,o.blind,o.kind].join('|')));
@@ -41,6 +67,7 @@ export function needsChipVerification(ops:any[],daily:any[][]){
 // Compare an independent, context-free column transcription with the first
 // reading. No vote or arbitrary confidence score is allowed to decide money.
 export function verifyChipEvidence(ops:any[],evidence:any,rules:any[]=[]){
+ if(evidence?.documents!==undefined)return groupedPapers(ops,evidence,(group,paper)=>verifyChipEvidence(group,paper,rules));
  const names=evidence?.names,amounts=evidence?.chipAmounts;
  if(!Array.isArray(names)||!Array.isArray(amounts)||names.length!==amounts.length||names.length<1||names.length>10)return {operations:ops.filter(o=>!['add','total'].includes(o.kind)),questions:['사진의 이름과 칩 수를 정확히 맞추지 못했어요. 누적 바이인 수를 확인해주세요.']};
  const canonical=(name:string)=>playerIdentity(name,rules);
