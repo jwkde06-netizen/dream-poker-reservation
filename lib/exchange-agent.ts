@@ -211,6 +211,16 @@ export function directKrwExchange(text:string):ExchangeIntent|null {
  if(!Number.isSafeInteger(krw)||!Number.isSafeInteger(vnd)||krw<=0||vnd<=0)throw new ExchangeReview('환전 금액을 확인해주세요.');
  return {kind:'exchange',received:{account:'KRW_BANK',amount:String(krw)},paid:{account:'VND_CASH',amount:String(vnd)},fee:null,received_includes_fee:false,rate_vnd:null,note:'원화 수령 및 동 지급 완료',external_reference:null};
 }
+/** Only persisted unresolved source messages can authorize a short confirmation. */
+export function confirmedKrwExchange(sources: string[]): ExchangeIntent | null {
+  const intents = sources.map(directKrwExchange).filter((x): x is Extract<ExchangeIntent, { kind: 'exchange' }> => x?.kind === 'exchange');
+  if (!intents.length) return null;
+  const first = intents[0];
+  if (intents.some(x => x.received.amount !== first.received.amount || x.paid.amount !== first.paid.amount)) {
+    throw new ExchangeReview('답장 맥락에 서로 다른 환전 금액이 있습니다. 정확한 원문에 답장해주세요.');
+  }
+  return first;
+}
 function simpleIntent(text: string): ExchangeIntent | null {
   const t = text.trim().replace(/@\w+(?=\s|$)/, '');
   if (/^(\/start|\/help|도움말|사용법)$/i.test(t)) return { kind: 'help' };
@@ -280,11 +290,12 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
         // An explicit yes confirms the specific payment fields in the unanswered quoted request.
         // Do not send a one-word approval to the model as an isolated money instruction.
         const yes=/^(?:네|예|응|맞아|맞습니다|확인|yes|y)$/i.test(text.trim());
-        const sources=[...previous.unresolved_texts,previous.job?.raw_text||'',String(message.reply_to_message?.text||'')];
-        const match=sources.map(src=>src.replace(/\\s+/g,'').match(/(\\d+)만(\\d+)천원원화받고(\\d+)만동드림/)).find(Boolean);
-        if(yes && previous.job?.status==='review' && match) {
-          intent={kind:'exchange',received:{account:'KRW_BANK',amount:String(Number(match[1])*10000+Number(match[2])*1000)},paid:{account:'VND_CASH',amount:String(Number(match[3])*10000)},fee:null,received_includes_fee:false,rate_vnd:null,note:'원화 수령·베트남동 지급 완료',external_reference:null};
-          job=await patchJob(config,job.update_id,{intent},owner);
+        if (yes && previous.job && previous.job.status !== 'review') throw new ExchangeReview('이미 처리된 요청입니다. 중복 기록하지 않았습니다.');
+        const confirmed = yes ? confirmedKrwExchange(previous.unresolved_texts) : null;
+        if (yes && !confirmed) throw new ExchangeReview('확인할 미처리 환전 원문을 찾지 못했습니다. 해당 원문에 답장해주세요.');
+        if (confirmed && previous.job?.status === 'review') {
+          intent = confirmed;
+          job = await patchJob(config, job.update_id, { intent }, owner);
         } else {
         const result = await extractExchange(text, { business_date: today, default_rates_vnd: DEFAULT_EXCHANGE_RATES, previous: previous.job ? { status: previous.job.status, reference: previous.job.reference, intent: previous.job.intent } : null, unresolved_texts: previous.unresolved_texts });
         if (result?.question) throw new ExchangeReview(String(result.question).slice(0, 1000));
