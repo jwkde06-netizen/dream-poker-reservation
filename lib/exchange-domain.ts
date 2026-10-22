@@ -163,7 +163,7 @@ export function convertToVnd(amountMinor: number, code: 'KRW_BANK' | 'KRW_CASH' 
   return safeMoney(Number(numerator / denominator));
 }
 export function emptyExchangeState(): ExchangeState {
-  return { initialized: false, version: 0, opened_at: null, accounts: { VND_CASH: { balance_minor: 0, book_vnd: 0 }, VND_BANK: { balance_minor: 0, book_vnd: 0 }, KRW_BANK: { balance_minor: 0, book_vnd: 0 }, USD_CASH: { balance_minor: 0, book_vnd: 0 } } };
+  return { initialized: false, version: 0, opened_at: null, accounts: { VND_CASH: { balance_minor: 0, book_vnd: 0 }, VND_BANK: { balance_minor: 0, book_vnd: 0 }, KRW_BANK: { balance_minor: 0, book_vnd: 0 }, KRW_CASH: { balance_minor: 0, book_vnd: 0 }, USD_CASH: { balance_minor: 0, book_vnd: 0 } } };
 }
 function isVnd(code: ExchangeAccount) { return EXCHANGE_ACCOUNTS[code].currency === 'VND'; }
 export function formatMoney(minor: number, code: ExchangeAccount): string {
