@@ -4,9 +4,10 @@ const load=(file,requireFn)=>{const exports={};vm.runInNewContext(ts.transpileMo
 const model=load('lib/reservation-agent.ts',()=>{});
 for(const status of ['pending','waitlisted','confirmed']){
  const buttons=model.reservationActionKeyboard(id,{status}).inline_keyboard[0];
- assert.equal(buttons.length,2);assert.equal(buttons[1].text,'CONTACT DESK');
+ assert.equal(buttons[0].text,status==='confirmed'?'CANCEL':'CONFIRM');assert.equal(buttons[0].callback_data,`rr:${status==='confirmed'?'cancel':'confirm'}:${id}`);assert.equal(buttons.length,2);assert.equal(buttons[1].text,'CONTACT DESK');
  for(const b of buttons){assert(!b.url);assert(Buffer.byteLength(b.callback_data)<=64);}
 }
+assert.equal(model.reservationActionKeyboard(id,{status:'confirmed',contact_required:true}).inline_keyboard[0][0].text,'CANCEL');
 for(const status of ['cancelled','rejected','checked_in','no_show'])assert.equal(model.reservationActionKeyboard(id,{status}).inline_keyboard.length,0);
 const payload={reservation_id:id,version:0,event:'updated',status:'pending',contact_required:true,player_name:'TEST ONLY',game_title:'Next 5M',arrival_at:new Date().toISOString()};
 assert(model.reservationMessage(payload).includes('Status: Contact desk'));
@@ -23,8 +24,9 @@ async function run({data=`rr:confirm:${id}`,chat=-123,actor=42,bot=false,valid=t
 }
 (async()=>{
  let r=await run();assert(r.handled);assert.equal(r.calls[2][0],'apply_reservation_telegram_action');assert.equal(r.calls[2][1].p_action,'confirm');assert.equal(r.calls[2][1].p_actor,42);assert.equal(r.calls.at(-1)[1].text,'Reservation confirmed.');
+ r=await run({data:`rr:cancel:${id}`,result:'cancelled'});assert.equal(r.calls[2][1].p_action,'cancel');assert.equal(r.calls.at(-1)[1].text,'Reservation cancelled.');
  r=await run({data:`rr:contact:${id}`,result:'contact'});assert.equal(r.calls[2][1].p_action,'contact');assert(r.calls.at(-1)[1].text.includes('KakaoTalk'));
- for(const opts of [{data:'lr:confirm:test'},{data:'accounting:approve'}, {data:'rr:bad'},{bot:true},{actor:-1},{chat:42},{valid:false},{member:'left'},{member:'restricted'},{member:'kicked'}]){
+ for(const opts of [{data:'lr:confirm:test'},{data:'accounting:approve'}, {data:'rr:bad'},{bot:true},{actor:-1},{chat:42},{valid:false},{member:'left'},{member:'restricted'},{member:'kicked'},{data:`rr:cancel:${id}`,valid:false},{data:`rr:cancel:${id}`,member:'left'}]){
   r=await run(opts);assert(!r.calls.some(c=>c[0]==='apply_reservation_telegram_action'),JSON.stringify(opts));
  }
  for(const result of ['full','stale','inactive','unchanged','closed']){r=await run({result});assert(!r.calls.at(-1)[1].text.includes('Reservation confirmed.'));}

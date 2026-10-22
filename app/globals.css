@@ -789,3 +789,19 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
 .playerAccount p{font-size:13px;color:#e7a591;margin-bottom:0}
 .playerCallback{min-height:100vh;display:grid;place-items:center;background:#111;color:#eee;font-family:system-ui}
 @media(max-width:380px){.playerLoginButtons{grid-template-columns:1fr}}
+
+/* Separate staff workspaces share reservation data and review actions. */
+.staffWorkspaceLinks{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:13px}
+.staffWorkspaceLinks a{color:inherit;text-decoration:none;padding:7px 2px;border-bottom:2px solid transparent}
+.staffWorkspaceLinks a[aria-current="page"]{border-bottom-color:#c9a562;font-weight:700}
+.staffWorkspaceLinks a:hover{text-decoration:underline}
+.staffWorkspaceLogin h1{margin-bottom:6px}.staffWorkspaceLogin>p{margin:0;color:var(--muted,#aaa)}
+.staffWorkspaceLogin .staffWorkspaceLinks{justify-content:flex-start;margin-bottom:20px}
+.deskWorkspace .staffListTools{flex-wrap:wrap}.deskWorkspace .staffListTools select{min-width:140px;flex:1}.deskWorkspace .staffListTools input{min-width:120px;flex:2}
+@media(min-width:761px){
+ .staffShell .staffGrid.staffDeskGrid{grid-template-columns:minmax(0,1.4fr) minmax(320px,1fr);gap:14px}
+ .staffShell .staffDeskGrid .staffList{grid-column:1;grid-row:1;min-width:0}
+ .staffShell .staffDeskGrid .staffDetail{grid-column:2;grid-row:1;position:static;width:auto;height:100%;transform:none;box-shadow:none;min-width:0;z-index:auto}
+ .staffDeskGrid .tabletDetailClose{display:none}
+}
+@media(max-width:760px){.deskWorkspace .staffMobileNav{grid-template-columns:1fr 1fr}}

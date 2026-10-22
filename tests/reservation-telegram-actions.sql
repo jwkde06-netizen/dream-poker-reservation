@@ -2,7 +2,7 @@ begin;
 -- Do not dispatch test notifications. Every fixture and state change is rolled back.
 update reservation_private.settings set enabled=false where id;
 do $$
-declare g uuid; r uuid; r2 uuid; j uuid; j2 uuid; t text:=public.reservation_telegram_target(); result jsonb; q jsonb; tok uuid; n integer; uid uuid;
+declare g uuid; r uuid; r2 uuid; j uuid; j2 uuid; t text:=public.reservation_telegram_target(); result jsonb; q jsonb; tok uuid; n integer; uid uuid; lookup uuid;
 begin
  assert t is not null,'staff room configured';
  assert not has_function_privilege('anon','public.apply_reservation_telegram_action(uuid,text,bigint,text,bigint,text)','execute'),'guests cannot approve';
@@ -14,6 +14,8 @@ begin
  insert into public.reservations(game_id,player_name,arrival_at) values(g,'ROLLBACK SECOND TEST',now()+interval '1 hour') returning id into r2;
  update reservation_private.outbox set state='sent',message_id=900001,chat_id=t where reservation_id=r returning id into j;
  update reservation_private.outbox set state='sent',message_id=900002,chat_id=t where reservation_id=r2 returning id into j2;
+ select lookup_token into lookup from public.reservations where id=r;
+ result:=public.apply_reservation_telegram_action(j,t,900001,'cancel',123,'TEST STAFF');assert result->>'result'='inactive','cannot cancel unconfirmed booking with crafted button';
  assert public.reservation_telegram_action_context(j,t,900001),'real receipt accepted';
  assert not public.reservation_telegram_action_context(j,'-999999',900001),'wrong room rejected';
  assert not public.reservation_telegram_action_context(j,t,42),'wrong message rejected';
@@ -37,14 +39,35 @@ begin
  q:=public.claim_reservation_delivery(tok);assert public.finish_reservation_delivery((q->>'id')::uuid,(q->>'claim_id')::uuid,900001,null);j:=(q->>'id')::uuid;
  result:=public.apply_reservation_telegram_action(j,t,900001,'confirm',123,'TEST STAFF');assert result->>'result'='unchanged','current confirmed button is idempotent';
  result:=public.apply_reservation_telegram_action(j,t,900001,'contact',123,'TEST STAFF');assert result->>'result'='contact';
+ select dispatch_token into tok from reservation_private.outbox where reservation_id=r and version=3;
+ q:=public.claim_reservation_delivery(tok);assert public.finish_reservation_delivery((q->>'id')::uuid,(q->>'claim_id')::uuid,900001,null);
  select user_id into uid from public.user_profiles where role='admin' and active limit 1;
  perform set_config('request.jwt.claim.sub',uid::text,true);
  assert public.review_poker_reservation(r,'confirmed',3),'web staff can resolve contact flag';
  assert (select not contact_required from public.reservations where id=r);
+ select dispatch_token into tok from reservation_private.outbox where reservation_id=r and version=4;
+ q:=public.claim_reservation_delivery(tok);assert public.finish_reservation_delivery((q->>'id')::uuid,(q->>'claim_id')::uuid,900001,null);j:=(q->>'id')::uuid;
+ -- Cancellation works after a game closes, updates the player's view and frees a seat.
+ update public.reservation_games set is_open=false where id=g;
+ result:=public.apply_reservation_telegram_action(j,t,900001,'cancel',124,'TEST STAFF');assert result->>'result'='cancelled';
+ assert (select status='cancelled' and not contact_required and version=5 from public.reservations where id=r);
+ assert (select status='cancelled' from public.lookup_named_poker_reservation(lookup)),'player sees cancellation';
+ assert (select telegram_action='cancel' and telegram_actor_id=124 from public.reservation_audit where reservation_id=r order by id desc limit 1),'cancel actor audited';
+ result:=public.apply_reservation_telegram_action(j,t,900001,'cancel',124,'TEST STAFF');assert result->>'result'='stale','cancel replay cannot repeat action';
+ select dispatch_token into tok from reservation_private.outbox where reservation_id=r and version=5;
+ q:=public.claim_reservation_delivery(tok);assert (q->>'message_id')::bigint=900001,'cancellation edits original alert';
+ assert q->'payload'->>'status'='cancelled';
+ assert public.finish_reservation_delivery((q->>'id')::uuid,(q->>'claim_id')::uuid,900001,null);j:=(q->>'id')::uuid;
+ result:=public.apply_reservation_telegram_action(j,t,900001,'confirm',124,'TEST STAFF');assert result->>'result'='inactive','cancelled booking cannot reopen';
+ update public.reservation_games set is_open=true where id=g;
+ result:=public.apply_reservation_telegram_action(j2,t,900002,'confirm',124,'TEST STAFF');assert result->>'result'='confirmed','cancellation frees last seat';
+ update public.reservations set status='pending' where id=r2;
+ select id into j2 from reservation_private.outbox where reservation_id=r2 and version=2;
+ update reservation_private.outbox set state='sent',message_id=900002,chat_id=t where id=j2;
  update public.reservation_games set is_open=false where id=g;
  result:=public.apply_reservation_telegram_action(j2,t,900002,'confirm',123,'TEST STAFF');assert result->>'result'='closed';
  update public.reservations set status='cancelled' where id=r2;
- select id into j2 from reservation_private.outbox where reservation_id=r2 and version=1;
+ select id into j2 from reservation_private.outbox where reservation_id=r2 and version=3;
  update reservation_private.outbox set state='sent',message_id=900002,chat_id=t where id=j2;
  result:=public.apply_reservation_telegram_action(j2,t,900002,'confirm',123,'TEST STAFF');assert result->>'result'='inactive','cancelled bookings stay cancelled';
  assert reservation_private.dispatch()=0,'no test alerts sent';
