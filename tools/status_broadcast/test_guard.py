@@ -3,7 +3,7 @@ import os
 import tempfile
 import unittest
 from datetime import datetime, timedelta
-from guard import VN, ROOM, Outbox, ReviewRequired, dream_tables, mm_lines, render
+from guard import VN, ROOM, Outbox, ReviewRequired, dream_tables, render
 
 
 NOW = datetime(2026, 10, 22, 17, 0, 10, tzinfo=VN)
@@ -62,27 +62,21 @@ class GuardTests(unittest.TestCase):
             with self.subTest(rows=rows), self.assertRaises(ReviewRequired):
                 dream_tables(rows)
 
-    def test_today_mm_notice_is_formatted_without_inventing_running_game(self):
-        body, _ = render(snapshot(), NOW)
+
+
+
+    def test_public_message_is_dream_only(self):
+        s = snapshot()
+        s['mm'] = {'untrusted': '캐시게임 5/5 MILLION MAKER 밀리언메이커'}
+        body, digest = render(s, NOW)
+        for forbidden in ('캐시', 'cash', '5/5', 'MILLION', '밀리언', 'MM'):
+            self.assertNotIn(forbidden, body)
+        self.assertIn('📢 드림포커 실시간 현황', body)
         self.assertIn('17:00 기준', body)
-        self.assertIn('4테이블 진행 중', body)
-        self.assertIn('타임어택 금일 휴무', body)
-        self.assertIn('18:00~19:00 시작 예정', body)
-
-    def test_mm_schedule_does_not_automatically_become_running(self):
-        s = snapshot(NOW.replace(hour=18, minute=1))
-        with self.assertRaises(ReviewRequired):
-            render(s, s['observed_at'])
-
-    def test_previous_day_or_conflicting_mm_notices_block(self):
-        for mutate in ('yesterday', 'duplicate'):
-            s = snapshot()
-            if mutate == 'yesterday':
-                s['mm']['notices'][0]['posted_at'] -= timedelta(days=1)
-            else:
-                s['mm']['notices'].append(copy.deepcopy(s['mm']['notices'][0]))
-            with self.subTest(mutate=mutate), self.assertRaises(ReviewRequired):
-                render(s, NOW)
+        self.assertIn('타임어택은 미리 예약하고 방문하시면', body)
+        self.assertIn('대기 없이 참여하실 수 있습니다.', body)
+        del s['mm']
+        self.assertEqual(render(s, NOW), (body, digest))
 
     def test_stale_or_future_observations_block(self):
         for delta in (-121, 1):
@@ -167,8 +161,6 @@ class GuardTests(unittest.TestCase):
         later = NOW + timedelta(hours=1)
         self.box.enqueue(hourly(later), later)
         current = snapshot(later)
-        current['mm']['notices'][1] = {'game': 'cash', 'state': 'running', 'tables': 1,
-            'posted_at': later, 'evidence_id': 'new-confirmed-start'}
         self.assertIsNotNone(self.box.prepare(current, later))
 
     def test_hourly_posts_even_when_status_unchanged(self):
