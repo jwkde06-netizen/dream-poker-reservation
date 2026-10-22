@@ -23,7 +23,16 @@ export default function PlayerAccount({lang,onChange,beforeLogin,disabled=false}
  async function login(provider:"google"|"kakao"){
   if(!playerDb||busy||disabled||!providers[provider])return;
   setBusy(true);setFailed(false);
-  try{beforeLogin();const {error}=await playerDb.auth.signInWithOAuth({provider,options:{redirectTo:window.location.origin+"/auth/player/callback"}});if(error)throw error;}catch{setFailed(true);setBusy(false);}
+  try{
+   beforeLogin();
+   const {error}=await playerDb.auth.signInWithOAuth({provider,options:{
+    redirectTo:window.location.origin+"/auth/player/callback",
+    // Kakao's default Supabase scopes include email, unavailable to this app.
+    // Use singular scope to request only the configured optional nickname.
+    ...(provider==="kakao"?{queryParams:{scope:"profile_nickname"}}:{})
+   }});
+   if(error)throw error;
+  }catch{setFailed(true);setBusy(false);}
  }
  async function logout(){if(!playerDb||busy||disabled)return;setBusy(true);setFailed(false);try{const {error}=await playerDb.auth.signOut({scope:"local"});if(error)throw error;setUser(null);onChange(null);}catch{setFailed(true);}finally{setBusy(false);}}
  return <section className="playerAccount" aria-label={t.account}>
