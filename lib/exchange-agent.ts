@@ -204,8 +204,8 @@ async function cancellationIntent(config:ExchangeConfig, text:string, replyMessa
 }
 /** Exact completed KRW->VND sale, parsed before AI to protect compound Korean numerals. */
 export function directKrwExchange(text:string):ExchangeIntent|null {
- const compact=text.replace(/\\s+/g,'');
- const m=compact.match(/^(\\d+)만(\\d+)천원원화받고(\\d+)만동(?:드림|줌|지급|보냄)$/);
+ const compact=text.split(' ').join('');
+ const m=compact.match(/^([0-9]+)만([0-9]+)천원원화받고([0-9]+)만동(드림|줌|지급|보냄)$/);
  if(!m)return null;
  const krw=Number(m[1])*10000+Number(m[2])*1000,vnd=Number(m[3])*10000;
  if(!Number.isSafeInteger(krw)||!Number.isSafeInteger(vnd)||krw<=0||vnd<=0)throw new ExchangeReview('환전 금액을 확인해주세요.');
