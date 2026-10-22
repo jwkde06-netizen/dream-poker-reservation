@@ -205,9 +205,9 @@ async function cancellationIntent(config:ExchangeConfig, text:string, replyMessa
 /** Exact completed KRW->VND sale, parsed before AI to protect compound Korean numerals. */
 export function directKrwExchange(text:string):ExchangeIntent|null {
  const compact=text.split(' ').join('');
- const m=compact.match(/^([0-9]+)만([0-9]+)천원원화받고([0-9]+)만동(드림|줌|지급|보냄)$/);
+ const m=compact.match(/^([0-9]+)만(?:(\d+)천|(\d{3,4}))원(?:원화)?(?:현금으로|현금)?받고([0-9]+)만동(드림|줌|지급|보냄)$/);
  if(!m)return null;
- const krw=Number(m[1])*10000+Number(m[2])*1000,vnd=Number(m[3])*10000;
+ const krw=Number(m[1])*10000+(m[2]?Number(m[2])*1000:Number(m[3])),vnd=Number(m[4])*10000;
  if(!Number.isSafeInteger(krw)||!Number.isSafeInteger(vnd)||krw<=0||vnd<=0)throw new ExchangeReview('환전 금액을 확인해주세요.');
  return {kind:'exchange',received:{account:/현금/.test(text)?'KRW_CASH':'KRW_BANK',amount:String(krw)},paid:{account:'VND_CASH',amount:String(vnd)},fee:null,received_includes_fee:false,rate_vnd:null,note:'원화 수령 및 동 지급 완료',external_reference:null};
 }
