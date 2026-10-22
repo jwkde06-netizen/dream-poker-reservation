@@ -14,9 +14,14 @@ function groupedPapers(ops:any[],evidence:any,run:(ops:any[],paper:any)=>any){
  if(!Array.isArray(documents)||!documents.length||documents.length>6)return {operations:ops.filter(o=>!['add','total'].includes(o.kind)),questions:['사진의 게임별 명단을 확인하지 못했어요.']};
  const groups=new Map<any,any[]>(),operations=ops.filter(o=>!['add','total'].includes(o.kind)),questions:string[]=[];
  for(const op of ops.filter(o=>['add','total'].includes(o.kind))){
-  const paper=paperFor(op,documents);
+  const exact=paperFor(op,documents);
+  // Repair only an unconfirmed new-game number on a uniquely identified paper.
+  const candidates=!exact&&op.kind==='add'&&!op.gameConfirmed&&Number.isInteger(op.printedGame)
+   ?documents.filter(d=>d.date===op.date&&d.table===op.table&&d.printedGame===op.printedGame&&Number.isInteger(d.handwrittenGame)&&d.handwrittenGame>0):[];
+  const paper=exact||(candidates.length===1?candidates[0]:null);
+  const bound=paper&&!exact?{...op,game:paper.handwrittenGame}:op;
   if(!paper){questions.push(`${op.game}번 게임의 용지 번호를 확인해주세요.`);continue;}
-  groups.set(paper,[...(groups.get(paper)||[]),op]);
+  groups.set(paper,[...(groups.get(paper)||[]),bound]);
  }
  for(const paper of documents){
   const group=groups.get(paper);
