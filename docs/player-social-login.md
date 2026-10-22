@@ -15,6 +15,8 @@ In both provider applications, register this exact OAuth callback:
 - Google Cloud: create a Web OAuth client and configure the consent screen for Dream Poker Reservations. Use only OpenID identity/email/profile scopes. Configure production audience/publishing so ordinary players can sign in, not only listed test users. Enter its client ID and client secret in Supabase Auth → Sign In / Providers → Google.
 - Kakao Developers: configure the existing reservation app (or create a dedicated app), enable Kakao Login, set the callback above, and enter the REST API key and client secret in Supabase Auth → Kakao. Use the least profile permissions required. Allow users without an email in Supabase if the Kakao app cannot request `account_email`. Do not request message-sending permissions.
 - Keep OAuth secrets in the provider/Supabase consoles only. Never use `NEXT_PUBLIC_*` for a client secret or a service role key.
+- Kakao app `1618224` uses optional `profile_nickname` only. Supabase's default Kakao scopes also request `account_email` and `profile_image`, producing KOE205 for this app. Pass `queryParams: { scope: "profile_nickname" }` (singular) to override the upstream OAuth scope; the SDK's plural `scopes` option only appends scopes. The local Python flow uses the same singular parameter. Keep **Allow users without an email** enabled.
+- Google Cloud project: `master-chariot-512409-d5` (Dream Poker Reservations), Web client: Dream Poker Reservations Web. Credentials remain only in the consoles.
 - In Supabase Auth → URL Configuration, keep the existing staff/password-recovery URLs and add these exact redirect URLs:
   - `https://dream-poker-reservation.vercel.app/auth/player/callback`
   - `http://127.0.0.1:8775/auth/callback` (local Python app)
