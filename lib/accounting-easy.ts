@@ -2,7 +2,7 @@ export const easyHelp='무엇을 도와드릴까요?\n사진만 올려도 기록
 export const easyMenu={inline_keyboard:[[{text:'📷 바이인 사진 올리기',callback_data:'desk:buyin'},{text:'☕ F&B 기록',callback_data:'desk:fnb'}],[{text:'📌 처리 상태',callback_data:'desk:status'},{text:'📋 업무 규칙',callback_data:'desk:rules'}],[{text:'📄 정산 시트',url:'https://docs.google.com/spreadsheets/d/1QJUPswetSgSFAlKkDXdY_WMmM6LCp6nXs9EvmuQF22I/edit'}]]};
 export function parseDeskAction(data:string){
  if(/^desk:(buyin|fnb|status|rules)$/.test(data))return {kind:data.slice(5)};
- const m=data.match(/^desk:manual:(\d{1,15})$/);return m?{kind:'manual',messageId:Number(m[1])}:null;
+ const m=data.match(/^desk:(manual|retry):(\d{1,15})$/);return m?{kind:m[1],messageId:Number(m[2])}:null;
 }
 export function pendingButtons(messageId:number){return {inline_keyboard:[[{text:'✍️ 직접 입력했어요',callback_data:'desk:manual:'+messageId}],[{text:'📖 사용 방법',callback_data:'desk:buyin'}]]};}
 export function canMarkManual(job:any,actor:string,isAdmin:boolean){
