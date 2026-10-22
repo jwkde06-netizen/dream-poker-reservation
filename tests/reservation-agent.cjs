@@ -8,13 +8,13 @@ assert(model.canTransition('pending','confirmed'));assert(model.canTransition('c
 for(const s of ['cancelled','no_show','rejected','checked_in'])assert(!model.canTransition(s,'confirmed'));
 const payload={reservation_id:'aabbccdd-0000-4000-8000-000000000001',version:2,event:'updated',status:'confirmed',player_name:'<Player>',arrival_at:'2026-10-21T18:30:00Z',game_title:'5M',table_no:'4',game_no:'2',guest_note:'Late arrival'};
 const message=model.reservationMessage(payload);assert(message.includes('22/10'));assert(message.includes('01:30'));assert(message.includes('Status: Confirmed'));assert(!message.includes('undefined'));
-async function run({token='aabbccdd-0000-4000-8000-000000000001',job=true,sendFails=false,receiptFails=false,claimFails=false}={}){
+async function run({token='aabbccdd-0000-4000-8000-000000000001',job=true,sendFails=false,receiptFails=false,claimFails=false,messageId=null,editFails=false}={}){
  const calls=[];let sent=0;
  const route=compile('app/api/reservation-agent/deliver/route.ts',name=>{
   if(name==='next/server')return {NextResponse:{json:(body,options)=>({body,status:options?.status||200})}};
   if(name==='../../../../lib/reservation-agent')return model;
-  if(name==='../../../../lib/telegram')return {projectUrl:'https://test.invalid',tg:async(method,body)=>{sent++;assert(!body.parse_mode);if(sendFails)throw Error('SECRET');return {message_id:99}}};
-  if(name==='@supabase/supabase-js')return {createClient:()=>({rpc:async(name,args)=>{calls.push({name,args});return name==='claim_reservation_delivery'?{data:job?{id:'job',claim_id:'lease',payload,target:'-123'}:null,error:claimFails?{}:null}:{data:!receiptFails,error:receiptFails?{}:null}}})};
+  if(name==='../../../../lib/telegram')return {projectUrl:'https://test.invalid',tg:async(method,body)=>{sent++;assert(!body.parse_mode);assert.equal(body.reply_markup.inline_keyboard[0].length,2);assert(body.reply_markup.inline_keyboard[0].every(b=>b.callback_data&&!b.url));if(sendFails)throw Error('SECRET');if(method==='editMessageText'&&editFails)throw Error(editFails);return {message_id:99}}};
+  if(name==='@supabase/supabase-js')return {createClient:()=>({rpc:async(name,args)=>{calls.push({name,args});return name==='claim_reservation_delivery'?{data:job?{id:'aabbccdd-0000-4000-8000-000000000001',claim_id:'lease',payload,target:'-123',message_id:messageId}:null,error:claimFails?{}:null}:{data:!receiptFails,error:receiptFails?{}:null}}})};
   throw Error(name);
  });
  const response=await route.POST({json:async()=>({notification_token:token})});return {response,calls,sent};
@@ -26,5 +26,9 @@ async function run({token='aabbccdd-0000-4000-8000-000000000001',job=true,sendFa
  r=await run();assert.equal(r.sent,1);assert.equal(r.calls[1].args.p_message_id,99);assert(!JSON.stringify(r.response).includes('Player'));
  r=await run({sendFails:true});assert.equal(r.response.status,502);assert(r.calls[1].args.p_error);assert(!JSON.stringify(r.calls).includes('SECRET'));
  r=await run({receiptFails:true});assert.equal(r.sent,1);assert.equal(r.response.status,503);
+ r=await run({messageId:99});assert.equal(r.sent,1);assert.equal(r.response.status,200);
+ r=await run({messageId:99,editFails:'message is not modified'});assert.equal(r.sent,1);assert.equal(r.response.status,200);
+ r=await run({messageId:99,editFails:'message to edit not found'});assert.equal(r.sent,2);assert.equal(r.response.status,200);
+ r=await run({messageId:99,editFails:'Timeout'});assert.equal(r.sent,1);assert.equal(r.response.status,502);
  console.log('PASS: legal transitions, VN date rollover, payload privacy, invalid/duplicate claims, delivery, failure retry, receipt failure');
 })().catch(e=>{console.error(e);process.exitCode=1});
