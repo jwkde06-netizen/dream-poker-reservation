@@ -219,7 +219,11 @@ export function confirmedKrwExchange(sources: string[]): ExchangeIntent | null {
   if (intents.some(x => x.received.amount !== first.received.amount || x.paid.amount !== first.paid.amount)) {
     throw new ExchangeReview('답장 맥락에 서로 다른 환전 금액이 있습니다. 정확한 원문에 답장해주세요.');
   }
-  return first;
+  const cash = sources.some(v => /(?:원화.{0,12}현금|현금으로\s*받|현금\s*수령|계좌\s*아니고\s*현금)/.test(v));
+  const bank = sources.some(v => /(?:원화\s*계좌\s*입금|원화\s*계좌로\s*받)/.test(v));
+  if (cash && bank) throw new ExchangeReview('원화 수령이 현금인지 계좌인지 최종 확인해주세요.');
+  if (!cash && !bank) throw new ExchangeReview('원화를 현금으로 받았나요, 계좌로 받았나요?');
+  return {...first, received: {...first.received, account: cash ? 'KRW_CASH' : 'KRW_BANK'}};
 }
 function simpleIntent(text: string): ExchangeIntent | null {
   const t = text.trim().replace(/@\w+(?=\s|$)/, '');
@@ -284,14 +288,15 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
         if (isAmbiguousBareAmount(text) && !previous.unresolved_texts.length) throw new ExchangeReview('금액만으로는 거래 종류를 알 수 없어요. 수수료라면 +5만으로 적어주세요.');
         if (previous.job?.status === 'review') { resolves = previous.job.update_id; job = await patchJob(config, job.update_id, { context_update_id: resolves }, owner); }
         // A reply that merely reiterates our agreed VND-account convention is not a second transaction.
-        if (/^(?:계좌|현금|베트남 계좌|현금 계좌 구분 없이|VND는 현금 계좌 구분 없이|수익완료\\s*계좌)$/i.test(text.trim())) {
+        if (/^(?:베트남 계좌|현금 계좌 구분 없이|VND는 현금 계좌 구분 없이|수익완료\\s*계좌)$/i.test(text.trim())) {
           await finish(job, config, owner, 'ignored', '확인했습니다. 베트남동은 통합 시제로 관리합니다. 수수료는 +5만처럼 한 줄로 입력해주세요.'); return;
         }
         // An explicit yes confirms the specific payment fields in the unanswered quoted request.
         // Do not send a one-word approval to the model as an isolated money instruction.
         const yes=/^(?:네|예|응|맞아|맞습니다|확인|yes|y)$/i.test(text.trim());
         if (yes && previous.job && previous.job.status !== 'review') throw new ExchangeReview('이미 처리된 요청입니다. 중복 기록하지 않았습니다.');
-        const confirmed = yes ? confirmedKrwExchange(previous.unresolved_texts) : null;
+        const modeReply=/^(?:원화\s*)?(?:현금|현금으로\s*받음|현금으로\s*받았어|계좌|계좌이체)$/i.test(text.trim());
+        const confirmed = (yes || modeReply) ? confirmedKrwExchange([...previous.unresolved_texts, ...(modeReply ? [text] : [])]) : null;
         if (yes && !confirmed) throw new ExchangeReview('확인할 미처리 환전 원문을 찾지 못했습니다. 해당 원문에 답장해주세요.');
         if (confirmed && previous.job?.status === 'review') {
           intent = confirmed;
