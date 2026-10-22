@@ -11,6 +11,7 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+from urllib.error import URLError
 from datetime import datetime, timedelta
 from html.parser import HTMLParser
 from urllib.request import Request, urlopen
@@ -141,6 +142,10 @@ def main():
         return
     if args.send and sys.platform != 'darwin':
         p.error('Live sender requires macOS')
+    # Detect LAN/HTML problems before displaying LIVE or waiting for an hour.
+    print('현황판 연결 확인 중… (카톡에는 아직 발송하지 않습니다.)', flush=True)
+    body, _ = render(fetch_snapshot(), datetime.now(VN))
+    print(body, flush=True)
     args.state_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     os.chmod(args.state_dir, 0o700)
     with (args.state_dir / 'runner.lock').open('a') as lock:
@@ -172,4 +177,10 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except (URLError, OSError, ReviewRequired) as exc:
+        print('실행 중단: ' + str(exc), file=sys.stderr, flush=True)
+        print('현황판 접속, 같은 네트워크 연결 및 macOS 권한을 확인해 주세요. 자동발송은 시작되지 않았습니다.',
+              file=sys.stderr, flush=True)
+        sys.exit(1)
