@@ -17,21 +17,24 @@ export function shouldProcessStaffMessage(m:any,recent:HistoryJob[]=[]){
 }
 
 export function resolveFnb(ops:any[],menu:any[][]){
- const normalize=(s:any)=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').normalize('NFC').toLowerCase().replace(/[^a-z0-9가-힣]/g,'');
- return ops.map(o=>{
+ const normalize=(s:any)=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').normalize('NFC').toLowerCase().replace(/đ/g,'d').replace(/[^a-z0-9가-힣]/g,'');
+ // Remove only a known size suffix, never a flavour or arbitrary substring.
+ const menuName=(s:any)=>normalize(String(s||'').replace(/\s*-\s*large\s*$/i,''));
+ return (Array.isArray(ops)?ops:[]).map(o=>{
   if(o.kind!=='fnb')return o;
   const fixed={...o,floor:!o.floor||o.floor==='5F'?'2F':o.floor};
-  // Explicit receipt/staff totals win. Never infer price from a mixed bill.
-  if(Number.isSafeInteger(o.amount)&&o.amount>0)return fixed;
+  const explicit=Number.isSafeInteger(o.amount)&&o.amount>0;
   const items=Array.isArray(o.items)&&o.items.length?o.items:null;
   if(!items)return fixed;
   let amount=0;const notes:string[]=[];
   for(const item of items){
    if(!Number.isInteger(item.quantity)||item.quantity<1||item.quantity>100)return fixed;
-   const name=normalize(item.menu);const matches=menu.slice(1).filter(r=>[r[0],...String(r[1]||'').split('|')].some(a=>normalize(a)===name));
+   const name=menuName(item.menu);if(!name)return fixed;
+   const matches=menu.slice(1).filter(r=>[r[0],...String(r[1]||'').split('|')].some(a=>menuName(a)===name));
    if(matches.length!==1||!Number.isSafeInteger(matches[0][2])||matches[0][2]<=0)return fixed;
-   amount+=matches[0][2]*item.quantity;notes.push(matches[0][0]+' '+item.quantity+'잔');
+   amount+=matches[0][2]*item.quantity;notes.push(matches[0][0]+' '+item.quantity+String(matches[0][3]||'잔'));
   }
-  return {...fixed,amount,note:o.recipient?o.recipient+' '+notes.join('·'):o.note};
+  // Preserve an explicit bill total while still normalizing the Korean note.
+  return {...fixed,amount:explicit?o.amount:amount,note:o.recipient?o.recipient+' '+notes.join('·'):o.note||notes.join('·')};
  });
 }

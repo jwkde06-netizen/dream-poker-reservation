@@ -54,9 +54,10 @@ export async function handle(update:any){
  if(!m.text&&!m.caption&&!m.photo&&!m.document)return;
  const ins=await db().from('dream_accounting_jobs').upsert({update_id:update.update_id,message_id:m.message_id,sender_id:String(m.from.id),text:String(m.text||m.caption||'').slice(0,4096),status:'received',source_message:{message_id:m.message_id,date:m.date,photo:m.photo,document:m.document,reply_to_message_id:m.reply_to_message?.message_id}},{onConflict:'update_id',ignoreDuplicates:true});if(ins.error)throw Error('Job insert failed');
  const {data:job,error}=await db().from('dream_accounting_jobs').select('*').eq('update_id',update.update_id).single();if(error)throw Error('Job read failed');
- if(['applied','review','ignored','failed'].includes(job.status)){if(job.reply_text&&!job.reply_id){const id=await reply(m.message_id,job.reply_text,job.plan?.pendingQuestion?pendingButtons(m.message_id):undefined);await save(job.update_id,{reply_id:id});}return;}
+ const terminalJob=['applied','review','ignored','failed'].includes(job.status);
+ if(terminalJob&&(!job.reply_text||job.reply_id))return;
  let intakeHistory:any[]|undefined;
- if(!shouldProcessStaffMessage(m)){
+ if(!terminalJob&&!shouldProcessStaffMessage(m)){
   const h=await db().from('dream_accounting_jobs').select('message_id,sender_id,text,plan,status,reply_text,reply_id,source_message,created_at').lt('update_id',job.update_id).gte('created_at',new Date(Date.now()-12*3600000).toISOString()).order('created_at',{ascending:false}).limit(48);
   if(h.error)throw Error('Intake context unavailable');intakeHistory=h.data||[];
   if(!shouldProcessStaffMessage(m,intakeHistory)){await save(job.update_id,{status:'ignored',reply_text:'',plan:{casualConversation:true}});return;}
@@ -64,7 +65,15 @@ export async function handle(update:any){
  const owner=randomUUID();const {data:lock,error:le}=await db().rpc('dream_accounting_acquire',{p_owner:owner});if(le||!lock)throw Error('Workbook busy or requires reconciliation');
  let writeStarted=false;
  try{
-  if(job.status==='writing'||job.status==='processing')throw Error('Previous execution requires review');
+  // The same Telegram update may have waited behind another execution. Re-read
+  // under the workbook lock before doing any interpretation or write.
+  const latestJob=await db().from('dream_accounting_jobs').select('*').eq('update_id',job.update_id).single();
+  if(latestJob.error)throw Error('Locked job read failed');
+  if(['applied','review','ignored','failed'].includes(latestJob.data.status)){
+   if(latestJob.data.reply_text&&!latestJob.data.reply_id){const id=await reply(m.message_id,latestJob.data.reply_text,latestJob.data.plan?.pendingQuestion?pendingButtons(m.message_id):undefined);await save(job.update_id,{reply_id:id});}return;
+  }
+  if(['writing','uncertain'].includes(latestJob.data.status)){writeStarted=true;throw Error('Previous write requires review');}
+  if(latestJob.data.status==='processing')throw Error('Previous execution requires review');
   await save(job.update_id,{status:'processing'});
   // A reaction acknowledges receipt without adding a second chat message.
   if(m.photo||m.document)await tg('setMessageReaction',{chat_id:m.chat.id,message_id:m.message_id,reaction:[{type:'emoji',emoji:'👀'}]}).catch(()=>null);
@@ -184,7 +193,7 @@ export async function handle(update:any){
   const registrations=(result.operations||[]).filter((op:any)=>op.kind==='register');
   const registrationEvidence=taskText+' '+businessRules.map(r=>r.content).join(' ');
   if(registrations.some((op:any)=>!norm(registrationEvidence+' '+(previous?.plan?.pendingQuestion||'')).includes(norm(op.player)))){await finish('review','새로 등록할 선수 이름을 알려주세요.');return;}
-  const makePlan=()=>planOperations(result.operations,daily,fnb,master,{tableRoundLabels:businessRules.some(r=>r.kind==='table_round_labels'),rebuySnapshot:rebuyCaption(taskText),photoSnapshot:!!image||!!confirmedResult,registrationApprovals:registrationApprovals(result.operations,taskText,master,previous?.plan?.pendingQuestion||'',businessRules),reconcile:op=>reconcileOperation(op,{state:sheetState,sourceMessageId:photoSource?.plan?.photoSourceMessageId||photoSource?.message_id,sourceTime:photoSource?.plan?.photoSourceDate||photoSource?.source_message?.date||m.date,photo:!!image||!!confirmedResult,text:job.text,pendingQuestion:previous?.plan?.pendingQuestion||''})});
+  const makePlan=()=>planOperations(result.operations,daily,fnb,master,{tableRoundLabels:businessRules.some(r=>r.kind==='table_round_labels'),rebuySnapshot:rebuyCaption(taskText),photoSnapshot:!!image||!!confirmedResult,partialAttendance:true,registrationApprovals:registrationApprovals(result.operations,taskText,master,previous?.plan?.pendingQuestion||'',businessRules),reconcile:op=>reconcileOperation(op,{state:sheetState,sourceMessageId:photoSource?.plan?.photoSourceMessageId||photoSource?.message_id,sourceTime:photoSource?.plan?.photoSourceDate||photoSource?.source_message?.date||m.date,photo:!!image||!!confirmedResult,text:job.text,pendingQuestion:previous?.plan?.pendingQuestion||''})});
   let plan;try{plan=makePlan()}catch(e){await finish('review',e instanceof Error?e.message:'항목 확인이 필요합니다.');return;}
   // Re-read ALL daily inputs before committing, not only target cells. A human
   // can insert the same player elsewhere while OCR is running. Re-plan once

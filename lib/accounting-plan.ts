@@ -12,7 +12,7 @@ export function tableLabel(value:unknown){
  return String(value??'');
 }
 const normalizeTable=tableLabel;
-export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][],settings:{tableRoundLabels?:boolean;rebuySnapshot?:boolean;photoSnapshot?:boolean;registrationApprovals?:Record<string,{agency:string;card?:string}>;reconcile?:(op:any)=>{op:any;question?:string;skip?:boolean}}={}){
+export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][],settings:{tableRoundLabels?:boolean;rebuySnapshot?:boolean;photoSnapshot?:boolean;partialAttendance?:boolean;registrationApprovals?:Record<string,{agency:string;card?:string}>;reconcile?:(op:any)=>{op:any;question?:string;skip?:boolean}}={}){
  if(!Array.isArray(ops)||ops.length<1||ops.length>20)throw Error('처리할 항목을 구체적으로 알려주세요.');
  const changes:CellChange[]=[],summary:string[]=[],review:string[]=[];const work=daily.map(r=>[...r]),masterWork=master.map(r=>[...r]);let frow=fnb.length+1,mrow=master.length+1;
  const names=new Map<string,string[]>();for(const r of master.slice(1)){if(!r[0])continue;const k=norm(r[0]);names.set(k,Array.from(new Set([...(names.get(k)||[]),String(r[0])])));}
@@ -21,15 +21,23 @@ export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][
  // Resolve a rebuy photograph as ONE table session. Never put individual
  // players from a single snapshot into different games or create a new game.
  const check=(op:any)=>{const checked=settings.reconcile?.(op)||{op};if(checked.question&&!review.includes(checked.question))review.push(checked.question);return checked;};
- const resolved=ops.map(op=>check({...op})).filter(x=>!x.skip).map(x=>x.op);
+ const resolved=ops.map(op=>check({...op})).filter(x=>!x.skip).map(x=>x.op).filter(op=>{
+  if(!settings.partialAttendance||!['add','total','cancel'].includes(op.kind)||ops.some(r=>r.kind==='register'&&norm(r.player)===norm(op.player)))return true;
+  const matches=master.slice(1).filter(r=>norm(r[0])===norm(op.player));
+  if(!matches.length){review.push(`${op.player}님 영문명과 소속 코드만 알려주세요.`);return false;}
+  if(op.kind==='add'&&!matches.some(r=>String(r[2]||'').trim())){review.push(`${op.player}님 소속 코드만 알려주세요.`);return false;}
+  return true;
+ });
  if(settings.rebuySnapshot){
   const groups=new Map<string,any[]>();
-  for(const op of resolved.filter(o=>['add','total'].includes(o.kind))){const key=[op.date,op.table,op.blind].join('|');groups.set(key,[...(groups.get(key)||[]),op]);}
+  for(const op of resolved.filter(o=>['add','total'].includes(o.kind))){const key=[op.date,op.table,op.blind,op.gameConfirmed?op.game:''].join('|');groups.set(key,[...(groups.get(key)||[]),op]);}
   for(const group of Array.from(groups.values())){
    let common:Set<number>|undefined;
    for(const op of group){let g:any=null;const games=new Set<number>();for(const r of work.slice(1)){if(r[0]!==''&&r[0]!=null)g=r[0];if(Number(r[1])===serial(op.date)&&Number(tableLabel(r[2]).split('-')[0])===op.table&&r[3]===op.blind&&norm(r[4])===norm(op.player))games.add(Number(g));}common=common?new Set(Array.from(common).filter(g=>games.has(g))):games;}
    const requested=new Set(group.map(op=>op.game));
-   const game=common?.size===1?Array.from(common)[0]:requested.size===1&&common?.has(group[0].game)?group[0].game:null;
+   const requestedGame=requested.size===1?group[0].game:null;
+   const confirmed=group.some(op=>op.gameConfirmed===true);
+   const game=requestedGame!=null&&common?.has(requestedGame)?requestedGame:!confirmed&&common?.size===1?Array.from(common)[0]:null;
    if(game==null)throw Error(`${group[0].table}번 테이블 리바인을 반영할 게임 번호를 알려주세요.`);
    for(const op of group){op.game=game;op.kind='total';}
   }
@@ -77,7 +85,7 @@ export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][
   if(r[0]!==''&&r[0]!=null)identityGame=r[0];
   if(r[4]&&Number(r[1])===day&&Number(identityGame)===op.game&&Number(tableLabel(r[2]).split('-')[0])!==op.table)throw Error(`${op.game}번 게임은 시트에서 ${tableLabel(r[2])} 테이블이에요. 사진의 ${op.table}번 테이블은 몇 번째 게임인가요?`);
  }
- if(op.kind==='add'&&!masterWork.slice(1).some(r=>norm(r[0])===norm(name)&&String(r[2]||'').trim()))throw Error(`${name} 소속 코드를 알려주세요.`);
+ if(op.kind==='add'&&!masterWork.slice(1).some(r=>norm(r[0])===norm(name)&&String(r[2]||'').trim())){if(settings.partialAttendance){review.push(`${name}님 소속 코드만 알려주세요.`);continue;}throw Error(`${name} 소속 코드를 알려주세요.`);}
  for(let i=1;i<work.length;i++){const r=work[i];if(r[0]!==''&&r[0]!=null)game=r[0];if(Number(r[1])===day&&Number(game)===op.game&&Number(tableLabel(r[2]).split('-')[0])===op.table&&r[3]===op.blind&&norm(r[4])===norm(name))found.push(i);}
  if(found.length>1)throw Error(`${name} 항목이 중복되어 있어 확인이 필요합니다.`);
  let displayTable:any=found.length?work[found[0]][2]:op.table;
@@ -121,6 +129,7 @@ export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][
   if(found.length!==1)throw Error(`${name}: 해당 날짜·게임·테이블의 기존 항목을 찾지 못했습니다.`);
   const idx=found[0],r=work[idx],row=idx+1;
   if(op.kind==='cancel'){
+   reflow=true; // Emit one final diff so transferred headings cannot overlap a later cancellation.
    // Clear only business inputs, leaving formula spill columns intact. Preserve
    // a game heading on the next member before clearing a heading row.
    if(r[0]&&work[idx+1]?.[4]&&!work[idx+1]?.[0]&&Number(work[idx+1]?.[1])===day){add(`'일일 입력'!A${row+1}`,[['']],[[r[0]]]);work[idx+1][0]=r[0];}

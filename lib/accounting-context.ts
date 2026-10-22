@@ -43,9 +43,9 @@ export function correctedOperations(ops:any[],text:string,master:any[][],rules:a
   const matches=players.filter(r=>norm(r[0])===norm(op.player));
   // A follow-up about one receipt must never renumber every receipt in a photo.
   const applies=game&&['add','total','cancel'].includes(op.kind)&&(scopedTable?Number(op.table)===scopedTable:tables.size===1);
-  const fixed={...op,...(matches.length===1?{player:matches[0][0]}:{}),...(applies?{game:game}:{})};
+  const fixed={...op,...(matches.length===1?{player:matches[0][0]}:{}),...(applies?{game:game,gameConfirmed:true}:gameNumbers.length>1&&gameNumbers.includes(op.game)?{gameConfirmed:true}:{})};
   if(!applies&&Number.isInteger(op.printedGame)&&['add','total','cancel'].includes(op.kind)){
-   for(const rule of rules){if(!String(rule.content).startsWith('게임번호 대응: '))continue;try{const a=JSON.parse(rule.content.slice('게임번호 대응: '.length));if(a.date===op.date&&a.table===op.table&&a.printedGame===op.printedGame&&Number.isInteger(a.game)&&a.game>0&&a.game<=100)fixed.game=a.game;}catch{}}
+   for(const rule of rules){if(!String(rule.content).startsWith('게임번호 대응: '))continue;try{const a=JSON.parse(rule.content.slice('게임번호 대응: '.length));if(a.date===op.date&&a.table===op.table&&a.printedGame===op.printedGame&&Number.isInteger(a.game)&&a.game>0&&a.game<=100){fixed.game=a.game;fixed.gameConfirmed=true;}}catch{}}
   }
   if(op.kind==='fnb'&&onlyFnb){
    if(new Set(floors).size===1)fixed.floor=floors[0];
