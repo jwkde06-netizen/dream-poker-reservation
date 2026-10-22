@@ -203,12 +203,12 @@ async function cancellationIntent(config:ExchangeConfig, text:string, replyMessa
   return {kind:'reversal',reference:active[0].reference,note:'관리자 요청으로 이체수수료 취소'};
 }
 /** Exact completed KRW->VND sale, parsed before AI to protect compound Korean numerals. */
-export export function directKrwExchange(text:string):ExchangeIntent|null {
- const compact=text.replace(/\\s+/g,'');
- const m=compact.match(/^(\\d+)만(?:(\\d+)(천원|원))?(?:원)?(?:(현금|계좌))?원화?(?:를)?받고(\\d+)만동(?:드림|줌|지급|보냄|지급완료)$/);
+export function directKrwExchange(text:string):ExchangeIntent|null {
+ const compact=text.replace(/\s+/g,'');
+ const m=compact.match(/^(\d+)만(?:(\d+)(천원|원))?(?:원)?(?:(현금|계좌))?원화?(?:를)?받고(\d+)만동(?:드림|줌|지급|보냄|지급완료)$/);
  if(!m)return null;
- const rest=Number(m[2]||0)*(m[3]==='원'?1:1000);
- const krw=Number(m[1])*10000+rest, vnd=Number(m[5])*10000;
+ const krw=Number(m[1])*10000+Number(m[2]||0)*(m[3]==='원'?1:1000);
+ const vnd=Number(m[5])*10000;
  if(!Number.isSafeInteger(krw)||!Number.isSafeInteger(vnd)||krw<=0||vnd<=0)throw new ExchangeReview('거래 금액을 확인해주세요.');
  return {kind:'exchange',received:{account:m[4]==='현금'?'KRW_CASH':'KRW_BANK',amount:String(krw)},paid:{account:'VND_CASH',amount:String(vnd)},fee:null,received_includes_fee:false,rate_vnd:null,note:m[4]==='현금'?'원화 현금 수령·동 지급 완료':'원화 수령·동 지급 완료',external_reference:null};
 }
