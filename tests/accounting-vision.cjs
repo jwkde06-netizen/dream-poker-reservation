@@ -44,3 +44,15 @@ assert.equal(second.operations[0].player,'OTHER PLAYER');assert.equal(second.ope
 assert.equal(continueChipConfirmation('2',{plan:{...first.plan,pendingQuestion:'카드 번호는 무엇인가요?'}}),null);
 assert.equal(continueChipConfirmation('2바인 추가',first),null);
 console.log('Multiple withheld players resume one-by-one without replaying verified players');
+// New-game coverage: all five selected master players must be represented.
+const {completePhotoRoster}=require('../.test-build/accounting-vision');
+const rosterMaster=[['NAME'],...['A PLAYER','B PLAYER','C PLAYER','D PLAYER','E PLAYER'].map(n=>[n,'','KOREA'])];
+const template={kind:'add',date:'2026-10-22',game:4,table:12,blind:'5M',buyins:1,chips:100000};
+const firstTwo=rosterMaster.slice(1,3).map(r=>({...template,player:r[0]}));
+const full={names:rosterMaster.slice(1).map(r=>r[0]),chipAmounts:[100000,100000,100000,100000,100000],selected:[true,true,true,true,true],hasSelectionMarkers:true};
+const completed=completePhotoRoster(firstTwo,full,rosterMaster);
+assert.equal(completed.operations.length,5);assert.equal(completed.questions.length,0);
+assert.equal(completePhotoRoster(completed.operations,full,rosterMaster).operations.length,5);
+assert.ok(completePhotoRoster(firstTwo,{...full,selected:undefined},rosterMaster).questions.length);
+assert.ok(completePhotoRoster(firstTwo,{...full,names:['A PLAYER','B PLAYER','UNKNOWN','D PLAYER','E PLAYER']},rosterMaster).questions.length);
+assert.equal(completePhotoRoster(firstTwo,{...full,names:['A PLAYER','B PLAYER','UNKNOWN','D PLAYER','E PLAYER'],hasSelectionMarkers:false},rosterMaster).questions.length,0);

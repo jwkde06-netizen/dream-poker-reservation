@@ -1,4 +1,26 @@
 import {norm,serial,tableLabel} from './accounting-plan';
+import {correctedOperations} from './accounting-context';
+
+// Reconcile every independently transcribed seat against the master, rather
+// than trusting the first model to have included every eligible player.
+export function completePhotoRoster(ops:any[],evidence:any,master:any[][],rules:any[]=[]){
+ const names=evidence?.names,amounts=evidence?.chipAmounts,selected=evidence?.selected;
+ const attendance=ops.filter(o=>['add','total'].includes(o.kind));
+ const groups=new Set(attendance.map(o=>[o.date,o.game,o.table,o.blind,o.kind].join('|')));
+ const question='사진의 선수 표시를 모두 확인하지 못했어요. 원본 명단 사진을 다시 올려주시겠어요?';
+ if(!Array.isArray(names)||!Array.isArray(amounts)||!Array.isArray(selected)||names.length<1||names.length>10||names.length!==amounts.length||names.length!==selected.length||selected.some((v:any)=>typeof v!=='boolean')||groups.size!==1||typeof evidence.hasSelectionMarkers!=='boolean')return {operations:ops,questions:[question]};
+ const operations=[...ops],questions:string[]=[];
+ for(let i=0;i<names.length;i++){
+  if(!selected[i])continue;
+  if(typeof names[i]!=='string'||!names[i].trim()){questions.push(question);continue;}
+  const candidate=correctedOperations([{...attendance[0],player:names[i],chips:amounts[i],buyins:amounts[i]/100000}],'',master,rules)[0];
+  const matches=master.slice(1).filter(r=>norm(r[0])===norm(candidate.player));
+  if(matches.length!==1||!String(matches[0][2]||'').trim()){if(!evidence.hasSelectionMarkers)continue;questions.push(`${names[i]}님 명단의 이름과 소속을 확인해주세요.`);continue;}
+  if(!Number.isSafeInteger(amounts[i])||amounts[i]<100000||amounts[i]>5000000||amounts[i]%100000!==0){questions.push(`${candidate.player}님 누적 바이인 수만 확인해주세요.`);continue;}
+  if(!operations.some(o=>['add','total'].includes(o.kind)&&norm(o.player)===norm(candidate.player)))operations.push(candidate);
+ }
+ return {operations,questions:Array.from(new Set(questions))};
+}
 
 export function confirmChipCount(text:string,previous:any){
  const match=text.trim().match(/^(?:(?:총|누적)\s*)?(\d{1,2})\s*(?:바인)?(?:이에요|입니다|이야)?[.!]?$/);

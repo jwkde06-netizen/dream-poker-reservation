@@ -6,6 +6,8 @@ export function shouldProcessStaffMessage(m:any,recent:HistoryJob[]=[]){
  if(/^\//.test(String(m.text||'').trim()))return !!deskCommand(m.text);
  if(politeAcknowledgement(String(m.text||''),!!m.reply_to_message?.from?.is_bot))return true;
  const t=String(m.text||m.caption||'').trim();
+ // Staff corrections to completed jobs are still work, even without '시트'.
+ if(/(?:기록|입력|반영).*(?:안\s*되|안\s*됐|안\s*되어|안\s*돼|누락|빠|잘못)|(?:누락|빠졌|잘못).*(?:기록|입력|반영)|우리\s*코드.*\d+\s*명/.test(t))return true;
  if(/(?:아메리카노|커피|라떼|주스|박시우|콜라|아아).*(?:잔|추가|기록)/.test(t))return true;
  if(/규칙|기억해|앞으로|^\/(start|help)|정산상태|처리상태|미처리|시트|정산|F\s*&\s*B|영수증|바이?인|리바인|레벨\s*\d|LV\s*\d/i.test(t))return true;
  if(/(?:게임|테이블).*(?:추가|반영|입력|수정|취소|삭제)|(?:추가|반영|입력|수정|취소|삭제).*(?:게임|테이블)|신규.*(?:등록|선수|플레이어)/.test(t))return true;

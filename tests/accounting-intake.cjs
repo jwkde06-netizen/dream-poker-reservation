@@ -28,3 +28,4 @@ assert.equal(gate(msg('6만동'),[{message_id:12,status:'ignored',plan:{contextM
 assert.equal(gate(msg('6만동'),[{message_id:12,status:'applied',plan:{contextMessageId:10}},pending]),false);
 assert.equal(gate({...msg('김지원 추가해'),reply_to_message:{message_id:10}},[{...pending,status:'applied',plan:{}}]),true);
 console.log('Intake, closed-task, short-answer and F&B pricing regression checks passed');
+for(const text of ['우리코드 5명인데 2명 밖에 기록이 안 되었어','기록이 안 됐어','3명이 누락됐어 시트 확인해'])assert.equal(gate({text}),true,text);
