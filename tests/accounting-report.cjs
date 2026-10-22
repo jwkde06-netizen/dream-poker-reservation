@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict');
+const {summarizeDay}=require('../.test-build/accounting-report-summary');
+const row=(g,p,n,v,t='13-2')=>[g,46317,t,'5M',p,'','KOREA',n,v];
+const rows=[[],row(7,'LEE KWANG TAE',2,1000000),row('','KIM SEON HAK',1,500000),[],row(8,'SEO JUN GI',3,1500000,'12-2')];
+assert.deepEqual(summarizeDay(rows,'2026-10-22'),{date:'2026-10-22',games:2,buyins:6,amount:3000000,text:'금일 총 2게임 6바이인 3,000,000동입니다.'});
+assert.throws(()=>summarizeDay([...rows,row(8,'SEO JUNGI',3,1500000,'12-2')],'2026-10-22'),/중복/);
+assert.throws(()=>summarizeDay([[],row(1,'A',1,'#REF!')],'2026-10-22'),/확인/);
+assert.throws(()=>summarizeDay(rows,'2026-02-30'),/날짜/);
+assert.throws(()=>summarizeDay(rows,'2026-10-23'),/없어요/);
+console.log('daily report aggregation checks passed');

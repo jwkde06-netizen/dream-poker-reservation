@@ -1,3 +1,4 @@
+import {handleReportRoom} from '../../../../lib/accounting-report';
 import {NextResponse} from 'next/server';
 import {authorized,handle} from '../../../../lib/accounting-agent';
 import {handleReservationCallback} from '../../../../lib/reservation-local-actions';
@@ -9,6 +10,7 @@ export async function POST(request:Request){
   const update=await request.json();
   if(await handleReservationCallback(update))return NextResponse.json({ok:true});
   if(process.env.ACCOUNTING_ENABLED!=='true')return NextResponse.json({error:'Not activated'},{status:503});
+  if(await handleReportRoom(update))return NextResponse.json({ok:true});
   await handle(update);return NextResponse.json({ok:true});
  }catch{return NextResponse.json({error:'Processing requires retry or review'},{status:503});}
 }
