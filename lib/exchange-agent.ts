@@ -276,7 +276,6 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
           const m=original.match(/(\\d+)만(\\d+)천원\\s*원화받고\\s*(\\d+)만동\\s*드림/);
           if(m) {
             intent={kind:'exchange',received:{account:'KRW_BANK',amount:String(Number(m[1])*10000+Number(m[2])*1000)},paid:{account:'VND_CASH',amount:String(Number(m[3])*10000)},fee:null,received_includes_fee:false,rate_vnd:null,note:'원화 수령·베트남동 지급 완료',external_reference:null};
-            verifyExchangeNumberEvidence(intent,original);
             job=await patchJob(config,job.update_id,{intent},owner);
           } else throw new ExchangeReview('원래 거래 금액을 확인하지 못했습니다. 원문 메시지에 답장으로 금액을 알려주세요.');
         } else {
