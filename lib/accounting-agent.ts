@@ -179,7 +179,13 @@ export async function handle(update:any){
     result.unverifiedOperations=withheldChipOperations(result.operations,verified.operations);
     result.operations=verified.operations;result.question=verified.questions[0]||clearResolvedIdentityQuestion(result.question,verified.operations,master,businessRules);
     result.chipVerification={documents:evidence.documents,names:evidence.names,chipAmounts:evidence.chipAmounts,selected:evidence.selected,questions:verified.questions};
-   }catch{result.operations=result.operations.filter((o:any)=>!['add','total'].includes(o.kind));result.question=result.unverifiedOperations?.[0]?.player?`${result.unverifiedOperations[0].player}님 사진의 누적 바이인 수만 확인해주세요.`:'사진 숫자를 다시 확인하지 못했어요. 누적 바이인 수만 알려주세요.';}
+   }catch(e){
+    // Infrastructure/format failure is NOT uncertainty about a player's chips.
+    // No ledger write has started, so preserve the original photo for retry.
+    processingPlan={...taskPlan,operations:[],unverifiedOperations:result.unverifiedOperations,pendingQuestion:null,verificationFailure:e instanceof InvalidAIResponse?e.reason:e instanceof Error?e.name:'unknown',metrics:metrics()};
+    await save(job.update_id,{image_key:imageKey||null,plan:processingPlan});
+    throw new InvalidAIResponse('verification_unavailable');
+   }
   }
   processingPlan={...taskPlan,chipVerification:result.chipVerification||null,unverifiedOperations:result.unverifiedOperations||null,operations:result.operations,pendingQuestion:result.question||null};
   await save(job.update_id,{image_key:imageKey||null,plan:processingPlan});
@@ -239,7 +245,7 @@ export async function handle(update:any){
  }catch(e){
   if(writeStarted){await save(job.update_id,{status:'uncertain',failure_reason:'Write outcome requires reconciliation'});throw e;}
   const latest=await db().from('dream_accounting_jobs').select('status').eq('update_id',job.update_id).single();
-  if(!['applied','review','ignored'].includes(latest.data?.status||'')){const text=e instanceof InvalidAIResponse?'사진 판독 응답을 끝까지 받지 못했어요. 아래 버튼으로 다시 처리할 수 있어요.':'오류가 나서 이번 건은 기록하지 못했어요. 관리자 확인이 필요해요.';await save(job.update_id,{status:'failed',failure_reason:e instanceof Error?e.message:'Processing failed',reply_text:text});const errorReplyId=await reply(m.message_id,text,e instanceof InvalidAIResponse?{inline_keyboard:[[{text:'해당 사진 다시 처리',callback_data:'desk:retry:'+m.message_id}]]}:undefined);await save(job.update_id,{reply_id:errorReplyId});}
+  if(!['applied','review','ignored'].includes(latest.data?.status||'')){const text=e instanceof InvalidAIResponse?'사진 처리 연결에 문제가 생겨 기록하지 못했어요. 원본은 저장돼 있어 아래 버튼으로 다시 처리할 수 있어요.':'오류가 나서 이번 건은 기록하지 못했어요. 관리자 확인이 필요해요.';await save(job.update_id,{status:'failed',failure_reason:e instanceof Error?e.message:'Processing failed',reply_text:text});const errorReplyId=await reply(m.message_id,text,e instanceof InvalidAIResponse?{inline_keyboard:[[{text:'해당 사진 다시 처리',callback_data:'desk:retry:'+m.message_id}]]}:undefined);await save(job.update_id,{reply_id:errorReplyId});}
   throw e;
  }finally{if(!writeStarted){const r=await db().rpc('dream_accounting_release',{p_owner:owner});if(r.error)throw Error('Lock release failed');}}
 }

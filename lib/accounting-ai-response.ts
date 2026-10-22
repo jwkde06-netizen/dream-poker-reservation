@@ -29,7 +29,12 @@ export function parseAIResponse(d:any,kind:'extraction'|'columns'){
 export async function completeAIJson(request:(attempt:number)=>Promise<any>,kind:'extraction'|'columns'){
  let total=0,prompt=0,completion=0;
  for(let attempt=0;attempt<2;attempt++){
-  const d=await request(attempt);
+  let d:any;
+  try{d=await request(attempt);}catch(e){
+   const transient=e instanceof Error&&(e.name==='AbortError'||e.name==='TimeoutError'||/\b(?:408|429|500|502|503|504)\b|fetch failed|network/i.test(e.message));
+   if(transient&&attempt===0)continue;
+   throw e;
+  }
   total+=Number(d.usage?.total_tokens||0);prompt+=Number(d.usage?.prompt_tokens||0);completion+=Number(d.usage?.completion_tokens||0);
   try{return {...parseAIResponse(d,kind),_usage:{totalTokens:total,promptTokens:prompt,completionTokens:completion},_model:d.model,_attempts:attempt+1};}
   catch(e){if(!(e instanceof InvalidAIResponse)||attempt===1)throw e;}
@@ -39,3 +44,4 @@ export async function completeAIJson(request:(attempt:number)=>Promise<any>,kind
 export function canRetryPhoto(job:any){
  return !!job&&job.status==='failed'&&/^(AI_RESPONSE_INVALID:|Unterminated string in JSON|Unexpected end of JSON)/.test(job.failure_reason||'')&&!job.plan?.manual_handoff&&!job.plan?.resolvedBy&&!job.plan?.changes?.length&&!!(job.source_message?.photo||job.source_message?.document)&&(job.plan?.photoRetryCount||0)<3;
 }
+
