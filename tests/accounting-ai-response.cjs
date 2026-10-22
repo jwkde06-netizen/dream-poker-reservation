@@ -15,3 +15,8 @@ const good={choices:[{finish_reason:'stop',message:{content:JSON.stringify({oper
  assert.equal(canRetryPhoto({...job,failure_reason:'Write outcome requires reconciliation'}),false);
  console.log('AI response: truncated/malformed JSON retry, strict completion, bounded retries, usage and safe recovery passed');
 })().catch(e=>{console.error(e);process.exitCode=1});
+
+const columns={names:['A',null],chipAmounts:[100000,null],selected:[true,false],hasSelectionMarkers:true};
+const response=v=>({choices:[{finish_reason:'stop',message:{content:JSON.stringify(v)}}]});
+assert.deepEqual(parseAIResponse(response(columns),'columns'),columns);
+for(const invalid of [{selected:[true]},{selected:['true',false]},{chipAmounts:['100000',null]},{names:[{},null]},{hasSelectionMarkers:null}])assert.throws(()=>parseAIResponse(response({...columns,...invalid}),'columns'),/invalid_columns/);

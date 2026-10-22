@@ -1,3 +1,4 @@
+import {staffStatus} from './accounting-status';
 import {completeAIJson,InvalidAIResponse,canRetryPhoto} from './accounting-ai-response';
 import {easyHelp,easyMenu,parseDeskAction,pendingButtons,canMarkManual,buyinGuide} from './accounting-easy';
 import {rulesLinkText,rulesButton} from './accounting-rules-link';
@@ -106,8 +107,8 @@ export async function handle(update:any){
   const rq=await db().from('dream_accounting_rules').select('id,kind,content').eq('active',true).order('id').limit(50);if(rq.error)throw Error('Rule lookup failed');
   const businessRules=rq.data||[];
   if(command==='status'||/^\/?(정산상태|처리상태|미처리)(@\w+)?\s*$/i.test(job.text.trim())){
-   const q=await db().from('dream_accounting_jobs').select('message_id,text,status,plan,reply_text,reply_id').gte('created_at',new Date(Date.now()-12*3600000).toISOString()).order('created_at',{ascending:false}).limit(200);if(q.error)throw Error('Status unavailable');
-   const report=jobReport(q.data||[]);const buttons={inline_keyboard:report.pending.filter(p=>['review','failed','applied'].includes(p.status)).slice(0,8).map(p=>[...(p.status==='failed'?[{text:'다시 처리 · 요청 '+p.messageId,callback_data:'desk:retry:'+p.messageId}]:[]),{text:'✍️ 직접 입력 완료 · 요청 '+p.messageId,callback_data:'desk:manual:'+p.messageId}])};await finish('ignored',report.pending.length?'확인할 항목 '+report.pending.length+'건\n'+report.pending.slice(0,8).map(x=>'요청 '+x.messageId+' · '+String(x.question||x.text).slice(0,140)).join('\n')+'\n\n수기로 입력한 요청은 아래 버튼으로 정리해주세요.':'지금 확인할 항목은 없어요.',buttons);return;
+   const q=await db().from('dream_accounting_jobs').select('update_id,message_id,text,status,plan,reply_text,reply_id,source_message,created_at,failure_reason').gte('created_at',new Date(Date.now()-12*3600000).toISOString()).order('created_at',{ascending:false}).limit(200);if(q.error)throw Error('Status unavailable');
+   const view=staffStatus(q.data||[]);await finish('ignored',view.text,view.buttons);return;
   }
   if(command==='rules'||/^(기억한|저장된|업무)?\s*규칙(\s*(목록|보여줘|알려줘|확인))?[.!?]?$/.test(job.text.trim())){await finish('ignored',rulesLinkText);return;}
   const history=intakeHistory?{data:intakeHistory,error:null}:await db().from('dream_accounting_jobs').select('message_id,sender_id,text,plan,status,reply_text,reply_id,source_message,created_at').lt('update_id',job.update_id).gte('created_at',new Date(Date.now()-12*3600000).toISOString()).order('created_at',{ascending:false}).limit(48);
@@ -238,7 +239,7 @@ export async function handle(update:any){
  }catch(e){
   if(writeStarted){await save(job.update_id,{status:'uncertain',failure_reason:'Write outcome requires reconciliation'});throw e;}
   const latest=await db().from('dream_accounting_jobs').select('status').eq('update_id',job.update_id).single();
-  if(!['applied','review','ignored'].includes(latest.data?.status||'')){const text=e instanceof InvalidAIResponse?'사진 판독 응답을 끝까지 받지 못했어요. 아래 버튼으로 다시 처리할 수 있어요.':'오류가 나서 이번 건은 기록하지 못했어요. 관리자 확인이 필요해요.';await save(job.update_id,{status:'failed',failure_reason:e instanceof Error?e.message:'Processing failed',reply_text:text});const errorReplyId=await reply(m.message_id,text,e instanceof InvalidAIResponse?{inline_keyboard:[[{text:'다시 처리',callback_data:'desk:retry:'+m.message_id}]]}:undefined);await save(job.update_id,{reply_id:errorReplyId});}
+  if(!['applied','review','ignored'].includes(latest.data?.status||'')){const text=e instanceof InvalidAIResponse?'사진 판독 응답을 끝까지 받지 못했어요. 아래 버튼으로 다시 처리할 수 있어요.':'오류가 나서 이번 건은 기록하지 못했어요. 관리자 확인이 필요해요.';await save(job.update_id,{status:'failed',failure_reason:e instanceof Error?e.message:'Processing failed',reply_text:text});const errorReplyId=await reply(m.message_id,text,e instanceof InvalidAIResponse?{inline_keyboard:[[{text:'해당 사진 다시 처리',callback_data:'desk:retry:'+m.message_id}]]}:undefined);await save(job.update_id,{reply_id:errorReplyId});}
   throw e;
  }finally{if(!writeStarted){const r=await db().rpc('dream_accounting_release',{p_owner:owner});if(r.error)throw Error('Lock release failed');}}
 }
@@ -259,7 +260,7 @@ async function handleDeskCallback(c:any){
    if(!canRetryPhoto(job)){await answer('이미 처리됐거나 별도 확인이 필요한 기록이에요.');return;}
    await save(job.update_id,{status:'received',failure_reason:null,reply_text:null,reply_id:null,plan:{...job.plan,photoRetryCount:(job.plan?.photoRetryCount||0)+1}});
    resume={update_id:job.update_id,message:{...job.source_message,message_id:job.message_id,chat:c.message.chat,from:{id:Number(job.sender_id),is_bot:false},text:job.text}};
-   await answer('네, 원본 사진으로 다시 처리할게요.');
+   await answer('네, 원본 사진으로 다시 처리할게요.').catch(()=>null);
   }finally{if(locked)await db().rpc('dream_accounting_release',{p_owner:owner});}
   if(resume)await handle(resume);return;
  }
@@ -282,10 +283,8 @@ async function handleDeskCallback(c:any){
  if(action.kind==='fnb'){await reply(c.message.message_id,'영수증 사진이나 “준기형님 아메리카노 1잔”처럼 보내주세요. 메뉴 가격은 자동으로 적용해요. 층을 따로 말하지 않으면 2F예요.');return;}
  if(action.kind==='rules'){await reply(c.message.message_id,rulesLinkText);return;}
  if(action.kind==='status'){
-  const r=await db().from('dream_accounting_jobs').select('message_id,text,status,plan,reply_text,reply_id').gte('created_at',new Date(Date.now()-12*3600000).toISOString()).order('created_at',{ascending:false}).limit(200);
+  const r=await db().from('dream_accounting_jobs').select('update_id,message_id,text,status,plan,reply_text,reply_id,source_message,created_at,failure_reason').gte('created_at',new Date(Date.now()-12*3600000).toISOString()).order('created_at',{ascending:false}).limit(200);
   if(r.error){await reply(c.message.message_id,'상태를 확인하지 못했어요. 잠시 후 다시 눌러주세요.');return;}
-  const report=jobReport(r.data||[]);
-  const rows=report.pending.filter(p=>['review','failed','applied'].includes(p.status)).slice(0,8).map((p:any)=>[{text:'✍️ 직접 입력 완료 · 요청 '+p.messageId,callback_data:'desk:manual:'+p.messageId}]);
-  await reply(c.message.message_id,report.pending.length?'확인이 필요한 요청 '+report.pending.length+'건이에요.\n'+report.pending.slice(0,8).map((p:any)=>'요청 '+p.messageId+' · '+String(p.question||p.text).slice(0,140)).join('\n')+'\n\n이미 수기로 입력한 요청은 아래 버튼으로 정리해주세요.':'지금 확인할 항목은 없어요.',{inline_keyboard:rows});
+  const view=staffStatus(r.data||[]);await reply(c.message.message_id,view.text,view.buttons);
  }
 }

@@ -6,7 +6,11 @@ export function parseAIResponse(d:any,kind:'extraction'|'columns'){
  let value:any;try{value=JSON.parse(choice.message.content);}catch{throw new InvalidAIResponse('malformed_json');}
  if(!value||typeof value!=='object'||Array.isArray(value))throw new InvalidAIResponse('invalid_object');
  if(kind==='extraction'&&(!Array.isArray(value.operations)||value.operations.length>100||value.operations.some((x:any)=>!x||typeof x!=='object'||Array.isArray(x))||(value.question!=null&&typeof value.question!=='string')))throw new InvalidAIResponse('invalid_operations');
- if(kind==='columns'&&(!Array.isArray(value.names)||!Array.isArray(value.chipAmounts)||!Array.isArray(value.selected)))throw new InvalidAIResponse('invalid_columns');
+ if(kind==='columns'&&(!Array.isArray(value.names)||!Array.isArray(value.chipAmounts)||!Array.isArray(value.selected)||
+ value.names.length<1||value.names.length>10||value.names.length!==value.chipAmounts.length||value.names.length!==value.selected.length||
+ value.names.some((x:any)=>x!==null&&(typeof x!=='string'||!x.trim()))||
+ value.chipAmounts.some((x:any)=>x!==null&&(!Number.isSafeInteger(x)||x<0))||
+ value.selected.some((x:any)=>typeof x!=='boolean')||typeof value.hasSelectionMarkers!=='boolean'))throw new InvalidAIResponse('invalid_columns');
  return value;
 }
 export async function completeAIJson(request:(attempt:number)=>Promise<any>,kind:'extraction'|'columns'){
