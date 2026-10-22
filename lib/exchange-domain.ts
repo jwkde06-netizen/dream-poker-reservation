@@ -3,6 +3,7 @@ export const EXCHANGE_ACCOUNTS = {
   VND_CASH: { currency: 'VND', scale: 1, label: '동 현금' },
   VND_BANK: { currency: 'VND', scale: 1, label: '베트남 계좌' },
   KRW_BANK: { currency: 'KRW', scale: 1, label: '원화 계좌' },
+  KRW_CASH: { currency: 'KRW', scale: 1, label: '원화 현금' },
   USD_CASH: { currency: 'USD', scale: 100, label: '달러 현금' },
 } as const;
 export type ExchangeAccount = keyof typeof EXCHANGE_ACCOUNTS;
@@ -22,7 +23,7 @@ export interface ExchangeState {
 }
 export interface ExchangeLeg { account: ExchangeAccount; amount: string }
 export type ExchangeIntent =
-  | { kind: 'opening'; balances: Record<ExchangeAccount, string>; basis_vnd: Partial<Record<'KRW_BANK' | 'USD_CASH', string | null>>; note: string }
+  | { kind: 'opening'; balances: Record<ExchangeAccount, string>; basis_vnd: Partial<Record<'KRW_BANK' | 'KRW_CASH' | 'USD_CASH', string | null>>; note: string }
   | { kind: 'exchange'; received: ExchangeLeg; paid: { account: ExchangeAccount; amount: string | null }; fee: { account: 'VND_CASH' | 'VND_BANK'; amount: string } | null; received_includes_fee: boolean; rate_vnd: string | null; note: string; external_reference: string | null }
   | { kind: 'movement'; account: ExchangeAccount; amount: string; direction: 'in' | 'out'; category: 'capital' | 'expense' | 'fee'; basis_vnd: string | null; note: string; external_reference: string | null }
   | { kind: 'reversal'; reference: string; note: string }
@@ -65,7 +66,7 @@ function object(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 function account(value: unknown): ExchangeAccount {
-  if (typeof value !== 'string' || !ACCOUNT_CODES.includes(value as ExchangeAccount)) throw new ExchangeReview('어느 시제인지 알려주세요: 동 현금 / 베트남 계좌 / 원화 계좌 / 달러 현금.');
+  if (typeof value !== 'string' || !ACCOUNT_CODES.includes(value as ExchangeAccount)) throw new ExchangeReview('어느 시제인지 알려주세요: 동 현금 / 베트남 계좌 / 원화 계좌 / 원화 현금 / 달러 현금.');
   return value as ExchangeAccount;
 }
 function short(value: unknown, max = 500): string {
@@ -92,9 +93,9 @@ export function validateExchangeIntent(value: unknown): ExchangeIntent {
     case 'opening': {
       const balances = object(x.balances), basis = x.basis_vnd == null ? {} : object(x.basis_vnd);
       const result = {} as Record<ExchangeAccount, string>;
-      for (const code of ACCOUNT_CODES) result[code] = amountText(balances[code]);
-      const basisResult: Partial<Record<'KRW_BANK' | 'USD_CASH', string | null>> = {};
-      for (const code of ['KRW_BANK', 'USD_CASH'] as const) basisResult[code] = basis[code] == null ? null : amountText(basis[code]);
+      for (const code of ACCOUNT_CODES) result[code] = code === 'KRW_CASH' && balances[code] == null ? '0' : amountText(balances[code]);
+      const basisResult: Partial<Record<'KRW_BANK' | 'KRW_CASH' | 'USD_CASH', string | null>> = {};
+      for (const code of ['KRW_BANK', 'KRW_CASH', 'USD_CASH'] as const) basisResult[code] = basis[code] == null ? null : amountText(basis[code]);
       return { kind: 'opening', balances: result, basis_vnd: basisResult, note: short(x.note) };
     }
     case 'exchange': {
@@ -150,7 +151,7 @@ export function prorata(book: number, amount: number, balance: number): number {
   const denominator = BigInt(safeMoney(balance));
   return safeMoney(Number((numerator * BigInt(2) + denominator) / (denominator * BigInt(2))));
 }
-export function convertToVnd(amountMinor: number, code: 'KRW_BANK' | 'USD_CASH', rate: string): number {
+export function convertToVnd(amountMinor: number, code: 'KRW_BANK' | 'KRW_CASH' | 'USD_CASH', rate: string): number {
   const text = amountText(rate), [whole, fraction = ''] = text.split('.');
   const units = BigInt('1' + '0'.repeat(fraction.length));
   const rateUnits = BigInt(whole) * units + BigInt(fraction || '0');
@@ -162,7 +163,7 @@ export function convertToVnd(amountMinor: number, code: 'KRW_BANK' | 'USD_CASH',
   return safeMoney(Number(numerator / denominator));
 }
 export function emptyExchangeState(): ExchangeState {
-  return { initialized: false, version: 0, opened_at: null, accounts: { VND_CASH: { balance_minor: 0, book_vnd: 0 }, VND_BANK: { balance_minor: 0, book_vnd: 0 }, KRW_BANK: { balance_minor: 0, book_vnd: 0 }, USD_CASH: { balance_minor: 0, book_vnd: 0 } } };
+  return { initialized: false, version: 0, opened_at: null, accounts: { VND_CASH: { balance_minor: 0, book_vnd: 0 }, VND_BANK: { balance_minor: 0, book_vnd: 0 }, KRW_BANK: { balance_minor: 0, book_vnd: 0 }, KRW_CASH: { balance_minor: 0, book_vnd: 0 }, USD_CASH: { balance_minor: 0, book_vnd: 0 } } };
 }
 function isVnd(code: ExchangeAccount) { return EXCHANGE_ACCOUNTS[code].currency === 'VND'; }
 export function formatMoney(minor: number, code: ExchangeAccount): string {
@@ -204,7 +205,7 @@ export function planExchange(intent: Exclude<ExchangeIntent, { kind: 'reversal' 
     let capital: number | null = 0;
     for (const code of ACCOUNT_CODES) {
       const balance = toMinor(intent.balances[code], code, true);
-      const basisText = isVnd(code) ? null : intent.basis_vnd[code as 'KRW_BANK' | 'USD_CASH'];
+      const basisText = isVnd(code) ? null : intent.basis_vnd[code as 'KRW_BANK' | 'KRW_CASH' | 'USD_CASH'];
       const book = isVnd(code) ? balance : balance === 0 ? 0 : basisText == null ? null : toMinor(basisText, 'VND_CASH');
       if (balance === 0 && basisText != null && toMinor(basisText, 'VND_CASH', true) !== 0) throw new ExchangeReview('잔액이 0인 외화의 취득원가도 0이어야 합니다.');
       addPosting(plan, state, code, balance, book);
@@ -245,8 +246,8 @@ export function planExchange(intent: Exclude<ExchangeIntent, { kind: 'reversal' 
   }
   if (intent.paid.amount != null) paid = toMinor(intent.paid.amount, outgoing);
   else {
-    if ((incoming !== 'KRW_BANK' && incoming !== 'USD_CASH') || !isVnd(outgoing)) throw new ExchangeReview('실제로 지급한 금액과 통화를 알려주세요.');
-    const rate = intent.rate_vnd || DEFAULT_EXCHANGE_RATES[incoming === 'KRW_BANK' ? 'KRW' : 'USD'];
+    if ((incoming !== 'KRW_BANK' && incoming !== 'KRW_CASH' && incoming !== 'USD_CASH') || !isVnd(outgoing)) throw new ExchangeReview('실제로 지급한 금액과 통화를 알려주세요.');
+    const rate = intent.rate_vnd || DEFAULT_EXCHANGE_RATES[(incoming === 'KRW_BANK' || incoming === 'KRW_CASH') ? 'KRW' : 'USD'];
     paid = convertToVnd(received, incoming, rate);
     if (paid <= 0) throw new ExchangeReview('실제 지급액을 확인해주세요.');
     plan.rate_used = `${rate} VND/${EXCHANGE_ACCOUNTS[incoming].currency}${intent.rate_vnd ? '' : ' (설정된 기본 환율)'}`;

@@ -18,7 +18,7 @@ export function compactExchangeStatus(report:any, tradeProfit?:number):string {
   const b=report.balances;
   const vnd=integer(b.VND_CASH.closing_minor,true)+integer(b.VND_BANK.closing_minor,true);
   const usd=integer(b.USD_CASH.closing_minor,true)/100;
-  const krw=integer(b.KRW_BANK.closing_minor,true);
+  const krw=integer(b.KRW_BANK.closing_minor,true)+integer(b.KRW_CASH.closing_minor,true);
   const fee=integer(report.fee_vnd),fx=integer(report.realized_fx_vnd),cost=integer(report.expense_vnd),profit=integer(report.net_known_vnd);
   if(fee+fx-cost!==profit)throw Error('Exchange totals inconsistent');
   const [fy,fm,fd]=report.from.split('-').map(Number);
