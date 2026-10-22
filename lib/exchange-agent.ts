@@ -271,13 +271,11 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
         // An explicit yes confirms the specific payment fields in the unanswered quoted request.
         // Do not send a one-word approval to the model as an isolated money instruction.
         const yes=/^(?:네|예|응|맞아|맞습니다|확인|yes|y)$/i.test(text.trim());
-        const original=previous.unresolved_texts.find(v=>v.includes('원화받고') && v.includes('만동'));
-        if(yes && previous.job?.status==='review' && original) {
-          const m=original.match(/(\\d+)만(\\d+)천원\\s*원화받고\\s*(\\d+)만동\\s*드림/);
-          if(m) {
-            intent={kind:'exchange',received:{account:'KRW_BANK',amount:String(Number(m[1])*10000+Number(m[2])*1000)},paid:{account:'VND_CASH',amount:String(Number(m[3])*10000)},fee:null,received_includes_fee:false,rate_vnd:null,note:'원화 수령·베트남동 지급 완료',external_reference:null};
-            job=await patchJob(config,job.update_id,{intent},owner);
-          } else throw new ExchangeReview('원래 거래 금액을 확인하지 못했습니다. 원문 메시지에 답장으로 금액을 알려주세요.');
+        const sources=[...previous.unresolved_texts,previous.job?.raw_text||'',String(message.reply_to_message?.text||'')];
+        const match=sources.map(src=>src.replace(/\\s+/g,'').match(/(\\d+)만(\\d+)천원원화받고(\\d+)만동드림/)).find(Boolean);
+        if(yes && previous.job?.status==='review' && match) {
+          intent={kind:'exchange',received:{account:'KRW_BANK',amount:String(Number(match[1])*10000+Number(match[2])*1000)},paid:{account:'VND_CASH',amount:String(Number(match[3])*10000)},fee:null,received_includes_fee:false,rate_vnd:null,note:'원화 수령·베트남동 지급 완료',external_reference:null};
+          job=await patchJob(config,job.update_id,{intent},owner);
         } else {
         const result = await extractExchange(text, { business_date: today, default_rates_vnd: DEFAULT_EXCHANGE_RATES, previous: previous.job ? { status: previous.job.status, reference: previous.job.reference, intent: previous.job.intent } : null, unresolved_texts: previous.unresolved_texts });
         if (result?.question) throw new ExchangeReview(String(result.question).slice(0, 1000));
