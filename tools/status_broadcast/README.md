@@ -16,12 +16,12 @@ during setup; no recurring job was confirmed.
 2. Call `Outbox.enqueue(event, now)` with stable source chat/message IDs. Keep
    the SQLite file on a persistent, private local path. Do not commit it.
 3. Obtain fresh visible observations through CUA from the exact dashboard URL
-   and WhatsApp MM 한국방. Normalize only actual observed data. Capture source
+   only. Normalize only actual observed data. Capture source
    evidence IDs internally; never place internal messages, player identities,
    financial receipts or evidence IDs in the public announcement.
 4. Call `prepare(snapshot, now)`. The dashboard observation must follow the
-   trigger. Both observations expire after 120 seconds. Missing/ambiguous data,
-   zero active tables, old MM notices and expired schedules require review.
+   trigger. Dashboard observations expire after 120 seconds. Missing/ambiguous data and
+   zero active tables require review.
    Do not fall back to a cached public post. A 120-second coalescing delay
    retains pending events; call prepare again with fresh observations before
    the 180-second trigger deadline. Do not silently substitute hourly polling
@@ -56,9 +56,6 @@ during setup; no recurring job was confirmed.
 - Receipts with no change to confirmed public status are suppressed. Hourly
   announcements still occur even if status is unchanged. A new table is counted
   only from the dashboard. Duplicate old/new games on one table count once.
-- MM schedule notices expire at the **earliest** scheduled start. Read today's
-  latest explicit start/stop message then, rather than declaring a game active
-  just because the scheduled time passed. Contradictory notices require review.
 - All timestamps must include a timezone. Rendering uses Vietnam local time.
   The CUA worker should prepare a new plan if composition takes over 60 seconds;
   stale composer plans cannot be submitted.
@@ -72,7 +69,19 @@ python3 -m unittest discover -s tools/status_broadcast -v
 ```
 
 Fixtures cover the observed dashboard arrangement (tables 4, 5, 12, 13; a
-separate tournament on 10; waiting games reusing 12/13) and MM's same-day
-time-attack holiday / evening cash schedule. No real messages are sent by tests.
+separate tournament on 10; waiting games reusing 12/13) and the Dream-only announcement constraint. No real messages are sent by tests.
 No credentials, receipt images or real Telegram message identifiers are stored
 in fixtures.
+
+## Public message scope (latest user instruction)
+
+Publish Dream time-attack status only. Do not read or include MM/WhatsApp status.
+Never include cash-game terms or stake shorthand in public messages. The renderer
+uses a fixed Dream-only template and ignores extraneous MM payloads. Include:
+
+> 📌 타임어택은 미리 예약하고 방문하시면
+> 대기 없이 참여하실 수 있습니다.
+
+The prior 16:55 MM announcement was already deleted in KakaoTalk. A Dream-only
+announcement was posted at 17:05 (17:04 observation timestamp). This template
+change is for the next update and does not itself send another message.
