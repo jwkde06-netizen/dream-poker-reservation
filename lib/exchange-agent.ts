@@ -268,6 +268,17 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
         if (/^(?:계좌|현금|베트남 계좌|현금 계좌 구분 없이|VND는 현금 계좌 구분 없이|수익완료\\s*계좌)$/i.test(text.trim())) {
           await finish(job, config, owner, 'ignored', '확인했습니다. 베트남동은 통합 시제로 관리합니다. 수수료는 +5만처럼 한 줄로 입력해주세요.'); return;
         }
+        // An explicit yes confirms the specific payment fields in the unanswered quoted request.
+        // Do not send a one-word approval to the model as an isolated money instruction.
+        const yes=/^(?:네|예|응|맞아|맞습니다|확인|yes|y)$/i.test(text.trim());
+        const original=previous.unresolved_texts.find(v=>v.includes('원화받고') && v.includes('만동'));
+        if(yes && previous.job?.status==='review' && original) {
+          const m=original.match(/(\\d+)만(\\d+)천원\\s*원화받고\\s*(\\d+)만동\\s*드림/);
+          if(m) {
+            intent={kind:'exchange',received:{account:'KRW_BANK',amount:String(Number(m[1])*10000+Number(m[2])*1000)},paid:{account:'VND_CASH',amount:String(Number(m[3])*10000)},fee:null,received_includes_fee:false,rate_vnd:null,note:'원화 수령·베트남동 지급 완료',external_reference:null};
+            job=await patchJob(config,job.update_id,{intent},owner);
+          } else throw new ExchangeReview('원래 거래 금액을 확인하지 못했습니다. 원문 메시지에 답장으로 금액을 알려주세요.');
+        } else {
         const result = await extractExchange(text, { business_date: today, default_rates_vnd: DEFAULT_EXCHANGE_RATES, previous: previous.job ? { status: previous.job.status, reference: previous.job.reference, intent: previous.job.intent } : null, unresolved_texts: previous.unresolved_texts });
         if (result?.question) throw new ExchangeReview(String(result.question).slice(0, 1000));
         if (result?.intent == null) { await finish(job, config, owner, 'ignored', ''); return; }
@@ -275,6 +286,7 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
         if (!['report', 'balance', 'help', 'ignore'].includes(intent.kind) && result.requested_date && result.requested_date !== today) throw new ExchangeReview('이전 날짜의 금액을 자동 소급하지 않습니다. 원장의 기초 시제·기존 거래와 대조 후 관리자에게 확인해주세요.');
         verifyExchangeNumberEvidence(intent, [...previous.unresolved_texts, text].join('\n'));
         if (previous.job?.intent?.kind === 'opening') resolves = null; // Only the exact OPEN confirmation may resolve opening.
+        }
       }
       job = await patchJob(config, job.update_id, { intent }, owner);
     }
