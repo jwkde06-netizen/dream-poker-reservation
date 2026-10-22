@@ -41,3 +41,15 @@ bill=resolveFnb([{...fnb,floor:'3F',amount:100000,note:'Vietnamese'}],menu)[0];a
 assert.equal(resolveFnb([{...fnb,items:[{menu:'Ca phe dua',quantity:2}]}],menu)[0].amount,null);
 assert.deepEqual(resolveFnb(undefined,menu),[]);
 console.log('Shift readiness: game identity, partial attendance, cancellation, replay and Vietnamese F&B checks passed');
+// Existing players must never be blocked by an OCR-generated registration.
+const known=[['PLAYER'],['KIM SOO MIN','','KOREA2']];
+const photoOps=[{kind:'register',player:'KIM SOOMIN',agency:'KOREA'},op('KIM SOOMIN',3)];
+let cleaned=correctedOperations(photoOps,'',known);
+assert.equal(cleaned.length,1);assert.equal(cleaned[0].kind,'add');assert.equal(cleaned[0].player,'KIM SOO MIN');
+const existingPlan=planOperations(cleaned,[['NUMBER'],[]],[],known,{partialAttendance:true});
+assert.equal(existingPlan.review.length,0);assert.ok(existingPlan.changes.some(c=>c.range.includes('일일 입력')));
+assert.ok(!existingPlan.changes.some(c=>c.range.includes('플레이어 명단')));
+assert.equal(correctedOperations([{kind:'register',player:'KIM SOO MIN',agency:'KOREA2'}],'',known).length,0);
+assert.equal(correctedOperations(photoOps,'KIM SOO MIN KOREA 변경',known).length,2);
+assert.equal(correctedOperations(photoOps,'',[['PLAYER'],['KIM SOO MIN','','']]).length,2);
+assert.equal(correctedOperations(photoOps,'',[['PLAYER']]).length,2);

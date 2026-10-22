@@ -61,6 +61,19 @@ export function correctedOperations(ops:any[],text:string,master:any[][],rules:a
    if(chips&&Number(chips[1])%100000===0&&Number(chips[1])>=100000&&Number(chips[1])<=5000000)fixed.buyins=Number(chips[1])/100000;
   }
   return fixed;
+ }).filter(op=>{
+  if(op.kind!=='register')return true;
+  const matches=master.slice(1).filter(r=>norm(r[0])===norm(op.player));
+  if(matches.length!==1)return true;
+  const existing=matches[0];
+  // OCR sometimes emits register + add for a known player. Do not send that
+  // no-op through registration authorization or overwrite their master code.
+  if(!String(existing[2]||'').trim())return true;
+  const sameCode=!op.agency||norm(op.agency)===norm(existing[2]);
+  const sameCard=!op.card||String(op.card).trim()===String(existing[1]||'').trim();
+  if(sameCode&&sameCard)return false;
+  const explicitlyNamed=norm(text).includes(norm(op.player));
+  return explicitlyNamed||!!op.card;
  });
 }
 export function focusedQuestion(question:unknown,text:string,ops:any[]){
