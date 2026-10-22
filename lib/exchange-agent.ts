@@ -209,7 +209,7 @@ export function directKrwExchange(text:string):ExchangeIntent|null {
  if(!m)return null;
  const krw=Number(m[1])*10000+Number(m[2])*1000,vnd=Number(m[3])*10000;
  if(!Number.isSafeInteger(krw)||!Number.isSafeInteger(vnd)||krw<=0||vnd<=0)throw new ExchangeReview('환전 금액을 확인해주세요.');
- return {kind:'exchange',received:{account:/현금/.test(original)?'KRW_CASH':'KRW_BANK',amount:String(krw)},paid:{account:'VND_CASH',amount:String(vnd)},fee:null,received_includes_fee:false,rate_vnd:null,note:'원화 수령 및 동 지급 완료',external_reference:null};
+ return {kind:'exchange',received:{account:/현금/.test(text)?'KRW_CASH':'KRW_BANK',amount:String(krw)},paid:{account:'VND_CASH',amount:String(vnd)},fee:null,received_includes_fee:false,rate_vnd:null,note:'원화 수령 및 동 지급 완료',external_reference:null};
 }
 /** Only persisted unresolved source messages can authorize a short confirmation. */
 export function confirmedKrwExchange(sources: string[]): ExchangeIntent | null {
