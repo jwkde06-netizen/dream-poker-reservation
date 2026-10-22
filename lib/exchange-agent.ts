@@ -213,7 +213,7 @@ export function directKrwExchange(text:string):ExchangeIntent|null {
  return {kind:'exchange',received:{account:m[4]==='현금'?'KRW_CASH':'KRW_BANK',amount:String(krw)},paid:{account:'VND_CASH',amount:String(vnd)},fee:null,received_includes_fee:false,rate_vnd:null,note:m[4]==='현금'?'원화 현금 수령·동 지급 완료':'원화 수령·동 지급 완료',external_reference:null};
 }
 /** Only persisted unresolved source messages can authorize a short confirmation. */
-export function confirmedKrwExchange(sources: string[]): ExchangeIntent | null {
+export function confirmedKrwExchange(sources: string[]): Extract<ExchangeIntent,{kind:'exchange'}> | null {
   const intents = sources.map(directKrwExchange).filter((x): x is Extract<ExchangeIntent, { kind: 'exchange' }> => x?.kind === 'exchange');
   if (!intents.length) return null;
   const first = intents[0];
