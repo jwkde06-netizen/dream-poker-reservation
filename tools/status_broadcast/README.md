@@ -1,11 +1,42 @@
-# Local status broadcast guards — integration pending
+# Dream hourly broadcaster — local live verification pending
 
-This is a tested planning/outbox component, **not an activated broadcaster**.
-It does not schedule jobs, subscribe to Telegram, read WhatsApp, fetch the LAN
-dashboard or control KakaoTalk. Production routes and existing accounting bots
-are unchanged. A connected local CUA worker and authorized event adapter are
-still required. The Codex local scheduling tool returned a connection error
-during setup; no recurring job was confirmed.
+Latest scope: only post Dream time-attack status at each exact Vietnam hour.
+Telegram receipt triggers and MM/WhatsApp integration are excluded.
+
+## Local launch
+
+1. Open `다낭 홀덤 DREAM Poker` as its own KakaoTalk window on this Mac.
+2. Run `Preview_Dream_Status.command` to check fresh dashboard data without sending.
+3. Run `Start_Dream_Hourly.command` to enable actual hourly sending. Keep its
+   Terminal open, KakaoTalk logged in and the Mac unlocked. macOS may require
+   the user to approve Automation/Accessibility access for Terminal/System Events.
+4. The terminal prints LIVE and the next Vietnam hour. A per-hour verified result
+   is printed only after a matching posted message is found. Control+C stops it.
+
+The launcher uses caffeinate only while running. There is no login item, launchd
+job or Codex automation installation. Reopening the launcher is needed after
+closing it or restarting the Mac. It never sends immediately except if started
+within the first 30 seconds of an exact hour. Missed hours are not replayed.
+
+`hourly.py` fetches the exact LAN dashboard, parses GridViewTournament and uses
+the guard/outbox below. `kakao.applescript` is a standalone UI adapter: checks the
+exact room, empty composer, expected text and forbidden public terms; reserves
+submission before Return; checks a matching non-composer message afterward.
+It never overwrites a user draft or selects a chat by guessed coordinates.
+
+## Verified versus pending
+
+22 Python tests passed. AppleScript compiled successfully with osacompile.
+The agent's execution sandbox denied the LAN HTTP request (Operation not permitted).
+Therefore direct HTTP parsing against the live dashboard and the standalone
+AppleScript adapter have NOT been validated end-to-end. The coding agent did
+not run AppleScript UI control; its computer-use tool requires separate explicit
+user authorization for that control method. Do not treat this as an active or
+production-verified installation. The user must grant any macOS permissions.
+
+A missing/changed HTML table, inaccessible room, OS denial, nonempty composer,
+restriction warning or unverified post stops the runner. Never blindly restart
+it after an uncertain send: inspect the chat and persistent outbox first.
 
 ## Intended flow
 
