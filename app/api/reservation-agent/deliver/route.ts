@@ -1,7 +1,7 @@
 import {NextResponse} from 'next/server';
 import {createClient} from '@supabase/supabase-js';
 import {projectUrl,tg,telegramToken} from '../../../../lib/telegram';
-import {reservationMessage} from '../../../../lib/reservation-agent';
+import {reservationMessage,reservationActionKeyboard} from '../../../../lib/reservation-agent';
 export const runtime='nodejs';
 export const maxDuration=30;
 export async function POST(request:Request){
@@ -18,8 +18,16 @@ export async function POST(request:Request){
  try{
   const target=String(job.target||process.env.TELEGRAM_CHAT_ID||'');
   if(!target)throw Error('Telegram destination is not configured');
-  const base='https://dream-poker-reservation.vercel.app';
-  const result=await tg('sendMessage',{chat_id:target,text:reservationMessage(job.payload),reply_markup:{inline_keyboard:[[{text:'한국인 데스크 · 확인 / Confirm',url:`${base}/desk?reservation=${job.payload.reservation_id}`},{text:'Cashier / Thu ngân',url:`${base}/staff?reservation=${job.payload.reservation_id}`}]]}},10000);
+  const payload={chat_id:target,text:reservationMessage(job.payload),reply_markup:reservationActionKeyboard(job.id,job.payload),link_preview_options:{is_disabled:true}};
+  let result;
+  if(job.message_id){
+   try{result=await tg('editMessageText',{...payload,message_id:Number(job.message_id)},10000);}
+   catch(error){
+    if(String(error).includes('message is not modified'))result={message_id:Number(job.message_id)};
+    else if(String(error).includes('message to edit not found'))result=await tg('sendMessage',payload,10000);
+    else throw error;
+   }
+  }else result=await tg('sendMessage',payload,10000);
   messageId=result.message_id;
   if(!Number.isSafeInteger(messageId))throw Error('Telegram receipt missing');
  }catch{
