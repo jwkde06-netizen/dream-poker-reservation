@@ -1,0 +1,13 @@
+const assert=require('node:assert/strict');
+const {reviewCashierAgainstSheet}=require('../.test-build/cashier-sheet-review');
+const row=(g,p,n=1,a=500000)=>[g,46317,'13-2','5M',p,'','KOREA',n,a];
+const rows=[[],row(7,'LEE KWANG TAE',2,1000000),row('','KIM SEON HAK')];
+const statement={date:'2026-10-22',currency:'VND',complete:true,totalBuyins:3,totalAmount:1500000,entries:[{game:7,table:'13-2',player:'LEE KWANG TAE',buyins:2,amount:1000000},{game:7,table:'13-2',player:'KIM SEON HAK',buyins:1,amount:500000}]};
+const evidence={allPagesVerified:true,codeScopeVerified:true,amountBasisVerified:true};
+const before=JSON.stringify(rows);
+assert.equal(reviewCashierAgainstSheet(statement,rows,evidence).text,'금일 총 1게임 3바이인 1,500,000동입니다.');
+for(const key of Object.keys(evidence))assert.equal(reviewCashierAgainstSheet(statement,rows,{...evidence,[key]:false}).readyToReport,false);
+assert.equal(reviewCashierAgainstSheet(statement,[[],row(7,'LEE KWANG TAE'),row('','KIM SEON HAK',2,1000000)],evidence).readyToReport,false);
+assert.throws(()=>reviewCashierAgainstSheet(statement,[[],row(7,'LEE KWANG TAE',2,'#REF!')],evidence));
+assert.equal(JSON.stringify(rows),before);
+console.log('cashier sheet review: source evidence, player differences, formula errors and read-only checks passed');
