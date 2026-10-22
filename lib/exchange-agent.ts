@@ -264,7 +264,7 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
     if (message.forward_origin || message.forward_date || message.external_reply) { await finish(job, config, owner, 'review', '전달된 과거 내역은 자동 반영하지 않습니다. 실제 신규 거래의 받은 금액·지급 금액·수수료를 직접 적어주세요.'); return; }
     if (message.photo || message.document) { await finish(job, config, owner, 'review', '사진만으로 실제 수령·지급 여부를 확정하지 않습니다. 받은 통화·금액·계좌, 지급 통화·금액·계좌, 수수료를 글로 적어주세요.'); return; }
     const today = vietnamDate(message.date);
-    let intent: ExchangeIntent, resolves: number | null = null;
+    let intent: ExchangeIntent = { kind: 'ignore' }, resolves: number | null = null;
     const confirmation = text.trim().match(/^(?:\/confirm|시제\s*확정)\s+OPEN-(\d+)\s*$/i);
     if (confirmation) {
       await authorizeActor(config, job.sender_id, true);
