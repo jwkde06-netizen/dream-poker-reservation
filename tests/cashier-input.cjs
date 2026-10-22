@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict');
+const {parseCashierInput,reportChunks}=require('../.test-build/cashier-input');
+const base={sourceId:'source1',statement:{date:'2026-10-22',currency:'VND',complete:true,totalBuyins:1,totalAmount:500000,entries:[{game:1,player:'A',buyins:1,amount:500000}]}};
+const parsed=parseCashierInput(base);
+assert.equal(parsed.options.requireGameMapping,true);assert.equal(parsed.evidence.allPagesVerified,false);
+assert.throws(()=>parseCashierInput({...base,statement:{...base.statement,date:'2026-02-30'}}));
+assert.throws(()=>parseCashierInput({...base,statement:{...base.statement,entries:[{game:1,player:'A',buyins:'1',amount:500000}]}}));
+assert.throws(()=>parseCashierInput({...base,options:{gameMappings:[{date:'2026-10-21',printedGame:1,game:1}]}}));
+assert.equal(parseCashierInput({...base,evidence:{allPagesVerified:'true'}}).evidence.allPagesVerified,false);
+const content=Array.from({length:100},(_,i)=>`${i}번 게임 선수별 차이 ${'가'.repeat(50)}`).join('\n');
+const chunks=reportChunks(content);assert.ok(chunks.length>1);assert.equal(chunks.join('\n'),content);assert.ok(chunks.every(x=>x.length<=3500));
+console.log('cashier input: invalid dates, numeric types, day mapping, evidence and lossless message splitting passed');

@@ -6,7 +6,23 @@
 - 기존 보고방 연결과 `/close YYYY-MM-DD` 수동 합계 보고는 별도 기능이다. 캐셔 대조를 통과했다는 뜻이 아니다.
 - `cashier-reconciliation.ts`: 선수별 바이인/금액, 양쪽 누락, 중복, 날짜별 인쇄/실제 게임번호 대조.
 - `cashier-sheet-review.ts`: `일일 입력!A:I` UNFORMATTED 스냅샷을 검증하고 대조 보고 초안을 만든다. 시트나 Telegram에 쓰지 않는다.
-- 자동 사진 수신 → 판독 → 마감 발송은 아직 연결하지 않았다. Viber 수신 연동은 별도 작업 중이다.
+- `/api/accounting/cashier`에 사진 판독 초안, 대조 이력 저장, 결과 발송 경로를 구현했다. Telegram 일반 사진 메시지가 이 API를 자동 호출하는 기능은 아직 없다. Viber 수신 연동은 별도 작업 중이다.
+
+## 수신 어댑터 API
+
+`POST /api/accounting/cashier`는 기존 관리자 Bearer 세션 또는 서버의 기존 `ACCOUNTING_OPS_SECRET`으로 인증한다. 키를 채팅이나 프론트엔드에 넣지 않는다. URL/채팅방은 요청으로 받지 않고 서버의 기존 보고방 설정만 사용한다.
+
+- `action:"extract", sourceId, images:[dataURL,...]`: 최대 6장, 요청 전체 4MB 미만. 사진을 기존 비전 모델로 판독해 초안을 반환한다. 모델은 페이지/코드/금액 기준 검증 권한이 없고 모든 evidence 플래그는 false다. 시트 수정·발송 없음.
+- `action:"review", sourceId, statement, evidence, options`: 실제 시트 A:I와 대조하고 이력을 저장한다. id, sourceHash, 선수별 차이와 보고 초안을 반환한다.
+- `action:"publish", id, sourceHash`: 기존 대조 결과를 최신 시트와 재확인한 뒤 보고방에 보낸다. 처리 중 작업, 시트 변경, 불확실한 전송은 보류한다.
+- `action:"receive"`: review와 publish를 순서대로 실행한다. 검증된 수신 어댑터는 `/close` 없이 이 경로로 보고할 수 있다. 모든 조건 일치 때만 일일 합계 문구를 발송하고, 그 외에는 대조 차이/검토 사항을 발송한다.
+- `GET`: 최근 대조 이력 20개. 같은 관리자 인증 필요.
+
+`sourceId`는 원본의 안정적인 식별자를 사용한다. 정정본은 내용을 바꾼 새 검토 이력으로 저장된다. 같은 날 최종 보고는 기존 날짜 키를 사용하므로 재수신으로 중복 발송하지 않는다. 이미 수동 /close 보고가 발송된 날도 자동 재발송하지 않는다.
+
+`evidence`의 세 필드는 원본 전체 페이지, 대상 코드 범위, I열과 동일한 금액 기준을 사람이 확인했거나 검증된 수신 어댑터가 보증할 때만 true로 전달한다. OCR 반환값을 그대로 true로 바꾸지 않는다. `options.requireGameMapping`은 기본 true이며, 인쇄/실제 번호가 같은 날이라고 확인한 경우만 false를 지정한다.
+
+현재 캐셔 일일 선수 합계만 있고 게임별 내역이 없는 자료는 판독기가 supported:false로 반환한다. 게임별 금액을 추정해서 채우지 않는다. 실제 양식 검증 후 별도 일일 선수 합계 대조를 추가할 수 있다.
 
 ## 연결 계약
 
