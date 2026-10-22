@@ -59,63 +59,16 @@ def dream_tables(rows):
     return sorted(tables)
 
 
-def mm_lines(mm, now):
-    """An adapter supplies TODAY's explicit notices, not a copied arbitrary message."""
-    fresh(mm['observed_at'], now)
-    if mm.get('room') != 'MM 한국방':
-        raise ReviewRequired('Wrong MM room')
-    notices = mm.get('notices', [])
-    if not notices:
-        raise ReviewRequired('No MM evidence')
-    lines = []
-    labels = {'time_attack': '타임어택', 'cash': '캐시 게임', '5/5': '5/5 게임'}
-    seen = set()
-    for notice in notices:
-        posted = local_time(notice['posted_at'])
-        if posted > local_time(now) or posted.date() != local_time(now).date():
-            raise ReviewRequired('MM notice is not from today')
-        game, state = notice.get('game'), notice.get('state')
-        if game not in labels or game in seen or not notice.get('evidence_id'):
-            raise ReviewRequired('Ambiguous MM game or missing evidence')
-        seen.add(game)
-        label = labels[game]
-        if state == 'closed':
-            lines.append(label + ' 종료')
-        elif state == 'day_off':
-            lines.append(label + ' 금일 휴무')
-        elif state == 'running':
-            count = notice.get('tables')
-            if type(count) is not int or not 1 <= count <= 30:
-                raise ReviewRequired('MM running table count missing')
-            lines.append('%s | %d테이블 진행 중' % (label, count))
-        elif state == 'scheduled':
-            start, end = notice['start_at'], notice.get('end_at', notice['start_at'])
-            start, end = local_time(start), local_time(end)
-            if not posted <= start <= end or start.date() != posted.date():
-                raise ReviewRequired('Invalid MM schedule')
-            if local_time(now) >= start:
-                raise ReviewRequired('Start time reached: confirm actual MM status')
-            time = start.strftime('%H:%M')
-            if end != start:
-                time += '~' + end.strftime('%H:%M')
-            lines.append(label + ' | ' + time + ' 시작 예정')
-        else:
-            raise ReviewRequired('Unrecognized MM state')
-    return lines
-
-
 def render(snapshot, now):
     fresh(snapshot['observed_at'], now)
     if snapshot.get('url') != 'http://192.168.1.9:8080/':
         raise ReviewRequired('Wrong dashboard URL')
     tables = dream_tables(snapshot['rows'])
-    mm = mm_lines(snapshot['mm'], now)
-    body = ('📢 포커룸 실시간 현황\n' + local_time(now).strftime('%H:%M') + ' 기준\n\n'
-            '♠️ DREAM POKER · 드림포커\n'
+    body = ('📢 드림포커 실시간 현황\n' + local_time(now).strftime('%H:%M') + ' 기준\n\n'
+            '♠️ DREAM POKER\n'
             '5M 타임어택 | %d테이블 진행 중\n\n' % len(tables)
-            + '♣️ MILLION MAKER · 밀리언메이커\n' + '\n'.join(mm)
-            + '\n\n💬 참가·예약 문의\n' + LINK)
-    digest = hashlib.sha256(json.dumps([tables, mm], ensure_ascii=False).encode()).hexdigest()
+            + '\n📌 타임어택은 미리 예약하고 방문하시면\n대기 없이 참여하실 수 있습니다.\n\n💬 참가·예약 문의\n' + LINK)
+    digest = hashlib.sha256(json.dumps(tables, ensure_ascii=False).encode()).hexdigest()
     return body, digest
 
 
