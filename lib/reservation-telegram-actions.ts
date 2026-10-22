@@ -9,7 +9,7 @@ export async function handlePublicReservationCallback(update:any):Promise<boolea
   try{await tg('answerCallbackQuery',{callback_query_id:q.id,text,show_alert:true},5000);}
   catch{/* An expired acknowledgement must not undo or repeat a committed action. */}
  };
- const match=/^rr:(confirm|contact):([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/.exec(q.data);
+ const match=/^rr:(confirm|contact|cancel):([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/.exec(q.data);
  if(!match||!Number.isSafeInteger(q.from?.id)||q.from.id<=0||q.from?.is_bot||!Number.isSafeInteger(q.message?.chat?.id)||q.message.chat.id>=0||!Number.isSafeInteger(q.message?.message_id)){
   await answer('Use the buttons in the reservation staff group.');return true;
  }
@@ -28,7 +28,7 @@ export async function handlePublicReservationCallback(update:any):Promise<boolea
  });
  if(result.error)throw Error('Reservation action unavailable');
  const messages:Record<string,string>={
-  confirmed:'Reservation confirmed.',contact:'Please contact the Korean desk on KakaoTalk.',
+  confirmed:'Reservation confirmed.',cancelled:'Reservation cancelled.',contact:'Please contact the Korean desk on KakaoTalk.',
   unchanged:'Already processed.',stale:'This reservation changed. Use the latest message.',
   full:'No seats available. Please contact the desk.',closed:'This game is closed. Please contact the desk.',
   inactive:'This reservation can no longer be changed.'

@@ -14,7 +14,7 @@ export function reservationMessage(p:DeliveryPayload){
 export function reservationActionKeyboard(deliveryId:string,p:Pick<DeliveryPayload,'status'|'contact_required'>){
  const active=['pending','waitlisted','confirmed'].includes(p.status);
  return {inline_keyboard:active?[[
-  {text:p.status==='confirmed'&&!p.contact_required?'CONFIRMED ✓':'CONFIRM',callback_data:`rr:confirm:${deliveryId}`},
+  {text:p.status==='confirmed'?'CANCEL':'CONFIRM',callback_data:`rr:${p.status==='confirmed'?'cancel':'confirm'}:${deliveryId}`},
   {text:p.contact_required?'CONTACT DESK ✓':'CONTACT DESK',callback_data:`rr:contact:${deliveryId}`}
  ]]:[]};
 }
