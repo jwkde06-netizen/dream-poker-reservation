@@ -295,7 +295,7 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
         // Do not send a one-word approval to the model as an isolated money instruction.
         const yes=/^(?:네|예|응|맞아|맞습니다|확인|yes|y)$/i.test(text.trim());
         if (yes && previous.job && previous.job.status !== 'review') throw new ExchangeReview('이미 처리된 요청입니다. 중복 기록하지 않았습니다.');
-        const modeReply=/^(?:원화\s*)?(?:현금|현금으로\s*받음|현금으로\s*받았어|계좌|계좌이체)$/i.test(text.trim());
+        const modeReply=/^(?:원화\s*)?(?:현금|현금으로\s*받음|현금으로\s*받았어|계좌|계좌이체)$/i.test(text.trim()) || /(?:계좌\s*아니고\s*현금|현금으로\s*받아서|현금으로\s*받았)/.test(text);
         const confirmed = (yes || modeReply) ? confirmedKrwExchange([...previous.unresolved_texts, ...(modeReply ? [text] : [])]) : null;
         if (yes && !confirmed) throw new ExchangeReview('확인할 미처리 환전 원문을 찾지 못했습니다. 해당 원문에 답장해주세요.');
         if (confirmed && previous.job?.status === 'review') {
