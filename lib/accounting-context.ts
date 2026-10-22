@@ -1,4 +1,10 @@
 import {norm,tableLabel} from './accounting-plan';
+// Explicitly approved identity only; JANG YOON HO remains a different player.
+export function playerIdentity(name:unknown,rules:any[]=[]){
+ const value=norm(name);
+ if(value==='CHANGCALEBYOONHO'&&rules.some(r=>/CHANG CALEB YOON-HO/.test(String(r.content))&&/CHANG YOON HO/.test(String(r.content))))return 'CHANGYOONHO';
+ return value;
+}
 export function canonicalPlayers(master:any[][]){
  const groups=new Map<string,any[][]>();
  for(const r of master.slice(1)){if(!r[0])continue;const k=norm(r[0]);groups.set(k,[...(groups.get(k)||[]),r]);}
@@ -40,7 +46,7 @@ export function correctedOperations(ops:any[],text:string,master:any[][],rules:a
  const amounts=Array.from(text.matchAll(/(\d[\d,]*(?:\.\d+)?)\s*(만|천)?\s*(?:(\d+)\s*천)?\s*동/g)).map(m=>Number(m[1].replace(/,/g,''))*(m[2]==='만'?10000:m[2]==='천'?1000:1)+Number(m[3]||0)*1000);
  const onlyFnb=(ops||[]).filter(o=>o.kind==='fnb').length===1;
  return (ops||[]).map(op=>{
-  const matches=players.filter(r=>norm(r[0])===norm(op.player));
+  const matches=players.filter(r=>norm(r[0])===playerIdentity(op.player,rules));
   // A follow-up about one receipt must never renumber every receipt in a photo.
   const applies=game&&['add','total','cancel'].includes(op.kind)&&(scopedTable?Number(op.table)===scopedTable:tables.size===1);
   const fixed={...op,...(matches.length===1?{player:matches[0][0]}:{}),...(applies?{game:game,gameConfirmed:true}:gameNumbers.length>1&&gameNumbers.includes(op.game)?{gameConfirmed:true}:{})};
@@ -63,7 +69,7 @@ export function correctedOperations(ops:any[],text:string,master:any[][],rules:a
   return fixed;
  }).filter(op=>{
   if(op.kind!=='register')return true;
-  const matches=master.slice(1).filter(r=>norm(r[0])===norm(op.player));
+  const matches=master.slice(1).filter(r=>norm(r[0])===playerIdentity(op.player,rules));
   if(matches.length!==1)return true;
   const existing=matches[0];
   // OCR sometimes emits register + add for a known player. Do not send that
@@ -86,4 +92,13 @@ export function certainOperations(ops:any[],question:unknown){
  // game identity shared by every row. Never write the guessed game first.
  if(question&&/게임.{0,12}번호|몇\s*번째|테이블.{0,6}번호|날짜|영업일/.test(String(question)))return ops.filter(op=>!['add','total','cancel'].includes(op.kind));
  return ops;
+}
+
+export function clearResolvedIdentityQuestion(question:unknown,ops:any[],master:any[][],rules:any[]=[]){
+ const match=String(question||'').match(/^(.+?)님 명단의 이름과 소속을 확인해주세요\.$/);
+ if(!match)return question;
+ const identity=playerIdentity(match[1],rules);
+ const found=canonicalPlayers(master).filter(r=>norm(r[0])===identity);
+ if(found.length!==1||!String(found[0][2]||'').trim())return question;
+ return ops.some(o=>['add','total'].includes(o.kind)&&norm(o.player)===identity)?null:question;
 }

@@ -1,5 +1,5 @@
 import {norm,serial,tableLabel} from './accounting-plan';
-import {correctedOperations} from './accounting-context';
+import {correctedOperations,playerIdentity} from './accounting-context';
 
 // Reconcile every independently transcribed seat against the master, rather
 // than trusting the first model to have included every eligible player.
@@ -43,11 +43,7 @@ export function needsChipVerification(ops:any[],daily:any[][]){
 export function verifyChipEvidence(ops:any[],evidence:any,rules:any[]=[]){
  const names=evidence?.names,amounts=evidence?.chipAmounts;
  if(!Array.isArray(names)||!Array.isArray(amounts)||names.length!==amounts.length||names.length<1||names.length>10)return {operations:ops.filter(o=>!['add','total'].includes(o.kind)),questions:['사진의 이름과 칩 수를 정확히 맞추지 못했어요. 누적 바이인 수를 확인해주세요.']};
- const canonical=(name:string)=>{
-  const value=norm(name);
-  if(value==='CHANGCALEBYOONHO'&&rules.some(r=>/CHANG CALEB YOON-HO/.test(r.content)&&/CHANG YOON HO/.test(r.content)))return 'CHANGYOONHO';
-  return value;
- };
+ const canonical=(name:string)=>playerIdentity(name,rules);
  const questions:string[]=[],operations:any[]=[];
  for(const op of ops){
   if(!['add','total'].includes(op.kind)){operations.push(op);continue;}

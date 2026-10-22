@@ -1,0 +1,24 @@
+const assert=require('node:assert/strict');
+const {correctedOperations,playerIdentity}=require('../.test-build/accounting-context');
+const {completePhotoRoster,verifyChipEvidence}=require('../.test-build/accounting-vision');
+const rules=[{content:'영수증의 CHANG CALEB YOON-HO는 CHANG YOON HO와 동일인이다. JANG YOON HO와는 다르다.'}];
+const master=[['name','card','agency'],['CHANG YOON HO','','KOREA2'],['JANG YOON HO','','KOREA']];
+const op={kind:'total',date:'2026-10-22',game:3,table:13,blind:'5M',player:'CHANG YOON HO',chips:200000,buyins:2};
+const evidence={names:['CHANG CALEB YOON-HO'],chipAmounts:[200000],selected:[true],hasSelectionMarkers:true};
+assert.equal(playerIdentity('JANG YOON HO',rules),'JANGYOONHO');
+assert.equal(playerIdentity('CHANG CALEB YOON-HO',[]),'CHANGCALEBYOONHO');
+assert.equal(correctedOperations([{...op,player:'CHANG CALEB YOON-HO'}],'',master,rules)[0].player,'CHANG YOON HO');
+let result=completePhotoRoster([op],evidence,master,rules);
+assert.deepEqual(result.questions,[]);assert.equal(result.operations.length,1);
+assert.deepEqual(verifyChipEvidence(result.operations,evidence,rules).questions,[]);
+assert.equal(completePhotoRoster([op],evidence,master,[]).questions.length,1);
+assert.equal(completePhotoRoster([op],evidence,[master[0],['CHANG YOON HO','','']],rules).questions.length,1);
+assert.equal(verifyChipEvidence([op],{...evidence,chipAmounts:[100000]},rules).operations.length,0);
+assert.equal(verifyChipEvidence([{...op,player:'JANG YOON HO'}],evidence,rules).operations.length,0);
+console.log('Approved alias covers roster and chip validation; JANG, unknown code and mismatched chips remain guarded');
+
+const {clearResolvedIdentityQuestion}=require('../.test-build/accounting-context');
+const question='CHANG CALEB YOON-HO님 명단의 이름과 소속을 확인해주세요.';
+assert.equal(clearResolvedIdentityQuestion(question,[op],master,rules),null);
+assert.equal(clearResolvedIdentityQuestion(question,[],master,rules),question);
+assert.equal(clearResolvedIdentityQuestion('게임 번호 확인해주세요.',[op],master,rules),'게임 번호 확인해주세요.');

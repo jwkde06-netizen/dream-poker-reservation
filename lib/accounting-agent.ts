@@ -7,7 +7,7 @@ import {shouldProcessStaffMessage,resolveFnb} from './accounting-intake';
 import {completePhotoRoster,needsChipVerification,verifyChipEvidence,confirmChipCount,continueChipConfirmation,withheldChipOperations} from './accounting-vision';
 import {defaultAgency,completeNamedArrival,cosmeticNameEdit,jobReport,compactExtractionContext} from './accounting-workflow';
 import {reconcileSheet,reconcileOperation,afterVerifiedWrite} from './accounting-reconcile';
-import {sheetContext,correctedOperations,focusedQuestion,certainOperations} from './accounting-context';
+import {sheetContext,correctedOperations,focusedQuestion,certainOperations,clearResolvedIdentityQuestion} from './accounting-context';
 import {closed,followupContext,continuationText,registrationApprovals,rebuyCaption} from './accounting-followup';
 import {getVercelOidcToken} from '@vercel/oidc';
 import {createClient} from '@supabase/supabase-js';
@@ -177,7 +177,7 @@ export async function handle(update:any){
     const verified=verifyChipEvidence(result.operations,evidence,businessRules);
     verified.questions.unshift(...coverage.questions);
     result.unverifiedOperations=withheldChipOperations(result.operations,verified.operations);
-    result.operations=verified.operations;result.question=verified.questions[0]||result.question;
+    result.operations=verified.operations;result.question=verified.questions[0]||clearResolvedIdentityQuestion(result.question,verified.operations,master,businessRules);
     result.chipVerification={names:evidence.names,chipAmounts:evidence.chipAmounts,selected:evidence.selected,questions:verified.questions};
    }catch{result.operations=result.operations.filter((o:any)=>!['add','total'].includes(o.kind));result.question=result.unverifiedOperations?.[0]?.player?`${result.unverifiedOperations[0].player}님 사진의 누적 바이인 수만 확인해주세요.`:'사진 숫자를 다시 확인하지 못했어요. 누적 바이인 수만 알려주세요.';}
   }
