@@ -31,7 +31,7 @@ export function exchangeSheetRow(event: SheetEvent, sourceText: string): { row: 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(event.business_date)) throw Error('Invalid exchange date');
   const serial = Date.parse(event.business_date + 'T00:00:00Z') / 86400000 + 25569;
   if (!Number.isInteger(serial)) throw Error('Invalid exchange date');
-  const deltas = ['VND_CASH','VND_BANK','KRW_BANK','USD_CASH'].map(account => plan.postings.filter(p => p.account === account).reduce((n, p) => n + p.amount_minor, 0) / (account === 'USD_CASH' ? 100 : 1));
+  const deltas = ['VND_CASH','VND_BANK','KRW_BANK','USD_CASH'].map(account => plan.postings.filter(p => p.account === account || (account === 'KRW_BANK' && p.account === 'KRW_CASH')).reduce((n, p) => n + p.amount_minor, 0) / (account === 'USD_CASH' ? 100 : 1));
   const labels: Record<string, string> = { opening: '기초 시제', exchange: '환전', movement: '시제 입출금', reversal: '취소' };
   if (!labels[event.kind]) throw Error('Invalid exchange kind');
   const at = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date(event.source_date));
