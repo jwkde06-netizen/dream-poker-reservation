@@ -20,6 +20,14 @@ export function politeAcknowledgement(text:string,replyToBot:boolean){
 }
 export function completionReply(operations:any[],question:any,answeredQuestion:boolean){
  if(question)return `확인된 항목은 기록했어요. ${String(question)}`;
+ const attendance=(operations||[]).filter(o=>['add','total','cancel'].includes(o.kind));
+ const games=Array.from(new Set(attendance.map(o=>o.game).filter(g=>Number.isInteger(g)&&g>0)));
+ if(attendance.length&&games.length===1&&!operations.some(o=>o.kind==='fnb')){
+  const rebuy=attendance.every(o=>o.kind==='total');
+  const title=games[0]+'번 게임 '+(rebuy?'리바인 체크 완료 ✅':'바이인 기록 완료 ✅');
+  const totals=rebuy?attendance.filter(o=>o.buyins>1).map(o=>o.player+' 총 '+o.buyins+'바인'):[];
+  return [title,...Array.from(new Set(totals))].join('\n');
+ }
  const done=operations?.length&&operations.every(o=>o.kind==='fnb')?'F&B 기록 완료 ✅':operations?.some(o=>['add','total','cancel'].includes(o.kind))?'바이인 기록 완료 ✅':'완료 ✅';
  return answeredQuestion?'네, 확인했습니다.\n'+done:done;
 }

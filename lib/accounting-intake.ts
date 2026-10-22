@@ -3,6 +3,9 @@ import {followupContext,HistoryJob} from './accounting-followup';
 
 export function shouldProcessStaffMessage(m:any,recent:HistoryJob[]=[]){
  if(m.photo||m.document)return true;
+ // Ignore exact completion notices, not instructions or corrections.
+ const notice=String(m.text||'').trim().split(/\r?\n/).map((s:string)=>s.trim()).filter(Boolean);
+ if(notice.length&&/^(?:(?:\d+\s*번\s*)+게임\s*|(?:\d+\s*번\s*)+)?(?:바이인\s*기록|리바인\s*체크|F\s*&\s*B\s*기록)\s*완료\s*✅?$/.test(notice[0])&&notice.slice(1).every((s:string)=>/^[A-Z][A-Z .'-]+\s+총\s*\d+\s*바인\s*✅?$/.test(s)))return false;
  if(/^\//.test(String(m.text||'').trim()))return !!deskCommand(m.text);
  if(politeAcknowledgement(String(m.text||''),!!m.reply_to_message?.from?.is_bot))return true;
  const t=String(m.text||m.caption||'').trim();
