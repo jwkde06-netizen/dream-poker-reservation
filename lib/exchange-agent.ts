@@ -202,6 +202,15 @@ async function cancellationIntent(config:ExchangeConfig, text:string, replyMessa
   if(active.length>1)throw new ExchangeReview('같은 금액의 미취소 거래가 여러 건입니다. 취소할 완료 메시지에 답장해주세요.');
   return {kind:'reversal',reference:active[0].reference,note:'관리자 요청으로 이체수수료 취소'};
 }
+/** Exact completed KRW->VND sale, parsed before AI to protect compound Korean numerals. */
+export function directKrwExchange(text:string):ExchangeIntent|null {
+ const compact=text.replace(/\\s+/g,'');
+ const m=compact.match(/^(\\d+)만(\\d+)천원원화받고(\\d+)만동(?:드림|줌|지급|보냄)$/);
+ if(!m)return null;
+ const krw=Number(m[1])*10000+Number(m[2])*1000,vnd=Number(m[3])*10000;
+ if(!Number.isSafeInteger(krw)||!Number.isSafeInteger(vnd)||krw<=0||vnd<=0)throw new ExchangeReview('환전 금액을 확인해주세요.');
+ return {kind:'exchange',received:{account:'KRW_BANK',amount:String(krw)},paid:{account:'VND_CASH',amount:String(vnd)},fee:null,received_includes_fee:false,rate_vnd:null,note:'원화 수령 및 동 지급 완료',external_reference:null};
+}
 function simpleIntent(text: string): ExchangeIntent | null {
   const t = text.trim().replace(/@\w+(?=\s|$)/, '');
   if (/^(\/start|\/help|도움말|사용법)$/i.test(t)) return { kind: 'help' };
@@ -258,7 +267,7 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
       job = await patchJob(config, job.update_id, { intent, context_update_id: id }, owner);
     } else {
       const cancel = await cancellationIntent(config, text, message.reply_to_message?.message_id);
-      const fast = cancel || simpleIntent(text) || exchangeFeeShortcut(text);
+      const fast = cancel || simpleIntent(text) || exchangeFeeShortcut(text) || directKrwExchange(text);
       if (fast) intent = fast;
       else {
         const previous = await previousContext(config, message.reply_to_message?.message_id);
