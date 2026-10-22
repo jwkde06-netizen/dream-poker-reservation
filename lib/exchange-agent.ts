@@ -203,13 +203,14 @@ async function cancellationIntent(config:ExchangeConfig, text:string, replyMessa
   return {kind:'reversal',reference:active[0].reference,note:'관리자 요청으로 이체수수료 취소'};
 }
 /** Exact completed KRW->VND sale, parsed before AI to protect compound Korean numerals. */
-export function directKrwExchange(text:string):ExchangeIntent|null {
- const compact=text.split(' ').join('');
- const m=compact.match(/^([0-9]+)만([0-9]+)천원원화받고([0-9]+)만동(드림|줌|지급|보냄)$/);
+export export function directKrwExchange(text:string):ExchangeIntent|null {
+ const compact=text.replace(/\\s+/g,'');
+ const m=compact.match(/^(\\d+)만(?:(\\d+)(천원|원))?(?:원)?(?:(현금|계좌))?원화?(?:를)?받고(\\d+)만동(?:드림|줌|지급|보냄|지급완료)$/);
  if(!m)return null;
- const krw=Number(m[1])*10000+Number(m[2])*1000,vnd=Number(m[3])*10000;
- if(!Number.isSafeInteger(krw)||!Number.isSafeInteger(vnd)||krw<=0||vnd<=0)throw new ExchangeReview('환전 금액을 확인해주세요.');
- return {kind:'exchange',received:{account:'KRW_BANK',amount:String(krw)},paid:{account:'VND_CASH',amount:String(vnd)},fee:null,received_includes_fee:false,rate_vnd:null,note:'원화 수령 및 동 지급 완료',external_reference:null};
+ const rest=Number(m[2]||0)*(m[3]==='원'?1:1000);
+ const krw=Number(m[1])*10000+rest, vnd=Number(m[5])*10000;
+ if(!Number.isSafeInteger(krw)||!Number.isSafeInteger(vnd)||krw<=0||vnd<=0)throw new ExchangeReview('거래 금액을 확인해주세요.');
+ return {kind:'exchange',received:{account:m[4]==='현금'?'KRW_CASH':'KRW_BANK',amount:String(krw)},paid:{account:'VND_CASH',amount:String(vnd)},fee:null,received_includes_fee:false,rate_vnd:null,note:m[4]==='현금'?'원화 현금 수령·동 지급 완료':'원화 수령·동 지급 완료',external_reference:null};
 }
 /** Only persisted unresolved source messages can authorize a short confirmation. */
 export function confirmedKrwExchange(sources: string[]): ExchangeIntent | null {
@@ -289,11 +290,17 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
         }
         // An explicit yes confirms the specific payment fields in the unanswered quoted request.
         // Do not send a one-word approval to the model as an isolated money instruction.
+        const cashCorrection=/^(?:원화\\s*)?현금(?:으로\\s*받았어|으로\\s*받음|으로\\s*받았습니다|으로\\s*수령|입니다)?$/i.test(text.trim());
+        if(cashCorrection && previous.job?.status==='review') {
+          const base=confirmedKrwExchange(previous.unresolved_texts);
+          if(base){intent={...base,received:{...base.received,account:'KRW_CASH'},note:'원화 현금 수령·동 지급 완료'};job=await patchJob(config,job.update_id,{intent},owner);}
+        }
         const yes=/^(?:네|예|응|맞아|맞습니다|확인|yes|y)$/i.test(text.trim());
         if (yes && previous.job && previous.job.status !== 'review') throw new ExchangeReview('이미 처리된 요청입니다. 중복 기록하지 않았습니다.');
         const confirmed = yes ? confirmedKrwExchange(previous.unresolved_texts) : null;
         if (yes && !confirmed) throw new ExchangeReview('확인할 미처리 환전 원문을 찾지 못했습니다. 해당 원문에 답장해주세요.');
-        if (confirmed && previous.job?.status === 'review') {
+        if(cashCorrection && intent?.kind==='exchange') { /* matched original confirmed payment */ }
+        else if (confirmed && previous.job?.status === 'review') {
           intent = confirmed;
           job = await patchJob(config, job.update_id, { intent }, owner);
         } else {
