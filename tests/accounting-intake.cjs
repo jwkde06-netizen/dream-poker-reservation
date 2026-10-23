@@ -29,3 +29,7 @@ assert.equal(gate(msg('6만동'),[{message_id:12,status:'applied',plan:{contextM
 assert.equal(gate({...msg('김지원 추가해'),reply_to_message:{message_id:10}},[{...pending,status:'applied',plan:{}}]),true);
 console.log('Intake, closed-task, short-answer and F&B pricing regression checks passed');
 for(const text of ['우리코드 5명인데 2명 밖에 기록이 안 되었어','기록이 안 됐어','3명이 누락됐어 시트 확인해'])assert.equal(gate({text}),true,text);
+
+// Regression: message317 was silently dropped before any AI call.
+for(const text of ["Ye gui cai 우리 코드 아님","YE GUI CAI는 우리 코드가 아니야","이 선수는 저희 정산 코드 대상 아님","김지원님 소속 잘못됐어"])assert.equal(gate({text}),true,text);
+for(const text of ["우리 오늘 몇 시에 퇴근해?","중국인 손님 왔어","우리 코드 개발 중","YE GUI CAI 왔어"])assert.equal(gate({text}),false,text);
