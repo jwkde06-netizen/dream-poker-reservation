@@ -43,3 +43,11 @@ export function completionReply(operations:any[],question:any,answeredQuestion:b
  const done=operations?.length&&operations.every(o=>o.kind==='fnb')?'F&B 기록 완료 ✅':operations?.some(o=>['add','total','cancel'].includes(o.kind))?'바이인 기록 완료 ✅':'완료 ✅';
  return answeredQuestion?'네, 확인했습니다.\n'+done:done;
 }
+
+export function addressedToDesk(text:string){
+ return /@dream_poker_reservation_bot(?![a-z0-9_])/i.test(text);
+}
+export function sheetStatusQuestion(text:string){
+ const clean=text.replace(/@dream_poker_reservation_bot(?![a-z0-9_])/gi,'').trim();
+ return /시트|입력|반영|처리|기록/.test(clean)&&/(?:됐|됬|되었|된|됐는|했|끝났|완료|상태|누락|미처리)/.test(clean)&&/(?:[?？]|거야|나요|니$|는지|알려|확인|상태|누락|미처리)/.test(clean)&&!/(?:추가해|수정해|삭제해|넣어|입력해|반영해|처리해)/.test(clean);
+}
