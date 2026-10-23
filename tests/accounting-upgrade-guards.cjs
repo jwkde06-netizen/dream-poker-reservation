@@ -38,3 +38,21 @@ const resumed=continueChipConfirmation('2바인',{plan:{unverifiedOperations:unc
 assert.equal(resumed.operations[0].kind,'add');assert.equal(resumed.operations[0].buyins,2);
 assert(planOperations(resumed.operations,[['header']],[],master).changes.length>0);
 assert(!resumed.operations.some(o=>o.player==='OLIVER CHARLES'));
+
+const {bindConfirmedRebuy}=require('../.test-build/accounting-vision');
+const rebuyOp={kind:'total',date:'2026-10-23',game:9,table:14,blind:'5M',player:'PARK SOO MIN',buyins:2,chips:200000};
+const rebuyPaper={date:rebuyOp.date,printedGame:7,table:2,names:['PARK SOO MIN'],chipAmounts:[200000],selected:[true],hasSelectionMarkers:false};
+const rebuyEvidence={documents:[rebuyPaper]};
+const rebuyGames=[{date:rebuyOp.date,gameNumber:9,tableNumber:14,tableLabel:'14-1',players:[{name:'PARK SOO MIN',buyins:1}]}];
+const rebuyQuestion='사진의 Table 2 명단은 기존 9번 게임(14-1)의 리바인 명단이 맞나요?';
+const confirmedRebuy=bindConfirmedRebuy([rebuyOp],rebuyEvidence,'네',rebuyQuestion,rebuyGames);
+assert.equal(confirmedRebuy[0].confirmedPaperTable,2);
+assert.equal(confirmedRebuy[0].table,14);
+assert.equal(confirmedRebuy[0].game,9);
+assert.equal(verifyChipEvidence(confirmedRebuy,rebuyEvidence).operations.length,1);
+assert.equal(verifyChipEvidence([rebuyOp],rebuyEvidence).operations.length,0);
+for(const answer of ['아니요','확인해줘'])assert(!bindConfirmedRebuy([rebuyOp],rebuyEvidence,answer,rebuyQuestion,rebuyGames)[0].confirmedPaperTable);
+assert(!bindConfirmedRebuy([rebuyOp],rebuyEvidence,'네','다른 질문',rebuyGames)[0].confirmedPaperTable);
+assert(!bindConfirmedRebuy([rebuyOp],rebuyEvidence,'네',rebuyQuestion,[...rebuyGames,...rebuyGames])[0].confirmedPaperTable);
+assert.equal(verifyChipEvidence(confirmedRebuy,{documents:[{...rebuyPaper,chipAmounts:[300000]}]}).operations.length,0);
+console.log('Confirmed rebuy binds paper 7/table2 to ledger game9/table14 without bypassing chip checks');
