@@ -120,8 +120,16 @@ module.exports=(async()=>{
   const rows=fixture.players.map(([name,count],i)=>[i?'':fixture.game,46318,fixture.label,'5M',name,'','KOREA',count]);
   const runFixture={op:operations[0],paper,operations,history,master,rows,stamp:Date.parse('2026-10-24T00:42:00+07:00')/1000};
   const result=await run('','photo',runFixture);
-  assert.ifError(result.failure);assert.equal(result.job.status,'applied',result.job.reply_text);
-  assert.equal(result.job.plan.pendingQuestion,null);
+  assert.ifError(result.failure);assert.equal(result.job.status,'review',result.job.reply_text);
+  const missingName=fixture.printedGame===19?'KANG JIN HO':'LEE SEOK HO';
+  assert.match(result.job.plan.pendingQuestion,/버스트아웃했을 가능성/);
+  assert(result.job.plan.pendingQuestion.includes(missingName));
+  assert.equal(result.job.plan.unverifiedOperations.length,1);
+  const missing=result.job.plan.unverifiedOperations[0];
+  assert.equal(missing.player,missingName);assert.equal(missing.kind,'total');assert.equal(missing.chips,null);
+  const resumed=result.load('./accounting-vision').continueChipConfirmation('2바인',result.job);
+  assert.equal(resumed.operations[0].player,missingName);assert.equal(resumed.operations[0].buyins,2);
+  assert.equal(result.events.filter(e=>e.method==='sendMessage'&&e.chat_id!=='-1').length,0);
   assert.equal(result.job.plan.changes.length,0,'manual rows must be preserved');
   assert(result.job.plan.operations.every(o=>o.game===fixture.game));
   assert(result.job.plan.operations.every(o=>o.rebuyBinding?.tableLabel===fixture.label));

@@ -195,3 +195,25 @@ export function bindRebuyHistory(ops:any[],evidence:any,games:any[],history:any[
    rebuyBinding:{sourceMessageId:match.source,printedGame:paper.printedGame,tableLabel:game.tableLabel,reason:'verified_paper_and_live_session'}};
  });
 }
+
+
+// Absence from a later, positively bound rebuy roster does not cancel attendance.
+export function missingRebuyPlayers(ops:any[],evidence:any,games:any[],rules:any[]=[]){
+ const missing:any[]=[];
+ for(const op of ops){
+  if(!op.rebuyBinding)continue;
+  const targets=games.filter(g=>g.date===op.date&&g.gameNumber===op.game&&g.tableLabel===op.rebuyBinding.tableLabel&&g.blind===op.blind);
+  const papers=(evidence?.documents||[]).filter((p:any)=>!p.headerAmbiguous&&p.date===op.date&&p.table===op.table&&p.printedGame===op.rebuyBinding.printedGame);
+  if(targets.length!==1||papers.length!==1)continue;
+  const paper=papers[0],names=new Set((paper.names||[]).filter(Boolean).map((n:any)=>playerIdentity(n,rules)));
+  for(const player of targets[0].players){
+   if(names.has(playerIdentity(player.name,rules)))continue;
+   if(missing.some(p=>p.date===op.date&&p.game===op.game&&p.table===op.table&&playerIdentity(p.player,rules)===playerIdentity(player.name,rules)))continue;
+   missing.push({...op,kind:'total',player:player.name,buyins:player.buyins,chips:null,possibleBustOut:true});
+  }
+ }
+ return missing;
+}
+export function missingRebuyQuestion(op:any){
+ return op.player+'님이 리바인 명단에서 보이지 않아 버스트아웃했을 가능성이 있어요. 현재 '+op.buyins+'바인으로 기록돼 있는데, TD에게 최종 누적 바이인 수를 확인해주시겠어요?';
+}
