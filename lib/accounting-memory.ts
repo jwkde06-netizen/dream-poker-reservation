@@ -16,3 +16,10 @@ export function ruleList(rules:BusinessRule[]){return rules.length?'기억한 �
  if(content.startsWith('게임번호 대응: ')){try{const a=JSON.parse(content.slice('게임번호 대응: '.length));content=`${a.date} · ${a.table}번 테이블: 인쇄 No.${a.printedGame}는 ${a.game}번 게임. 해당 날짜에만 적용.`;}catch{}}
  return `${r.id}. ${content}`;
 }).join('\n'):'저장된 업무 규칙이 없습니다.';}
+
+export function canTeachBusinessRule(status:string,action:string){
+ return action==='list'||(['administrator','creator'].includes(status))||(action==='save'&&status==='member');
+}
+export function memoryReceipt(content:string,duplicate=false){
+ return duplicate?'이미 기억하고 있는 규칙이에요: '+content:'앞으로 이렇게 처리할게요: '+content+'\n업무 규칙에 저장했어요.';
+}
