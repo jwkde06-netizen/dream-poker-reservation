@@ -1,2 +1,3 @@
 import ReservationApp from "../ReservationApp";
-export default function KoreanDeskPage(){return <ReservationApp deskOnly />}
+import DemoWorkspace from "../demo/DemoWorkspace";
+export default function Page({searchParams}:{searchParams:{demo?:string}}){return searchParams.demo==="1"?<DemoWorkspace role="desk"/>:<ReservationApp deskOnly/>}
