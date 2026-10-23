@@ -12,6 +12,8 @@ export function shouldProcessStaffMessage(m:any,recent:HistoryJob[]=[]){
  // Treat explicit player-name replacements as work even without accounting keywords.
  if(/[A-Za-z가-힣][A-Za-z가-힣 .'-]*\s*(?:->|→|>)\s*[A-Za-z가-힣][A-Za-z가-힣 .'-]*/.test(t))return true;
  if(/(?:이름|선수명|플레이어명).*(?:바꿔|바꾸|변경|수정|정정)/.test(t))return true;
+ // Replacement phrases are actionable even when replying to a completed job.
+ if(/[A-Za-z가-힣][A-Za-z가-힣 .'-]*\s+(?:대신|말고|아니라)\s+[A-Za-z가-힣][A-Za-z가-힣 .'-]*/.test(t))return true;
  // Staff corrections to completed jobs are still work, even without '시트'.
  // Named ownership corrections are accounting work, not casual conversation.
  if(/(?:우리|저희)\s*(?:쪽\s*)?(?:정산\s*)?코드(?:가|는|에|로)?\s*(?:아님|아니|아닙|아닌|맞|대상|등록|제외)/.test(t))return true;
