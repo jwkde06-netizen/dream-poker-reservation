@@ -7,7 +7,7 @@ import {staffStatus,systemStatus} from './accounting-status';
 import {completeAIJson,InvalidAIResponse,canRetryPhoto} from './accounting-ai-response';
 import {easyHelp,easyMenu,parseDeskAction,pendingButtons,canMarkManual,buyinGuide} from './accounting-easy';
 import {rulesLinkText,rulesButton} from './accounting-rules-link';
-import {deskCommand,deskHelp,politeAcknowledgement,completionReply} from './accounting-conversation';
+import {addressedToDesk,sheetStatusQuestion,deskCommand,deskHelp,politeAcknowledgement,completionReply} from './accounting-conversation';
 import {shouldProcessStaffMessage,resolveFnb} from './accounting-intake';
 import {bindConfirmedRebuy,completePhotoRoster,needsChipVerification,verifyChipEvidence,confirmChipCount,continueChipConfirmation,withheldChipOperations} from './accounting-vision';
 import {defaultAgency,completeNamedArrival,cosmeticNameEdit,jobReport,compactExtractionContext} from './accounting-workflow';
@@ -125,6 +125,9 @@ export async function handle(update:any){
    await finish('review','메시지 수정만으로는 시트가 바뀌지 않아요. 바꿀 내용만 새로 보내주세요.');return;
   }
   const command=deskCommand(job.text);
+  if(sheetStatusQuestion(job.text)&&!m.photo&&!m.document){
+   const view=await deskStatusView(job.update_id);await finish('ignored',view.text,view.buttons);return;
+  }
   const courtesy=politeAcknowledgement(job.text,!!m.reply_to_message?.from?.is_bot);
   if(courtesy){await finish('ignored',courtesy);return;}
   if(command==='start'||command==='help'){await finish('ignored',deskHelp);return;}
@@ -256,7 +259,7 @@ export async function handle(update:any){
    if(!result.operations?.length&&!result.question){await finish('ignored','');return;}
   }
   if(result.question&&!result.operations?.length){await finish('review',String(result.question));return;}
-  if(!result.operations?.length){if(image&&result.documentType==='phone_game'){await finish('ignored','');return;}if(image&&result.documentType==='paper_game')await finish('review','사진에서 표시된 선수가 잘 안 보여요. 이름만 알려주시겠어요?');else await finish('ignored','');return;}
+  if(!result.operations?.length){if(image&&result.documentType==='phone_game'){await finish('ignored','');return;}if(image&&result.documentType==='paper_game')await finish('review','사진에서 표시된 선수가 잘 안 보여요. 이름만 알려주시겠어요?');else await finish('ignored',addressedToDesk(job.text)?'질문을 받았지만 어떤 내용을 확인할지 파악하지 못했어요. 확인할 게임이나 선수, 또는 처리 상태를 말씀해주세요.':'');return;}
   // A linked applied F&B receipt is context, never a second expense.
   if(photoSource?.status==='applied'&&result.operations.some((op:any)=>op.kind==='fnb')){await finish('review','이미 기록한 영수증이에요. 어느 부분을 바꿀까요?');return;}
   const registrations=(result.operations||[]).filter((op:any)=>op.kind==='register');
