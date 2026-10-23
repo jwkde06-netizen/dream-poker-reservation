@@ -1,3 +1,4 @@
+import {requestSheetStatus} from './accounting-request-status';
 import {prepareDateFormats,verifyDateDisplays} from './accounting-format';
 import {headerBindingInstruction,correctionBlocked} from './accounting-corrections';
 import {AccountingGatewayError,gatewayError,gatewayStaffMessage} from './accounting-gateway-error';
@@ -9,7 +10,7 @@ import {easyHelp,easyMenu,parseDeskAction,pendingButtons,canMarkManual,buyinGuid
 import {rulesLinkText,rulesButton} from './accounting-rules-link';
 import {addressedToDesk,sheetStatusQuestion,deskCommand,deskHelp,politeAcknowledgement,completionReply} from './accounting-conversation';
 import {shouldProcessStaffMessage,resolveFnb} from './accounting-intake';
-import {bindConfirmedRebuy,completePhotoRoster,needsChipVerification,verifyChipEvidence,confirmChipCount,continueChipConfirmation,withheldChipOperations} from './accounting-vision';
+import {confirmedRebuyContext,bindConfirmedRebuy,completePhotoRoster,needsChipVerification,verifyChipEvidence,confirmChipCount,continueChipConfirmation,withheldChipOperations} from './accounting-vision';
 import {defaultAgency,completeNamedArrival,cosmeticNameEdit,jobReport,compactExtractionContext} from './accounting-workflow';
 import {reconcileSheet,reconcileOperation,afterVerifiedWrite} from './accounting-reconcile';
 import {sheetContext,correctedOperations,focusedQuestion,certainOperations,clearResolvedIdentityQuestion} from './accounting-context';
@@ -33,7 +34,7 @@ export async function sheet(path:string,body?:unknown){
 export async function ranges(list:string[],formula=false){const p=new URLSearchParams({valueRenderOption:formula?'FORMULA':'UNFORMATTED_VALUE'});list.forEach(x=>p.append('ranges',x));const d=await sheet('values:batchGet?'+p);return d.valueRanges.map((x:any)=>x.values||[]);}
 export async function reconciliationHistory(date:string){
  const start=new Date(date+'T00:00:00+07:00').toISOString(),end=new Date(Date.parse(start)+86400000).toISOString();
- const q=await db().from('dream_accounting_jobs').select('message_id,status,plan,source_message,created_at').gte('created_at',start).lt('created_at',end).order('created_at',{ascending:false}).limit(500);
+ const q=await db().from('dream_accounting_jobs').select('update_id,message_id,reply_id,status,plan,source_message,created_at').gte('created_at',start).lt('created_at',end).order('created_at',{ascending:false}).limit(500);
  if(q.error)throw Error('Reconciliation history unavailable');return q.data||[];
 }
 export async function extract(text:string,image:string|undefined,context:unknown){
@@ -127,10 +128,12 @@ export async function handle(update:any){
   const command=deskCommand(job.text);
   if(sheetStatusQuestion(job.text)&&!m.photo&&!m.document){
    const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(m.date*1000));
-   const [rows]=await ranges(["'일일 입력'!A1:H5000"]);
-   const games=sheetContext(rows,[],date).games;
-   const latest=games.reduce((n:number,g:any)=>Math.max(n,g.gameNumber),0);
-   const message=latest?('현재 시트에는 '+latest+'번 게임까지 기록돼 있어요.\n다만 모든 영수증의 반영 여부까지 확인된 것은 아니에요.'):'오늘 시트에 기록된 게임은 아직 없어요.';
+   const [[rows,master,fnb],history]=await Promise.all([
+    ranges(["'일일 입력'!A1:H5000","'플레이어 명단'!A1:D2500","'F&B 입력'!A1:D2000"]),
+    reconciliationHistory(date)
+   ]);
+   const gameMatch=job.text.match(/(\d+)\s*번\s*(?:게임)?/);
+   const message=requestSheetStatus(history.filter((r:any)=>r.message_id!==m.message_id),sheetContext(rows,master,date).games,master,fnb,{replyId:m.reply_to_message?.message_id,game:gameMatch?Number(gameMatch[1]):undefined});
    await finish('ignored',message);return;
   }
   const courtesy=politeAcknowledgement(job.text,!!m.reply_to_message?.from?.is_bot);
@@ -190,7 +193,9 @@ export async function handle(update:any){
    if(source?.source_message&&!closed(source)){await readPhoto(source.source_message);if(image){photoSource=source;result=await extract(job.text,image,{...context,photoSourceMessageId:source.message_id});recordAI(result);}}
    else {await finish('review','그 사진에 답장으로 요청해주세요.');return;}
   }
-  const taskPlan={sheetState,photoRetryCount:job.plan?.photoRetryCount||0,photoSourceDate:photoSource?.plan?.photoSourceDate||photoSource?.source_message?.date||null,contextMessageId:previous?.message_id||null,photoSourceMessageId:photoSource?.message_id||null,continuationText:taskText};
+  const confirmedRebuy=confirmedRebuyContext(job.text,previous,context.games);
+  if(confirmedRebuy&&!confirmedRebuy.confirmedByMessageId)confirmedRebuy.confirmedByMessageId=m.message_id;
+  const taskPlan={confirmedRebuy,sheetState,photoRetryCount:job.plan?.photoRetryCount||0,photoSourceDate:photoSource?.plan?.photoSourceDate||photoSource?.source_message?.date||null,contextMessageId:previous?.message_id||null,photoSourceMessageId:photoSource?.message_id||null,continuationText:taskText};
   if(photoSource&&photoSource.message_id!==m.message_id){await save(job.update_id,{source_message:{...photoSource.source_message,message_id:m.message_id,date:m.date,reply_to_message_id:m.reply_to_message?.message_id}});}
   if(image&&result.documentType==='phone_game'){
    // Retain seating context without treating screenshots as ledger evidence.
@@ -216,13 +221,21 @@ export async function handle(update:any){
   result.operations=completeNamedArrival(result.operations,taskText,daily,master,businessRules,businessDate,previous);
   if(result.operations.some((o:any)=>o.kind==='add')&&result.operations.some((o:any)=>o.kind==='register')&&result.operations.filter((o:any)=>o.kind==='register').every((o:any)=>o.agency)&&/소속|agency|코드/.test(result.question||''))result.question=null;
   result.question=focusedQuestion(result.question,job.text,result.operations);
+  let confirmedEvidence:any=null;
+  if(confirmedRebuy&&image&&result.documentType==='paper_game'){
+   confirmedEvidence=reconsidered.evidence||await readChipColumns(image);
+   if(!reconsidered.evidence)recordAI(confirmedEvidence);
+   result.operations=bindConfirmedRebuy(result.operations,confirmedEvidence,'네',confirmedRebuy.question,context.games);
+   const attendance=result.operations.filter((o:any)=>['add','total'].includes(o.kind));
+   if(attendance.length&&attendance.every((o:any)=>o.confirmedPaperTable===confirmedRebuy.paperTable)&&/용지.{0,8}번호|게임.{0,12}번호|테이블.{0,6}번호/.test(result.question||''))result.question=null;
+  }
   const correctionOriginal=result.operations.map((o:any)=>({...o}));
   result.operations=certainOperations(result.operations,result.question);
   if(image&&result.documentType==='paper_game'&&result.operations.some((o:any)=>['add','total'].includes(o.kind))){
    result.unverifiedOperations=result.operations;
    try{
     if(Date.now()-started>100000)throw Error('Verification time budget');
-    const evidence=reconsidered.evidence||await readChipColumns(image);if(!reconsidered.evidence){recordAI(evidence);}
+    const evidence=confirmedEvidence||reconsidered.evidence||await readChipColumns(image);if(!confirmedEvidence&&!reconsidered.evidence){recordAI(evidence);}
     result.operations=bindConfirmedRebuy(result.operations,evidence,job.text,previous?.plan?.pendingQuestion,context.games);
     const coverage=completePhotoRoster(result.operations,evidence,master,businessRules);
     result.operations=coverage.operations;

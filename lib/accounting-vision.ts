@@ -138,3 +138,16 @@ export function bindConfirmedRebuy(ops:any[],evidence:any,text:string,question:s
   return {...op,kind:'total',gameConfirmed:true,printedGame:paper.printedGame,confirmedPaperTable:paperTable};
  });
 }
+
+export function confirmedRebuyContext(text:string,previous:any,games:any[]){
+ const saved=previous?.plan?.confirmedRebuy;
+ const question=saved?.question||previous?.plan?.pendingQuestion||'';
+ if(!saved&&!/^(네|예|넵|맞아|맞아요|맞습니다|응|ㅇㅇ)[.!\s]*$/.test(text.trim()))return null;
+ // A new explicit game/table correction must be interpreted afresh.
+ if(saved&&/\d+\s*번|테이블|아니|취소/.test(text))return null;
+ const match=String(question).match(/사진의 Table (\d+) 명단은 기존 (\d+)번 게임\((\d+(?:-\d+)?)\)의 리바인 명단이 맞나요\?/);
+ if(!match)return null;
+ const targets=games.filter(g=>g.gameNumber===Number(match[2])&&String(g.tableLabel)===match[3]);
+ if(targets.length!==1||saved&&(saved.date!==targets[0].date||saved.table!==targets[0].tableNumber))return null;
+ return {question,date:targets[0].date,game:Number(match[2]),table:targets[0].tableNumber,paperTable:Number(match[1]),confirmedByMessageId:saved?.confirmedByMessageId||null};
+}

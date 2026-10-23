@@ -49,5 +49,7 @@ export function addressedToDesk(text:string){
 }
 export function sheetStatusQuestion(text:string){
  const clean=text.replace(/@dream_poker_reservation_bot(?![a-z0-9_])/gi,'').trim();
+ // Quoted example replies and standing instructions are not status requests.
+ if(/규칙\s*저장|기억해|앞으로|다음부터|접수\s*시|처리\s*결과\s*안내|보내(?:라|줘|주세요)|보낸다/.test(clean))return false;
  return /시트|입력|반영|처리|기록/.test(clean)&&/(?:됐|됬|되었|된|됐는|했|끝났|완료|상태|누락|미처리)/.test(clean)&&/(?:[?？]|거야|나요|니$|는지|알려|확인|상태|누락|미처리)/.test(clean)&&!/(?:추가해|수정해|삭제해|넣어|입력해|반영해|처리해)/.test(clean);
 }
