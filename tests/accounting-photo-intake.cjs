@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict');
+const {completePhotoRoster,verifyChipEvidence}=require('../.test-build/accounting-vision');
+const {correctedOperations}=require('../.test-build/accounting-context');
+const op={kind:'add',date:'2026-10-23',game:5,table:13,blind:'5M',player:'LEE SUNG WON',buyins:1,chips:100000};
+const master=[['NAME','CARD','AGENCY'],['LEE SUNG WON','','KOREA'],['LEE SUNGWON','','KOREA']];
+const evidence={names:['LEE SUNGWON','OTHER PLAYER'],chipAmounts:[100000,100000],selected:[true,false],hasSelectionMarkers:true};
+assert.equal(completePhotoRoster([op],evidence,master).questions.length,0);
+assert.equal(correctedOperations([{kind:'register',player:'LEE SUNGWON'}],'',master).length,0);
+const conflict=[...master,['LEE SUNG WON','','HOUSE']];
+assert.ok(completePhotoRoster([op],evidence,conflict).questions.length);
+assert.equal(correctedOperations([{kind:'register',player:'LEE SUNGWON'}],'',conflict).length,1);
+assert.deepEqual(verifyChipEvidence([op,{...op,player:'OTHER PLAYER'}],evidence).operations.map(o=>o.player),['LEE SUNG WON']);
+assert.ok(verifyChipEvidence([{...op,buyins:2}],evidence).questions.length);
+const paper={...evidence,date:op.date,table:op.table,printedGame:6,handwrittenGame:5};
+const verified=verifyChipEvidence([{...op,game:6,printedGame:6}],{documents:[paper]});
+assert.equal(verified.operations[0].game,5);
+assert.equal(verifyChipEvidence([{...op,game:6,printedGame:6,gameConfirmed:true}],{documents:[paper]}).operations.length,0);
+console.log('Duplicate-master, explicit selection, chip disagreement and handwritten-number regressions passed');

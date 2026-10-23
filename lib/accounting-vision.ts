@@ -1,5 +1,5 @@
 import {norm,serial,tableLabel} from './accounting-plan';
-import {correctedOperations,playerIdentity} from './accounting-context';
+import {correctedOperations,playerIdentity,canonicalPlayers} from './accounting-context';
 
 // Bind each independent paper to exactly one extraction group. Never borrow
 // a name/chip row from another game, even when the same player appears twice.
@@ -45,7 +45,7 @@ export function completePhotoRoster(ops:any[],evidence:any,master:any[][],rules:
   if(!selected[i])continue;
   if(typeof names[i]!=='string'||!names[i].trim()){questions.push(question);continue;}
   const candidate=correctedOperations([{...attendance[0],player:names[i],chips:amounts[i],buyins:amounts[i]/100000}],'',master,rules)[0];
-  const matches=master.slice(1).filter(r=>norm(r[0])===norm(candidate.player));
+  const matches=canonicalPlayers(master).filter(r=>norm(r[0])===norm(candidate.player));
   if(matches.length!==1||!String(matches[0][2]||'').trim()){if(!evidence.hasSelectionMarkers)continue;questions.push(`${names[i]}님 명단의 이름과 소속을 확인해주세요.`);continue;}
   if(!Number.isSafeInteger(amounts[i])||amounts[i]<100000||amounts[i]>5000000||amounts[i]%100000!==0){questions.push(`${candidate.player}님 누적 바이인 수만 확인해주세요.`);continue;}
   if(!operations.some(o=>['add','total'].includes(o.kind)&&norm(o.player)===norm(candidate.player)))operations.push(candidate);
@@ -80,6 +80,9 @@ export function verifyChipEvidence(ops:any[],evidence:any,rules:any[]=[]){
  for(const op of ops){
   if(!['add','total'].includes(op.kind)){operations.push(op);continue;}
   const matched=names.map((name:any,i:number)=>({name,i})).filter((r:any)=>typeof r.name==='string'&&canonical(r.name)===canonical(op.player));
+  // Explicit seat selection from independent transcription excludes unselected rows.
+  // Keep the stricter count comparison for every selected player.
+  if(matched.length===1&&evidence.hasSelectionMarkers===true&&Array.isArray(evidence.selected)&&evidence.selected.length===names.length&&evidence.selected.every((v:any)=>typeof v==='boolean')&&evidence.selected[matched[0].i]===false)continue;
   const chips=matched.length===1?amounts[matched[0].i]:null;
   if(!Number.isSafeInteger(chips)||chips<100000||chips>5000000||chips%100000!==0||chips/100000!==op.buyins){questions.push(`${op.player}님 사진의 누적 바이인 수만 확인해주세요.`);continue;}
   operations.push({...op,chips});

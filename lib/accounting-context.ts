@@ -71,7 +71,7 @@ export function correctedOperations(ops:any[],text:string,master:any[][],rules:a
   return fixed;
  }).filter(op=>{
   if(op.kind!=='register')return true;
-  const matches=master.slice(1).filter(r=>norm(r[0])===playerIdentity(op.player,rules));
+  const matches=canonicalPlayers(master).filter(r=>norm(r[0])===playerIdentity(op.player,rules));
   if(matches.length!==1)return true;
   const existing=matches[0];
   // OCR sometimes emits register + add for a known player. Do not send that
