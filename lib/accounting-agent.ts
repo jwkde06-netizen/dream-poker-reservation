@@ -274,10 +274,11 @@ export async function handle(update:any){
    const r=await db().from('dream_accounting_rules').upsert({kind:rule.kind,content:rule.content,source_text:job.text,source_update:job.update_id,sender_id:String(m.from.id)},{onConflict:'source_update'}).select('id,kind,content').single();if(r.error)throw Error('Rule save failed');
    businessRules.push(r.data);savedRule=r.data;
    }
+   if(!savedRule){await finish('review','규칙 저장 결과를 확인하지 못했어요. 저장 여부를 대조해야 해요.');return;}
    const ruleReadback=await db().from('dream_accounting_rules').select('id,kind,content').eq('id',savedRule.id).eq('active',true).single();
    if(ruleReadback.error||ruleReadback.data?.content!==rule.content||ruleReadback.data?.kind!==rule.kind){await finish('review','규칙 저장 결과를 확인하지 못했어요. 저장 여부를 대조해야 해요.');return;}
    learnedRuleNotice=memoryReceipt(ruleReadback.data.content,!!duplicateRule);
-   processingPlan={...(processingPlan||{}),learnedBusinessRule:{kind:rule.kind,content:rule.content,alreadySaved:duplicateRule}};
+   processingPlan={...(processingPlan||{}),learnedBusinessRule:{kind:rule.kind,content:rule.content,alreadySaved:!!duplicateRule}};
    if(!result.operations?.length&&!result.question){await finish('ignored','');return;}
   }
   if(result.question&&!result.operations?.length){await finish('review',String(result.question));return;}
