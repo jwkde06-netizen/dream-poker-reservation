@@ -18,18 +18,18 @@ async function run(text,mode='status'){
  const master=[['NAME','CARD','CODE'],['PARK SOO MIN','','KOREA']];
  const formula=Array(15).fill('');for(const i of [5,6,8,9,10,11,12,13,14])formula[i]='=ARRAYFORMULA(test)';
  const daily=[['GAME'],formula,[9,46318,'14-1','5M','PARK SOO MIN','','KOREA',2]];
- const events=[];let writes=0,ai=0;
+ const events=[];let writes=0,ai=0;const rules=[];
  function query(table){
   let filters=[],patch=null,sort=null,limit=Infinity,one=false;
   const q={
-   select(){return q;},upsert(value){if(!jobs.some(j=>j.update_id===value.update_id))jobs.push({...value,created_at:date+'T12:50:00Z'});return q;},
+   select(){return q;},upsert(value){if(table==='dream_accounting_rules'){rules.push({...value,id:1,active:true});}else if(!jobs.some(j=>j.update_id===value.update_id))jobs.push({...value,created_at:date+'T12:50:00Z'});return q;},
    update(value){patch=value;return q;},
    eq(k,v){filters.push(r=>r[k]===v);return q;},lt(k,v){filters.push(r=>r[k]<v);return q;},
    gte(){return q;},order(k,o){sort=[k,o];return q;},limit(n){limit=n;return q;},single(){one=true;return q;},maybeSingle(){one=true;return q;},
-   then(resolve,reject){try{let rows=table==='dream_accounting_rules'?[]:jobs.filter(r=>filters.every(f=>f(r)));if(sort)rows.sort((a,b)=>(a[sort[0]]>b[sort[0]]?1:-1)*(sort[1].ascending?1:-1));rows=rows.slice(0,limit);if(patch)rows.forEach(r=>Object.assign(r,patch));return Promise.resolve({data:one?rows[0]:rows,error:null}).then(resolve,reject);}catch(e){return Promise.reject(e).then(resolve,reject);}}
+   then(resolve,reject){try{let rows=(table==='dream_accounting_rules'?rules:jobs).filter(r=>filters.every(f=>f(r)));if(mode==='readback-fail'&&table==='dream_accounting_rules'&&one&&filters.length)rows=[];if(sort)rows.sort((a,b)=>(a[sort[0]]>b[sort[0]]?1:-1)*(sort[1].ascending?1:-1));rows=rows.slice(0,limit);if(patch)rows.forEach(r=>Object.assign(r,patch));return Promise.resolve({data:one?rows[0]:rows,error:null}).then(resolve,reject);}catch(e){return Promise.reject(e).then(resolve,reject);}}
   };return q;
  }
- const tg=async(method,data)=>{events.push({method,...data});if(method==='getFile')return {file_path:'fixture.jpg'};if(method==='getChatMember')return {status:'member'};return {message_id:900};};
+ const tg=async(method,data)=>{events.push({method,...data});if(method==='getFile')return {file_path:'fixture.jpg'};if(method==='getChatMember')return {status:mode==='unauthorized'?'left':'member'};return {message_id:900};};
  const fetch=async(url,init={})=>{
   if(url.startsWith('https://sheets.googleapis.com')){
    assert(!init.body,'no Sheets mutation permitted');const u=new URL(url);
@@ -39,7 +39,8 @@ async function run(text,mode='status'){
   if(url.startsWith('https://api.telegram.org/file/'))return {ok:true,arrayBuffer:async()=>new Uint8Array([1,2]).buffer};
   if(url.includes('ai-gateway')){
    ai++;const body=JSON.parse(init.body);const columns=body.max_tokens===2500||body.max_tokens===4000;
-   const result=columns?{documents:[paper]}:{documentType:'paper_game',operations:[op],question:'9번 게임의 용지 번호를 확인해주세요.',memory:null};
+   const teaching=['rules','readback-fail','unauthorized'].includes(mode);
+   const result=teaching?{documentType:'other',operations:[],question:null,memory:{action:'save',kind:'instruction',content:'사진 접수 시 진행 안내를 한 번 보낸다.'}}:columns?{documents:[paper]}:{documentType:'paper_game',operations:[op],question:'9번 게임의 용지 번호를 확인해주세요.',memory:null};
    return {ok:true,json:async()=>({model:'fixture',usage:{total_tokens:1},choices:[{finish_reason:'stop',message:{content:JSON.stringify(result)}}]})};
   }
   throw Error('Unexpected external request '+url);
@@ -56,17 +57,19 @@ async function run(text,mode='status'){
   new Function('require','exports','process','Buffer','fetch',compile(fs.readFileSync(path.join(__dirname,'../lib',name.replace('./','')+'.ts'),'utf8')))(load,exports,{env:{STAFF_TELEGRAM_CHAT_ID:'-1',AI_GATEWAY_API_KEY:'fixture'}},Buffer,fetch);
   return exports;
  }
- await load('./accounting-agent').handle({update_id:400,message:{message_id:400,date:stamp,chat:{id:-1,type:'supergroup'},from:{id:1},text}});
- return {job:jobs.find(j=>j.message_id===400),events,ai,load};
+ let failure;try{await load('./accounting-agent').handle({update_id:400,message:{message_id:400,date:stamp,chat:{id:-1,type:'supergroup'},from:{id:1},text}});}catch(e){failure=e;}
+ return {failure,rules,job:jobs.find(j=>j.message_id===400),events,ai,load};
 }
 module.exports=(async()=>{
  const status=await run('@dream_poker_reservation_bot 시트에 다 입력된거야?');
+ assert.ifError(status.failure);
  assert.equal(status.job.reply_text,'✅ 반영 확인 1건');assert.equal(status.ai,0);
  assert.equal(status.events.filter(e=>e.method==='sendMessage').length,1);
  assert(!/모델|15건/.test(status.job.reply_text));
  const {sheetStatusQuestion}=status.load('./accounting-conversation');
  for(const text of ['사진 접수 시 ‘사진 확인했어요. 입력 중입니다.’를 한 번 보낸다.\n규칙저장','처리 결과 안내\n사진 접수 시 ‘사진 확인했어요. 입력 중입니다.’를 한 번 보낸다.'])assert.equal(sheetStatusQuestion(text),false);
  const rebuy=await run('네','rebuy');
+ assert.ifError(rebuy.failure);
  assert.equal(rebuy.job.status,'applied',rebuy.job.reply_text);
  assert.equal(rebuy.job.plan.confirmedRebuy.game,9);
  assert.equal(rebuy.job.plan.confirmedRebuy.table,14);
@@ -81,5 +84,11 @@ module.exports=(async()=>{
  assert.match(requestSheetStatus([{message_id:1,status:'applied',plan:{operations:[op]}}],games,[],[]),/대조·확인 필요 1건/);
  assert.match(requestSheetStatus([{message_id:1,status:'failed',plan:{operations:[op]}}],games,[],[]),/처리 실패 1건/);
  assert(!requestSheetStatus([{message_id:1,status:'applied',plan:{pendingQuestion:'이름 확인',operations:[op]}}],games,[],[]).startsWith('✅'));
+ for(const instruction of ['처리 결과 안내\n사진 접수 시 ‘사진 확인했어요. 입력 중입니다.’를 한 번 보낸다.','사진 접수 시 ‘사진 확인했어요. 입력 중입니다.’를 한 번 보낸다.\n규칙저장']){
+  const taught=await run(instruction,'rules');assert.ifError(taught.failure);assert.equal(taught.rules.length,1);assert.match(taught.job.reply_text,/사진 접수 시 진행 안내/);assert(!taught.job.reply_text.includes('반영 확인'));
+ }
+ const rejected=await run('앞으로 사진 접수 시 안내 규칙저장','unauthorized');assert.equal(rejected.rules.length,0);assert.equal(rejected.job.status,'review');
+ const mismatch=await run('앞으로 사진 접수 시 안내 규칙저장','readback-fail');assert.ifError(mismatch.failure);assert.equal(mismatch.job.status,'review');assert.match(mismatch.job.reply_text,/저장 결과를 확인하지 못/);assert(!mismatch.job.reply_text.includes('저장했'));
+ assert(sheetStatusQuestion('다 입력됐어?'));
  console.log('Actual handler replay passed: tagged status, chain deduplication, no AI/no sheet writes for status, rebuy confirmation before guards, persisted binding, rule/status separation.');
 })();

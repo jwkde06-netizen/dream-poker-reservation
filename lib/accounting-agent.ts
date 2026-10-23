@@ -266,13 +266,17 @@ export async function handle(update:any){
     const r=await db().from('dream_accounting_rules').update({active:false}).eq('id',rule.id).eq('active',true).select('id');if(r.error)throw Error('Rule removal failed');
     await finish('ignored',r.data?.length?`${rule.id}번 규칙은 삭제했어요.`:'그 번호로 저장된 규칙은 없어요.');return;
    }
-   const duplicateRule=businessRules.some(r=>r.content===rule.content||(r.kind==='table_round_labels'&&rule.kind==='table_round_labels'));
+   const duplicateRule=businessRules.find(r=>r.content===rule.content||(r.kind==='table_round_labels'&&rule.kind==='table_round_labels'));
+   if(duplicateRule&&duplicateRule.content!==rule.content){await finish('review','기존 테이블 표기 규칙이 있어요. 바꿀 규칙 번호를 확인해주세요.');return;}
+   let savedRule=duplicateRule;
    if(!duplicateRule){
    if(businessRules.length>=50){await finish('review','규칙이 50개입니다. 오래된 규칙을 먼저 삭제해주세요.');return;}
    const r=await db().from('dream_accounting_rules').upsert({kind:rule.kind,content:rule.content,source_text:job.text,source_update:job.update_id,sender_id:String(m.from.id)},{onConflict:'source_update'}).select('id,kind,content').single();if(r.error)throw Error('Rule save failed');
-   businessRules.push(r.data);
+   businessRules.push(r.data);savedRule=r.data;
    }
-   learnedRuleNotice=memoryReceipt(rule.content,duplicateRule);
+   const ruleReadback=await db().from('dream_accounting_rules').select('id,kind,content').eq('id',savedRule.id).eq('active',true).single();
+   if(ruleReadback.error||ruleReadback.data?.content!==rule.content||ruleReadback.data?.kind!==rule.kind){await finish('review','규칙 저장 결과를 확인하지 못했어요. 저장 여부를 대조해야 해요.');return;}
+   learnedRuleNotice=memoryReceipt(ruleReadback.data.content,!!duplicateRule);
    processingPlan={...(processingPlan||{}),learnedBusinessRule:{kind:rule.kind,content:rule.content,alreadySaved:duplicateRule}};
    if(!result.operations?.length&&!result.question){await finish('ignored','');return;}
   }
