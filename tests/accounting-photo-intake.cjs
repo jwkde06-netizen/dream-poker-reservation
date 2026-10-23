@@ -14,5 +14,5 @@ assert.ok(verifyChipEvidence([{...op,buyins:2}],evidence).questions.length);
 const paper={...evidence,date:op.date,table:op.table,printedGame:6,handwrittenGame:5};
 const verified=verifyChipEvidence([{...op,game:6,printedGame:6}],{documents:[paper]});
 assert.equal(verified.operations[0].game,5);
-assert.equal(verifyChipEvidence([{...op,game:6,printedGame:6,gameConfirmed:true}],{documents:[paper]}).operations.length,0);
+assert.equal(verifyChipEvidence([{...op,game:6,printedGame:6,gameConfirmed:true}],{documents:[paper]}).operations[0].game,6);
 console.log('Duplicate-master, explicit selection, chip disagreement and handwritten-number regressions passed');

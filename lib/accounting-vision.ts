@@ -1,3 +1,4 @@
+import {bindPaperHeaders} from './accounting-corrections';
 import {norm,serial,tableLabel} from './accounting-plan';
 import {correctedOperations,playerIdentity,canonicalPlayers} from './accounting-context';
 
@@ -5,12 +6,13 @@ import {correctedOperations,playerIdentity,canonicalPlayers} from './accounting-
 // a name/chip row from another game, even when the same player appears twice.
 function paperFor(op:any,documents:any[]){
  const matches=documents.filter(d=>d.date===op.date&&d.table===op.table&&
-  (Number.isInteger(d.handwrittenGame)&&d.handwrittenGame>0?d.handwrittenGame===op.game:
+  (op.gameConfirmed===true&&Number.isInteger(op.printedGame)?d.printedGame===op.printedGame:
+   Number.isInteger(d.handwrittenGame)&&d.handwrittenGame>0?d.handwrittenGame===op.game:
    Number.isInteger(op.printedGame)?d.printedGame===op.printedGame:d.printedGame===op.game));
  return matches.length===1?matches[0]:null;
 }
 function groupedPapers(ops:any[],evidence:any,run:(ops:any[],paper:any)=>any){
- const documents=evidence.documents;
+ const documents=Array.isArray(evidence.documents)?evidence.documents.map(bindPaperHeaders):evidence.documents;
  if(!Array.isArray(documents)||!documents.length||documents.length>6)return {operations:ops.filter(o=>!['add','total'].includes(o.kind)),questions:['사진의 게임별 명단을 확인하지 못했어요.']};
  const groups=new Map<any,any[]>(),operations=ops.filter(o=>!['add','total'].includes(o.kind)),questions:string[]=[];
  for(const op of ops.filter(o=>['add','total'].includes(o.kind))){

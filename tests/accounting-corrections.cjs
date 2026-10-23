@@ -1,0 +1,35 @@
+const assert=require('node:assert/strict');
+const {bindPaperHeaders,correctionBlocked}=require('../.test-build/accounting-corrections');
+const {verifyChipEvidence,completePhotoRoster}=require('../.test-build/accounting-vision');
+const {planOperations}=require('../.test-build/accounting-plan');
+const date='2026-10-23';
+const names=['LEE HAE WON','CHOE HAE SEONG','SEO DONG MIN'];
+const master=[['NAME','CARD','AGENCY'],...names.map(n=>[n,'','KOREA']),['KIM SEUNG KYU','1250','KOREA']];
+const paper={date,table:2,printedGame:5,handwrittenGame:4,headerCorrections:[{field:'table',value:4}],names:['VO DAI VUONG',...names],chipAmounts:[100000,100000,100000,100000],selected:[false,true,true,true],hasSelectionMarkers:true};
+assert.equal(bindPaperHeaders(paper).table,4);assert.equal(bindPaperHeaders(paper).handwrittenGame,null);
+const ops=names.map(player=>({kind:'add',date,game:5,printedGame:5,gameConfirmed:true,table:4,blind:'5M',player,buyins:1,chips:100000}));
+const covered=completePhotoRoster(ops,{documents:[paper]},master);assert.equal(covered.questions.length,0);
+const checked=verifyChipEvidence(covered.operations,{documents:[paper]});assert.equal(checked.questions.length,0);assert.equal(checked.operations.length,3);
+const six={...ops[0],game:6,printedGame:6,table:5,player:'KIM SEUNG KYU'};
+const paper6={date,table:5,printedGame:6,handwrittenGame:5,names:['KIM SEUNG KYU'],chipAmounts:[100000],selected:[true],hasSelectionMarkers:true};
+assert.equal(verifyChipEvidence([six],{documents:[paper6]}).operations[0].game,6);
+assert.equal(verifyChipEvidence([six],{documents:[paper6,{...paper6}]}).operations.length,0);
+const cancel={...six,kind:'cancel',game:5};
+assert(correctionBlocked([cancel,six],[cancel],'unverified'));
+assert(correctionBlocked([cancel,six],[cancel],null));
+assert(!correctionBlocked([cancel,six],[cancel,six],null));
+assert(!correctionBlocked([cancel],[cancel],null));
+// Staff-entered rows are authoritative: matching photo produces no writes.
+const daily=[['GAME','DATE','TABLE','BLIND','PLAYER','CARD','AGENCY','BUYINS'],...names.map((n,i)=>[i?null:5,46318,'4-2','5M',n,'','KOREA',1]),[],[6,46318,'5-2','5M','KIM SEUNG KYU','1250','KOREA',1]];
+const before=JSON.stringify(daily);
+const plan=planOperations([...checked.operations,six],daily,[],master,{tableRoundLabels:true,photoSnapshot:true,partialAttendance:true});
+assert.deepEqual(plan.changes,[]);assert.equal(JSON.stringify(daily),before);
+console.log('Table correction, confirmed game, selected players, manual-row dedup and non-destructive correction passed');
+const rawTables=daily.map(r=>r.map((v,i)=>i===2&&v==='4-2'?46114:i===2&&v==='5-2'?46144:v));
+assert.deepEqual(planOperations([...checked.operations,six],rawTables,[],master,{tableRoundLabels:true,photoSnapshot:true,partialAttendance:true}).changes,[]);
+// A plan made before a human entry cannot be committed against the new cells.
+const empty=[['GAME']];
+const stale=planOperations(ops,empty,[],master,{tableRoundLabels:true,photoSnapshot:true,partialAttendance:true});
+assert(stale.changes.length>0);
+assert.deepEqual(planOperations(ops,daily,[],master,{tableRoundLabels:true,photoSnapshot:true,partialAttendance:true}).changes,[]);
+assert(stale.changes.every(c=>!/[FGI-O][0-9]/.test(c.range)));
