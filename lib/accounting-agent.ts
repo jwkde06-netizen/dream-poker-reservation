@@ -205,7 +205,7 @@ export async function handle(update:any){
     result.operations=coverage.operations;
     const verified=verifyChipEvidence(result.operations,evidence,businessRules);
     verified.questions.unshift(...coverage.questions);
-    result.unverifiedOperations=withheldChipOperations(result.operations,verified.operations);
+    result.unverifiedOperations=[...coverage.withheldOperations,...withheldChipOperations(result.operations,verified.operations)];
     result.operations=verified.operations;result.question=verified.questions[0]||clearResolvedIdentityQuestion(result.question,verified.operations,master,businessRules);
     result.chipVerification={documents:evidence.documents,names:evidence.names,chipAmounts:evidence.chipAmounts,selected:evidence.selected,questions:verified.questions};
    }catch(e){
@@ -283,7 +283,7 @@ export async function handle(update:any){
   }
   sheetState=afterVerifiedWrite(sheetState,daily,plan.changes);
   processingPlan={...processingPlan,sheetState,metrics:metrics()};
-  const completion=completionReply(result.operations,result.question,!!previous?.plan?.pendingQuestion&&!ownPhoto);
+  const completion=completionReply(result.operations,result.question,!!previous?.plan?.pendingQuestion&&!ownPhoto,plan);
   await save(job.update_id,{status:'applied',reply_text:completion,plan:processingPlan});writeStarted=false;
   const id=await reply(m.message_id,completion,result.question?pendingButtons(m.message_id):undefined);await save(job.update_id,{reply_id:id});
  }catch(e){

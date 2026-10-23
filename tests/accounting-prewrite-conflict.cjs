@@ -1,5 +1,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
-const {stripTypeScriptTypes}=require('node:module');
+const nativeStrip=require('node:module').stripTypeScriptTypes;
+const stripTypeScriptTypes=nativeStrip||((source)=>{const ts=require('typescript');return ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2020}}).outputText;});
 const {planOperations}=require('../.test-build/accounting-plan');
 const {correctionBlocked}=require('../.test-build/accounting-corrections');
 const source=fs.readFileSync(__dirname+'/../lib/accounting-agent.ts','utf8');

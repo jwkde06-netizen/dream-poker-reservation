@@ -5,7 +5,7 @@ import {correctedOperations,playerIdentity,canonicalPlayers} from './accounting-
 // Bind each independent paper to exactly one extraction group. Never borrow
 // a name/chip row from another game, even when the same player appears twice.
 function paperFor(op:any,documents:any[]){
- const matches=documents.filter(d=>d.date===op.date&&d.table===op.table&&
+ const matches=documents.filter(d=>!d.headerAmbiguous&&d.date===op.date&&d.table===op.table&&
   (op.gameConfirmed===true&&Number.isInteger(op.printedGame)?d.printedGame===op.printedGame:
    Number.isInteger(d.handwrittenGame)&&d.handwrittenGame>0?d.handwrittenGame===op.game:
    Number.isInteger(op.printedGame)?d.printedGame===op.printedGame:d.printedGame===op.game));
@@ -13,13 +13,13 @@ function paperFor(op:any,documents:any[]){
 }
 function groupedPapers(ops:any[],evidence:any,run:(ops:any[],paper:any)=>any){
  const documents=Array.isArray(evidence.documents)?evidence.documents.map(bindPaperHeaders):evidence.documents;
- if(!Array.isArray(documents)||!documents.length||documents.length>6)return {operations:ops.filter(o=>!['add','total'].includes(o.kind)),questions:['사진의 게임별 명단을 확인하지 못했어요.']};
- const groups=new Map<any,any[]>(),operations=ops.filter(o=>!['add','total'].includes(o.kind)),questions:string[]=[];
+ if(!Array.isArray(documents)||!documents.length||documents.length>6)return {operations:ops.filter(o=>!['add','total'].includes(o.kind)),withheldOperations:[],questions:['사진의 게임별 명단을 확인하지 못했어요.']};
+ const groups=new Map<any,any[]>(),operations=ops.filter(o=>!['add','total'].includes(o.kind)),questions:string[]=[],withheldOperations:any[]=[];
  for(const op of ops.filter(o=>['add','total'].includes(o.kind))){
   const exact=paperFor(op,documents);
   // Repair a uniquely identified paper's handwritten table; preserve confirmed game numbers.
   const candidates=!exact&&op.kind==='add'&&Number.isInteger(op.printedGame)
-   ?documents.filter(d=>d.date===op.date&&(d.table===op.table||d.printedTable===op.table)&&d.printedGame===op.printedGame&&((Number.isInteger(d.handwrittenGame)&&d.handwrittenGame>0&&!op.gameConfirmed)||(Number.isInteger(d.table)&&d.table>0&&d.table!==op.table))):[];
+   ?documents.filter(d=>!d.headerAmbiguous&&d.date===op.date&&(d.table===op.table||d.printedTable===op.table)&&d.printedGame===op.printedGame&&((Number.isInteger(d.handwrittenGame)&&d.handwrittenGame>0&&!op.gameConfirmed)||(Number.isInteger(d.table)&&d.table>0&&d.table!==op.table))):[];
   const paper=exact||(candidates.length===1?candidates[0]:null);
   const bound=paper&&!exact?{...op,table:paper.table,game:op.gameConfirmed?op.game:paper.handwrittenGame||op.game}:op;
   if(!paper){questions.push(`${op.game}번 게임의 용지 번호를 확인해주세요.`);continue;}
@@ -28,9 +28,9 @@ function groupedPapers(ops:any[],evidence:any,run:(ops:any[],paper:any)=>any){
  for(const paper of documents){
   const group=groups.get(paper);
   if(!group){questions.push(`${paper.handwrittenGame||paper.printedGame||''}번 게임 명단을 다시 확인해야 해요.`);continue;}
-  const result=run(group,paper);operations.push(...result.operations);questions.push(...result.questions);
+  const result=run(group,paper);operations.push(...result.operations);questions.push(...result.questions);withheldOperations.push(...(result.withheldOperations||[]));
  }
- return {operations,questions:Array.from(new Set(questions))};
+ return {operations,withheldOperations,questions:Array.from(new Set(questions))};
 }
 
 
@@ -51,9 +51,11 @@ export function completePhotoRoster(ops:any[],evidence:any,master:any[][],rules:
  const names=evidence?.names,amounts=evidence?.chipAmounts,selected=evidence?.selected;
  const attendance=ops.filter(o=>['add','total'].includes(o.kind));
  const groups=new Set(attendance.map(o=>[o.date,o.game,o.table,o.blind,o.kind].join('|')));
- const question='사진의 선수 표시를 모두 확인하지 못했어요. 원본 명단 사진을 다시 올려주시겠어요?';
- if(!Array.isArray(names)||!Array.isArray(amounts)||!Array.isArray(selected)||names.length<1||names.length>10||names.length!==amounts.length||names.length!==selected.length||selected.some((v:any)=>typeof v!=='boolean')||groups.size!==1||typeof evidence.hasSelectionMarkers!=='boolean')return {operations:ops,questions:[question]};
- const operations=ops.filter(o=>!['add','total'].includes(o.kind)),questions:string[]=[];
+ const question='저장된 사진의 명단을 정확히 확인하지 못했어요. 해당 사진에 답장으로 확인할 선수와 바이인 수를 알려주세요.';
+ if(!Array.isArray(names)||!Array.isArray(amounts)||!Array.isArray(selected)||names.length<1||names.length>10||names.length!==amounts.length||names.length!==selected.length||selected.some((v:any)=>typeof v!=='boolean')||groups.size!==1||typeof evidence.hasSelectionMarkers!=='boolean'||(evidence.crossedOut!==undefined&&(!Array.isArray(evidence.crossedOut)||evidence.crossedOut.length!==names.length||evidence.crossedOut.some((v:any)=>typeof v!=='boolean'))))return {operations:ops.filter(o=>!['add','total'].includes(o.kind)),withheldOperations:[],questions:[question]};
+ const operations=ops.filter(o=>!['add','total'].includes(o.kind)),questions:string[]=[],withheldOperations:any[]=[];
+ const identities=names.map((name:any,i:number)=>typeof name==='string'&&evidence.crossedOut?.[i]!==true?playerIdentity(name,rules):null);
+ const duplicated=new Set(identities.filter((id:any,i:number)=>id&&identities.indexOf(id)!==i));
  for(let i=0;i<names.length;i++){
   if(Array.isArray(evidence.crossedOut)&&evidence.crossedOut[i]===true)continue;
   if(typeof names[i]!=='string'||!names[i].trim()){if(selected[i])questions.push(question);continue;}
@@ -61,10 +63,11 @@ export function completePhotoRoster(ops:any[],evidence:any,master:any[][],rules:
   const matches=canonicalPlayers(master).filter(r=>norm(r[0])===norm(candidate.player));
   if(matches.length!==1||!String(matches[0][2]||'').trim()){if(!evidence.hasSelectionMarkers||!selected[i])continue;questions.push(`${names[i]}님 명단의 이름과 소속을 확인해주세요.`);continue;}
   if(photoPlayerExcluded(candidate.player,rules))continue;
-  if(!Number.isSafeInteger(amounts[i])||amounts[i]<100000||amounts[i]>5000000||amounts[i]%100000!==0){questions.push(`${candidate.player}님 누적 바이인 수만 확인해주세요.`);continue;}
+  if(duplicated.has(playerIdentity(candidate.player,rules))){if(!withheldOperations.some(o=>norm(o.player)===norm(candidate.player)))withheldOperations.push(candidate);questions.push(`${candidate.player}님 이름이 사진에서 중복으로 읽혔어요. 누적 바이인 수를 확인해주세요.`);continue;}
+  if(!Number.isSafeInteger(amounts[i])||amounts[i]<100000||amounts[i]>5000000||amounts[i]%100000!==0){withheldOperations.push(candidate);questions.push(`${candidate.player}님 누적 바이인 수만 확인해주세요.`);continue;}
   if(!operations.some(o=>['add','total'].includes(o.kind)&&norm(o.player)===norm(candidate.player)))operations.push({...candidate,...attendance.find(o=>norm(o.player)===norm(candidate.player)),masterVerified:true});
  }
- return {operations,questions:Array.from(new Set(questions))};
+ return {operations,withheldOperations,questions:Array.from(new Set(questions))};
 }
 
 export function confirmChipCount(text:string,previous:any){
@@ -73,7 +76,7 @@ export function confirmChipCount(text:string,previous:any){
  if(count<1||count>50||!/(?:누적.*바이?인|총 몇 바인)/.test(previous?.plan?.pendingQuestion||''))return null;
  const candidates=(previous?.plan?.unverifiedOperations||[]).filter((o:any)=>['add','total'].includes(o.kind)&&norm(previous.plan.pendingQuestion).includes(norm(o.player)));
  if(candidates.length!==1)return null;
- return {...candidates[0],kind:'total',buyins:count,chips:count*100000};
+ return {...candidates[0],buyins:count,chips:count*100000};
 }
 
 export function needsChipVerification(ops:any[],daily:any[][]){

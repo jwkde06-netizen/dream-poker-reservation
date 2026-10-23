@@ -5,7 +5,7 @@ export function bindPaperHeaders(paper:any){
  if(!Array.isArray(paper?.headerCorrections))return paper;
  const unique=(field:string)=>Array.from(new Set(paper.headerCorrections.filter((x:any)=>x.field===field&&Number.isInteger(x.value)&&x.value>0).map((x:any)=>x.value)));
  const tables=unique('table'),games=unique('game');
- return {...paper,printedTable:paper.printedTable??paper.table,table:tables.length===1?tables[0]:tables.length>1?null:paper.table,handwrittenGame:games.length===1?games[0]:null};
+ return {...paper,headerAmbiguous:tables.length>1||games.length>1,printedTable:paper.printedTable??paper.table,table:tables.length===1?tables[0]:tables.length>1?null:paper.table,handwrittenGame:games.length===1?games[0]:null};
 }
 // A correction is one request, not independent delete/add requests. If any
 // replacement is withheld, preserve ALL existing entries until it is verified.
