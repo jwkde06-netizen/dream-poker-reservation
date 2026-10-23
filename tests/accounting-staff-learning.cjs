@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict');
+const {canTeachBusinessRule,memoryReceipt,validateMemory}=require('../.test-build/accounting-memory');
+assert.equal(canTeachBusinessRule('member','save'),true);
+assert.equal(canTeachBusinessRule('member','delete'),false);
+for(const status of ['left','kicked','restricted'])assert.equal(canTeachBusinessRule(status,'save'),false);
+for(const status of ['administrator','creator'])assert.equal(canTeachBusinessRule(status,'delete'),true);
+assert.equal(validateMemory({action:'save',kind:'instruction',content:'선수를 삭제하면 해당 게임 내 빈칸을 정리한다.'}).content,'선수를 삭제하면 해당 게임 내 빈칸을 정리한다.');
+assert.throws(()=>validateMemory({action:'save',kind:'instruction',content:'API key를 변경한다'}));
+assert.match(memoryReceipt('기본 층은 2F'),/기본 층은 2F/);
+assert.match(memoryReceipt('기본 층은 2F',true),/이미 기억/);
+console.log('Telegram staff learning permissions and receipts passed');
