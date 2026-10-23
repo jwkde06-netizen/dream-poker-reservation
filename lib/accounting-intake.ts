@@ -26,7 +26,9 @@ export function shouldProcessStaffMessage(m:any,recent:HistoryJob[]=[]){
  const previous=followupContext(recent,m,['KOREA','KOREA2','UK','HOUSE','JAPAN','MONGOL']);
  if(previous?.plan?.pendingQuestion)return true;
  if(previous&&m.reply_to_message&&/추가|수정|취소|삭제|반영|리바인/.test(t))return true;
- return false;
+ // The AI receives staff text and decides whether it is ledger work.
+ // Missing keywords must never silently discard a valid correction.
+ return !!t;
 }
 
 export function resolveFnb(ops:any[],menu:any[][]){
