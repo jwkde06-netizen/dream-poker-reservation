@@ -235,6 +235,14 @@ export function confirmedKrwExchange(sources: string[]): ExchangeIntent | null {
   if (!cash && !bank) throw new ExchangeReview('원화를 현금으로 받았나요, 계좌로 받았나요?');
   return {...first, received: {...first.received, account: cash ? 'KRW_CASH' : 'KRW_BANK'}};
 }
+export function directUsdExchange(text:string):ExchangeIntent|null {
+ const x=text.toLowerCase().replace(/,/g,'').replace(/\s+/g,'');
+ const m=x.match(/^\+?(\d+(?:\.\d+)?)(?:usd|달러|불)(?:수령|받음)?[-−](\d+(?:\.\d+)?)(천만|백만|만|m)?(?:동|vnd)?(?:나감|지급|줌|드림)?$/);
+ if(!m)return null;
+ const usd=Number(m[1]), multiplier=({'천만':10000000,'백만':1000000,'만':10000,'m':1000000} as Record<string,number>)[m[3]||'']||1, vnd=Number(m[2])*multiplier;
+ if(!Number.isFinite(usd)||usd<=0||!Number.isSafeInteger(usd*100)||!Number.isSafeInteger(vnd)||vnd<=0)throw new ExchangeReview('환전 금액을 확인해주세요.');
+ return {kind:'exchange',received:{account:'USD_CASH',amount:String(usd)},paid:{account:'VND_CASH',amount:String(vnd)},fee:null,received_includes_fee:false,rate_vnd:null,note:'USD 수령 / VND 지급',external_reference:null};
+}
 function simpleIntent(text: string): ExchangeIntent | null {
   const t = text.trim().replace(/@\w+(?=\s|$)/, '');
   if (/^(\/start|\/help|도움말|사용법)$/i.test(t)) return { kind: 'help' };
@@ -291,7 +299,7 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
       job = await patchJob(config, job.update_id, { intent, context_update_id: id }, owner);
     } else {
       const cancel = await cancellationIntent(config, text, message.reply_to_message?.message_id);
-      const fast = cancel || simpleIntent(text) || exchangeFeeShortcut(text) || directKrwExchange(text);
+      const fast = cancel || simpleIntent(text) || exchangeFeeShortcut(text) || directUsdExchange(text) || directKrwExchange(text);
       if (fast) intent = fast;
       else {
         const previous = await previousContext(config, message.reply_to_message?.message_id);
