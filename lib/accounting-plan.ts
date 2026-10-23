@@ -130,10 +130,18 @@ export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][
   const idx=found[0],r=work[idx],row=idx+1;
   if(op.kind==='cancel'){
    reflow=true; // Emit one final diff so transferred headings cannot overlap a later cancellation.
-   // Clear only business inputs, leaving formula spill columns intact. Preserve
-   // a game heading on the next member before clearing a heading row.
-   if(r[0]&&work[idx+1]?.[4]&&!work[idx+1]?.[0]&&Number(work[idx+1]?.[1])===day){add(`'일일 입력'!A${row+1}`,[['']],[[r[0]]]);work[idx+1][0]=r[0];}
-   add(`'일일 입력'!A${row}:E${row}`,[pad(r,5)],[['','','','','']]);add(`'일일 입력'!H${row}`,[[r[7]??'']],[['']]);work[idx]=[];
+   // Compact only this game. Never move another game's/manual records or
+   // formula spill columns. Retain heading even when its first player leaves.
+   let start=idx;while(start>1&&!work[start][0])start--;
+   let end=idx+1;while(end<work.length&&!work[end][0])end++;
+   const heading=work[start][0];
+   const members=work.slice(start,end).filter((entry,j)=>{
+    if(start+j===idx)return false;
+    if([0,1,2,3,4,7].every(c=>entry[c]===''||entry[c]==null))return false;
+    if(!entry[4]||Number(entry[1])!==day||normalizeTable(entry[2])!==normalizeTable(r[2])||entry[3]!==r[3]||[0,1,2,3,4,7].some(c=>String(entry[c]||'').startsWith('=')))throw Error('게임 내 수기 항목을 확인한 뒤 빈칸을 정리해주세요.');
+    return true;
+   }).map((entry,j)=>[j===0?heading:'',...pad(entry,8).slice(1)]);
+   for(let i=start;i<end;i++)work[i]=members[i-start]||[];
   }else{
    if(!Number.isInteger(op.buyins)||op.buyins<1||op.buyins>50)throw Error('누적 바이인 수를 알려주세요.');
    if(op.buyins<Number(r[7]))throw Error('기존보다 적은 바이인입니다. 정정 사유와 최종 수량을 확인해주세요.');
@@ -142,7 +150,7 @@ export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][
  }
  const label=Number(displayTable)>100?String(op.table):String(displayTable);
  const who=`${label} 테이블 ${name}`;
- summary.push(op.kind==='cancel'?`${who} 명단에서 뺐어요.`:op.kind==='add'?`${who} ${op.buyins}바인으로 시트에 추가했어요.`:op.buyins===previousBuyins?`${who}은 이미 총 ${op.buyins}바인으로 적혀 있어요.`:`${who} 리바인 ${op.buyins-previousBuyins}회 반영해서 총 ${op.buyins}바인으로 수정했어요.`);
+ summary.push(op.kind==='cancel'?`${who} 명단에서 빼고 같은 게임의 빈칸도 정리했어요.`:op.kind==='add'?`${who} ${op.buyins}바인으로 시트에 추가했어요.`:op.buyins===previousBuyins?`${who}은 이미 총 ${op.buyins}바인으로 적혀 있어요.`:`${who} 리바인 ${op.buyins-previousBuyins}회 반영해서 총 ${op.buyins}바인으로 수정했어요.`);
  }
  if(reflow){
   const other=changes.filter(c=>!c.range.startsWith("'일일 입력'!"));

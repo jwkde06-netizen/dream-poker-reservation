@@ -10,3 +10,5 @@ fs.mkdirSync(root+'/.test-build',{recursive:true});
 for(const n of ['accounting-corrections','accounting-plan','accounting-context','accounting-vision'])fs.writeFileSync(root+'/.test-build/'+n+'.js',compile(fs.readFileSync(root+'/lib/'+n+'.ts','utf8')));
 require('./accounting-roster-upgrade.cjs');
 require('./accounting-prewrite-conflict.cjs');
+
+require('./accounting-cancel-compact.cjs');
