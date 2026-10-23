@@ -9,15 +9,18 @@ const date='2026-10-23',stamp=Date.parse(date+'T19:50:00+07:00')/1000;
 const op={kind:'total',date,game:9,table:14,blind:'5M',player:'PARK SOO MIN',buyins:2,chips:200000};
 const paper={date,printedGame:7,table:2,names:['PARK SOO MIN'],chipAmounts:[200000],selected:[true],hasSelectionMarkers:false};
 const question='사진의 Table 2 명단은 기존 9번 게임(14-1)의 리바인 명단이 맞나요?';
-async function run(text,mode='status'){
+const originalOp=op,originalPaper=paper,originalStamp=stamp;
+async function run(text,mode='status',fixture=null){
+ const op=fixture?.op||originalOp,paper=fixture?.paper||originalPaper,stamp=fixture?.stamp||originalStamp;
  const jobs=[
  {update_id:349,message_id:349,sender_id:'1',status:'review',plan:{pendingQuestion:'몇 번 게임인가요?'},created_at:date+'T12:37:00Z',source_message:{date:stamp-780,photo:[{file_id:'fixture',file_unique_id:'fixture'}]}},
  {update_id:357,message_id:357,sender_id:'1',status:'review',plan:{contextMessageId:349,photoSourceMessageId:349,pendingQuestion:question},created_at:date+'T12:47:00Z',source_message:{date:stamp-180,photo:[{file_id:'fixture',file_unique_id:'fixture'}]}}
  ];
+ if(fixture)jobs.splice(0,jobs.length,...fixture.history);
  if(mode==='status')jobs.push({update_id:360,message_id:360,status:'applied',plan:{contextMessageId:357,operations:[op]},created_at:date+'T12:48:00Z'});
- const master=[['NAME','CARD','CODE'],['PARK SOO MIN','','KOREA']];
+ const master=fixture?.master||[['NAME','CARD','CODE'],['PARK SOO MIN','','KOREA']];
  const formula=Array(15).fill('');for(const i of [5,6,8,9,10,11,12,13,14])formula[i]='=ARRAYFORMULA(test)';
- const daily=[['GAME'],formula,[9,46318,'14-1','5M','PARK SOO MIN','','KOREA',2]];
+ const daily=fixture?[['GAME'],formula,...fixture.rows]:[['GAME'],formula,[9,46318,'14-1','5M','PARK SOO MIN','','KOREA',2]];
  const events=[];let writes=0,ai=0;const rules=[];
  function query(table){
   let filters=[],patch=null,sort=null,limit=Infinity,one=false;
@@ -40,7 +43,7 @@ async function run(text,mode='status'){
   if(url.includes('ai-gateway')){
    ai++;const body=JSON.parse(init.body);const columns=body.max_tokens===2500||body.max_tokens===4000;
    const teaching=['rules','readback-fail','unauthorized'].includes(mode);
-   const result=teaching?{documentType:'other',operations:[],question:null,memory:{action:'save',kind:'instruction',content:'사진 접수 시 진행 안내를 한 번 보낸다.'}}:columns?{documents:[paper]}:{documentType:'paper_game',operations:[op],question:'9번 게임의 용지 번호를 확인해주세요.',memory:null};
+   const result=teaching?{documentType:'other',operations:[],question:null,memory:{action:'save',kind:'instruction',content:'사진 접수 시 진행 안내를 한 번 보낸다.'}}:columns?{documents:[paper]}:{documentType:'paper_game',operations:fixture?.operations||[op],question:fixture?null:'9번 게임의 용지 번호를 확인해주세요.',memory:null};
    return {ok:true,json:async()=>({model:'fixture',usage:{total_tokens:1},choices:[{finish_reason:'stop',message:{content:JSON.stringify(result)}}]})};
   }
   throw Error('Unexpected external request '+url);
@@ -57,7 +60,7 @@ async function run(text,mode='status'){
   new Function('require','exports','process','Buffer','fetch',compile(fs.readFileSync(path.join(__dirname,'../lib',name.replace('./','')+'.ts'),'utf8')))(load,exports,{env:{STAFF_TELEGRAM_CHAT_ID:'-1',AI_GATEWAY_API_KEY:'fixture'}},Buffer,fetch);
   return exports;
  }
- let failure;try{await load('./accounting-agent').handle({update_id:400,message:{message_id:400,date:stamp,chat:{id:-1,type:'supergroup'},from:{id:1},text}});}catch(e){failure=e;}
+ let failure;try{await load('./accounting-agent').handle({update_id:400,message:{message_id:400,date:stamp,chat:{id:-1,type:'supergroup'},from:{id:1},text,...(fixture?{photo:[{file_id:'new-fixture',file_unique_id:'new-fixture'}]}:{})}});}catch(e){failure=e;}
  return {failure,rules,job:jobs.find(j=>j.message_id===400),events,ai,load};
 }
 module.exports=(async()=>{
@@ -90,5 +93,53 @@ module.exports=(async()=>{
  const rejected=await run('앞으로 사진 접수 시 안내 규칙저장','unauthorized');assert.equal(rejected.rules.length,0);assert.equal(rejected.job.status,'review');
  const mismatch=await run('앞으로 사진 접수 시 안내 규칙저장','readback-fail');assert.ifError(mismatch.failure);assert.equal(mismatch.job.status,'review');assert.match(mismatch.job.reply_text,/저장 결과를 확인하지 못/);assert(!mismatch.job.reply_text.includes('저장했'));
  assert(sheetStatusQuestion('다 입력됐어?'));
+
+ // 2026-10-24 00:41/00:42 uploads of October 23 papers. Ledger was
+ // manually renumbered and completed; the actual handler must make zero writes.
+ for(const fixture of [
+  {printedGame:19,table:4,game:18,label:'4-5',
+   names:[null,'LEE SUNG WON','CORDINGLEY OLIVER JAMES','CHANG YOON HO','KIM SOO MIN','NGUYEN THAN MINH','KAPUSTIN IVAN','KIM SEON HAK','DINH TIEN VU'],
+   amounts:[null,100000,400000,200000,200000,200000,100000,200000,100000],
+   players:[['CORDINGLEY OLIVER JAMES',4],['KIM SOO MIN',2],['KIM SEON HAK',2],['CHANG YOON HO',2],['KANG JIN HO',1],['LEE SUNG WON',1]],
+   prior:['CORDINGLEY OLIVER JAMES','KIM SOO MIN','KIM SEON HAK']},
+  {printedGame:20,table:5,game:19,label:'5-5',
+   names:['KIM HYUNG WOOK','TRAN TRONG QUY','LEE HAE WON','TRAN DINH LOC','KIM DEOK WOO','JANG EUNSANG','PHAN VAN THANH DAT','TRAN MINH TUAN','PHAN XUAN THANH'],
+   amounts:[100000,100000,200000,100000,100000,100000,300000,500000,100000],
+   players:[['KIM HYUNG WOOK',1],['LEE HAE WON',2],['KIM DEOK WOO',1],['LEE SEOK HO',1]],
+   prior:['KIM HYUNG WOOK','LEE HAE WON','KIM DEOK WOO','LEE SEOK HO']}
+ ]){
+  const base={date,game:fixture.printedGame,table:fixture.table,printedGame:fixture.printedGame,blind:'5M'};
+  const paper={date,table:fixture.table,printedGame:fixture.printedGame,names:fixture.names,chipAmounts:fixture.amounts,selected:fixture.names.map(Boolean),crossedOut:fixture.names.map(()=>false),hasSelectionMarkers:false};
+  const operations=fixture.players.filter(([name])=>fixture.names.includes(name)).map(([player,buyins],i)=>({...base,kind:i%2?'add':'total',player,buyins,chips:buyins*100000}));
+  const priorOps=fixture.prior.map(player=>({...base,kind:'add',player,buyins:1}));
+  const history=[{update_id:380,message_id:380,status:'applied',created_at:date+'T16:00:00Z',source_message:{date:originalStamp},plan:{
+   operations:priorOps,chipVerification:{documents:[{...paper,names:fixture.prior,chipAmounts:fixture.prior.map(()=>100000)}]},
+   sheetState:{version:1,date,overrides:[],aliases:[],entries:fixture.prior.map(player=>({date,game:fixture.printedGame,tableLabel:fixture.label,blind:'5M',player,buyins:1}))}
+  }}];
+  const master=[['NAME','CARD','CODE'],...fixture.players.map(([name])=>[name,'','KOREA'])];
+  const rows=fixture.players.map(([name,count],i)=>[i?'':fixture.game,46318,fixture.label,'5M',name,'','KOREA',count]);
+  const runFixture={op:operations[0],paper,operations,history,master,rows,stamp:Date.parse('2026-10-24T00:42:00+07:00')/1000};
+  const result=await run('','photo',runFixture);
+  assert.ifError(result.failure);assert.equal(result.job.status,'applied',result.job.reply_text);
+  assert.equal(result.job.plan.pendingQuestion,null);
+  assert.equal(result.job.plan.changes.length,0,'manual rows must be preserved');
+  assert(result.job.plan.operations.every(o=>o.game===fixture.game));
+  assert(result.job.plan.operations.every(o=>o.rebuyBinding?.tableLabel===fixture.label));
+  assert.equal(result.events.filter(e=>e.method==='sendMessage').length,1,'one photo receipt, edited to final');
+  const {bindRebuyHistory,completePhotoRoster,verifyChipEvidence}=result.load('./accounting-vision');
+  const {sheetContext}=result.load('./accounting-context');
+  const games=sheetContext([[],...rows],master,date).games;
+  assert(completePhotoRoster(operations,{documents:[paper]},master).operations.length>0,'mixed add/total is one roster');
+  const bound=bindRebuyHistory(operations,{documents:[paper]},games,history);
+  assert(bound.every(o=>o.game===fixture.game));
+  assert(!bindRebuyHistory(operations,{documents:[paper]},games,[]).some(o=>o.rebuyBinding),'no overlap-only mapping');
+  assert(!bindRebuyHistory(operations,{documents:[{...paper,printedGame:99}]},games,history).some(o=>o.rebuyBinding),'new No. must not reuse old game');
+  const ambiguous=[...history,{...history[0],message_id:379,plan:{...history[0].plan,sheetState:{...history[0].plan.sheetState,entries:history[0].plan.sheetState.entries.map(e=>({...e,tableLabel:fixture.table+'-6'}))}}}];
+  assert(!bindRebuyHistory(operations,{documents:[paper]},[...games,{...games[0],gameNumber:25,tableLabel:fixture.table+'-6'}],ambiguous).some(o=>o.rebuyBinding),'multiple historical sessions require review');
+  const bad={...paper,chipAmounts:paper.chipAmounts.map(n=>n? n+100000:null)};
+  assert.equal(verifyChipEvidence(bound,{documents:[bad]}).operations.length,0,'binding must not bypass chip mismatch');
+ }
+ console.log('Midnight rebuy fixtures passed: No19/table4 -> game18/4-5; No20/table5 -> game19/5-5; mixed operation kinds; preserved absent/manual players; zero Sheet writes; ambiguous sessions and new numbers not inferred.');
+
  console.log('Actual handler replay passed: tagged status, chain deduplication, no AI/no sheet writes for status, rebuy confirmation before guards, persisted binding, rule/status separation.');
 })();

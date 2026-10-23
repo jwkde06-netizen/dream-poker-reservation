@@ -10,7 +10,7 @@ import {easyHelp,easyMenu,parseDeskAction,pendingButtons,canMarkManual,buyinGuid
 import {rulesLinkText,rulesButton} from './accounting-rules-link';
 import {addressedToDesk,sheetStatusQuestion,deskCommand,deskHelp,politeAcknowledgement,completionReply} from './accounting-conversation';
 import {shouldProcessStaffMessage,resolveFnb} from './accounting-intake';
-import {confirmedRebuyContext,bindConfirmedRebuy,completePhotoRoster,needsChipVerification,verifyChipEvidence,confirmChipCount,continueChipConfirmation,withheldChipOperations} from './accounting-vision';
+import {bindRebuyHistory,confirmedRebuyContext,bindConfirmedRebuy,completePhotoRoster,needsChipVerification,verifyChipEvidence,confirmChipCount,continueChipConfirmation,withheldChipOperations} from './accounting-vision';
 import {defaultAgency,completeNamedArrival,cosmeticNameEdit,jobReport,compactExtractionContext} from './accounting-workflow';
 import {reconcileSheet,reconcileOperation,afterVerifiedWrite} from './accounting-reconcile';
 import {sheetContext,correctedOperations,focusedQuestion,certainOperations,clearResolvedIdentityQuestion} from './accounting-context';
@@ -176,12 +176,13 @@ export async function handle(update:any){
   if(![5,6,8,9,10,11,12,13,14].every(i=>String(formula[1]?.[i]||'').startsWith('=ARRAYFORMULA(')))throw Error('Sheet formula layout changed');
   let previous:any=followupContext(recent,m,master.slice(1).map((r:any[])=>String(r[2]||'')).filter(Boolean));
   if(!previous&&m.reply_to_message?.message_id&&!recent.some(r=>r.message_id===m.reply_to_message.message_id||r.reply_id===m.reply_to_message.message_id)){const q=await db().from('dream_accounting_jobs').select('message_id,sender_id,text,plan,status,source_message,reply_text').or(`message_id.eq.${Number(m.reply_to_message.message_id)},reply_id.eq.${Number(m.reply_to_message.message_id)}`).order('created_at',{ascending:false}).limit(1);if(q.error)throw Error('Context lookup failed');const found=q.data?.[0];if(found)previous=followupContext([found],m,master.slice(1).map((r:any[])=>String(r[2]||'')));}
-  const businessDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(m.date*1000));
+  let businessDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(m.date*1000));
   const taskText=continuationText(job.text,previous);
   const auditHistory=await reconciliationHistory(businessDate);
   let sheetState=reconcileSheet(daily,businessDate,auditHistory);
   processingPlan={sheetState,photoRetryCount:job.plan?.photoRetryCount||0};await save(job.update_id,{plan:processingPlan});
-  const context={fnbMenu,...sheetContext(daily,master,businessDate),businessRules,defaultRegistrationAgency:defaultAgency(businessRules,master),sheetReconciliation:{overrides:sheetState.overrides,aliases:sheetState.aliases},previous,pendingRequest:previous?.plan?.pendingQuestion?{...previous,continuationText:taskText}:null,recentMessages:recent.map(r=>({message_id:r.message_id,text:r.text,status:r.status,reply:r.reply_text,operations:closed(r)?null:r.plan?.operations,referenceOnly:!!r.plan?.referenceOnly,referenceSummary:r.plan?.referenceSummary||null,manualHandoff:r.plan?.manual_handoff||null,correction:r.plan?.reconciliation||null,hasPhoto:!closed(r)&&!!(r.source_message?.photo||r.source_message?.document)}))};
+  const previousDate=new Date(Date.parse(businessDate+'T00:00:00Z')-86400000).toISOString().slice(0,10);
+  const context={fnbMenu,...sheetContext(daily,master,businessDate),games:[...sheetContext(daily,master,businessDate).games,...sheetContext(daily,master,previousDate).games],businessRules,defaultRegistrationAgency:defaultAgency(businessRules,master),sheetReconciliation:{overrides:sheetState.overrides,aliases:sheetState.aliases},previous,pendingRequest:previous?.plan?.pendingQuestion?{...previous,continuationText:taskText}:null,recentMessages:recent.map(r=>({message_id:r.message_id,text:r.text,status:r.status,reply:r.reply_text,operations:closed(r)?null:r.plan?.operations,referenceOnly:!!r.plan?.referenceOnly,referenceSummary:r.plan?.referenceSummary||null,manualHandoff:r.plan?.manual_handoff||null,correction:r.plan?.reconciliation||null,hasPhoto:!closed(r)&&!!(r.source_message?.photo||r.source_message?.document)}))};
   const confirmedResult=continueChipConfirmation(job.text,previous);
   const confirmedChips=confirmedResult?.operations[0];
   let photoSource:any=ownPhoto?job:confirmedResult?previous:null;
@@ -192,6 +193,13 @@ export async function handle(update:any){
    const source=recent.find(r=>r.message_id===result.sourceMessageId);
    if(source?.source_message&&!closed(source)){await readPhoto(source.source_message);if(image){photoSource=source;result=await extract(job.text,image,{...context,photoSourceMessageId:source.message_id});recordAI(result);}}
    else {await finish('review','그 사진에 답장으로 요청해주세요.');return;}
+  }
+  // Uploaded after midnight: use the receipt's date for manual-edit reconciliation.
+  const receiptDates=Array.from(new Set((result.operations||[]).filter((o:any)=>['add','total','cancel'].includes(o.kind)).map((o:any)=>o.date)));
+  if(image&&receiptDates.length===1&&receiptDates[0]===previousDate){
+   businessDate=previousDate;
+   sheetState=reconcileSheet(daily,businessDate,await reconciliationHistory(businessDate));
+   context.sheetReconciliation={overrides:sheetState.overrides,aliases:sheetState.aliases};
   }
   const confirmedRebuy=confirmedRebuyContext(job.text,previous,context.games);
   if(confirmedRebuy&&!confirmedRebuy.confirmedByMessageId)confirmedRebuy.confirmedByMessageId=m.message_id;
@@ -237,13 +245,14 @@ export async function handle(update:any){
     if(Date.now()-started>100000)throw Error('Verification time budget');
     const evidence=confirmedEvidence||reconsidered.evidence||await readChipColumns(image);if(!confirmedEvidence&&!reconsidered.evidence){recordAI(evidence);}
     result.operations=bindConfirmedRebuy(result.operations,evidence,job.text,previous?.plan?.pendingQuestion,context.games);
+    result.operations=bindRebuyHistory(result.operations,evidence,context.games,recent,businessRules);
     const coverage=completePhotoRoster(result.operations,evidence,master,businessRules);
     result.operations=coverage.operations;
     const verified=verifyChipEvidence(result.operations,evidence,businessRules);
     verified.questions.unshift(...coverage.questions);
     result.unverifiedOperations=[...coverage.withheldOperations,...withheldChipOperations(result.operations,verified.operations)];
     result.operations=verified.operations;result.question=verified.questions[0]||clearResolvedIdentityQuestion(result.question,verified.operations,master,businessRules);
-    result.chipVerification={documents:evidence.documents,names:evidence.names,chipAmounts:evidence.chipAmounts,selected:evidence.selected,questions:verified.questions};
+    result.chipVerification={extractedOperations:correctionOriginal,documents:evidence.documents,names:evidence.names,chipAmounts:evidence.chipAmounts,selected:evidence.selected,questions:verified.questions};
    }catch(e){
     // Infrastructure/format failure is NOT uncertainty about a player's chips.
     // No ledger write has started, so preserve the original photo for retry.

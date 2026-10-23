@@ -50,7 +50,7 @@ export function completePhotoRoster(ops:any[],evidence:any,master:any[][],rules:
  if(evidence?.documents!==undefined)return groupedPapers(ops,evidence,(group,paper)=>completePhotoRoster(group,paper,master,rules));
  const names=evidence?.names,amounts=evidence?.chipAmounts,selected=evidence?.selected;
  const attendance=ops.filter(o=>['add','total'].includes(o.kind));
- const groups=new Set(attendance.map(o=>[o.date,o.game,o.table,o.blind,o.kind].join('|')));
+ const groups=new Set(attendance.map(o=>[o.date,o.game,o.table,o.blind].join('|')));
  const question='저장된 사진의 명단을 정확히 확인하지 못했어요. 해당 사진에 답장으로 확인할 선수와 바이인 수를 알려주세요.';
  if(!Array.isArray(names)||!Array.isArray(amounts)||!Array.isArray(selected)||names.length<1||names.length>10||names.length!==amounts.length||names.length!==selected.length||selected.some((v:any)=>typeof v!=='boolean')||groups.size!==1||typeof evidence.hasSelectionMarkers!=='boolean'||(evidence.crossedOut!==undefined&&(!Array.isArray(evidence.crossedOut)||evidence.crossedOut.length!==names.length||evidence.crossedOut.some((v:any)=>typeof v!=='boolean'))))return {operations:ops.filter(o=>!['add','total'].includes(o.kind)),withheldOperations:[],questions:[question]};
  const operations=ops.filter(o=>!['add','total'].includes(o.kind)),questions:string[]=[],withheldOperations:any[]=[];
@@ -150,4 +150,48 @@ export function confirmedRebuyContext(text:string,previous:any,games:any[]){
  const targets=games.filter(g=>g.gameNumber===Number(match[2])&&String(g.tableLabel)===match[3]);
  if(targets.length!==1||saved&&(saved.date!==targets[0].date||saved.table!==targets[0].tableNumber))return null;
  return {question,date:targets[0].date,game:Number(match[2]),table:targets[0].tableNumber,paperTable:Number(match[1]),confirmedByMessageId:saved?.confirmedByMessageId||null};
+}
+
+
+// Bind a later snapshot to the original verified paper and its stable table
+// session. Player overlap alone cannot merge a new game into an older game.
+export function bindRebuyHistory(ops:any[],evidence:any,games:any[],history:any[],rules:any[]=[]){
+ const documents=evidence?.documents;
+ if(!Array.isArray(documents))return ops;
+ const identity=(n:any)=>playerIdentity(n,rules);
+ return ops.map(op=>{
+  if(!['add','total'].includes(op.kind))return op;
+  const papers=documents.filter((p:any)=>!p.headerAmbiguous&&p.date===op.date&&p.table===op.table&&
+   (p.printedGame===op.printedGame||op.printedGame==null&&p.printedGame===op.game));
+  if(papers.length!==1)return op;
+  const paper=papers[0];
+  if(paper.handwrittenGame&&paper.handwrittenGame!==paper.printedGame)return op;
+  const names=new Set((paper.names||[]).filter((n:any,i:number)=>n&&paper.crossedOut?.[i]!==true).map(identity));
+  const candidates=new Map<string,{game:any;source:number}>();
+  for(const job of history){
+   if(job.status!=='applied'||job.plan?.pendingQuestion||job.plan?.manual_handoff||job.plan?.reconciliation)continue;
+   const prior=(job.plan?.chipVerification?.documents||[]).filter((p:any)=>p.date===paper.date&&p.table===paper.table&&p.printedGame===paper.printedGame&&!p.headerAmbiguous);
+   if(prior.length!==1)continue;
+   const priorNames=new Set((prior[0].names||[]).filter(Boolean).map(identity));
+   const shared=Array.from(names).filter(n=>priorNames.has(n));
+   if(shared.length<2)continue;
+   const original=(job.plan?.operations||[]).filter((o:any)=>['add','total'].includes(o.kind)&&o.date===paper.date&&o.table===paper.table&&o.printedGame===paper.printedGame);
+   const labels=new Set((job.plan?.sheetState?.entries||[]).filter((e:any)=>original.some((o:any)=>o.date===e.date&&o.game===e.game&&o.blind===e.blind&&identity(o.player)===identity(e.player))&&Number(String(e.tableLabel).split('-')[0])===paper.table).map((e:any)=>e.tableLabel));
+   for(const label of Array.from(labels)){
+    const matches=games.filter(g=>g.date===paper.date&&g.tableLabel===label&&g.tableNumber===paper.table&&g.blind===op.blind);
+    if(matches.length!==1)continue;
+    const game=matches[0];
+    if(game.players.filter((p:any)=>names.has(identity(p.name))&&priorNames.has(identity(p.name))).length<2)continue;
+    candidates.set([game.date,game.gameNumber,game.tableLabel,game.blind].join('|'),{game,source:job.message_id});
+   }
+  }
+  if(candidates.size!==1)return op;
+  const match=Array.from(candidates.values())[0],game=match.game;
+  if(op.gameConfirmed&&op.game!==game.gameNumber)return op;
+  if(op.game!==paper.printedGame&&op.game!==game.gameNumber)return op;
+  const existing=game.players.filter((p:any)=>identity(p.name)===identity(op.player));
+  if(existing.length>1)return op;
+  return {...op,game:game.gameNumber,gameConfirmed:true,kind:existing.length?'total':'add',
+   rebuyBinding:{sourceMessageId:match.source,printedGame:paper.printedGame,tableLabel:game.tableLabel,reason:'verified_paper_and_live_session'}};
+ });
 }
