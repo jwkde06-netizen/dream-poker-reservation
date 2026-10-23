@@ -1,0 +1,22 @@
+const assert=require('node:assert/strict');
+const {classifyGatewayFailure,gatewayError,gatewayStaffMessage,AccountingGatewayError}=require('../.test-build/accounting-gateway-error');
+const {systemStatus,staffStatus}=require('../.test-build/accounting-status');
+(async()=>{
+ assert.equal(classifyGatewayFailure(403,{error:{code:'no_providers_available',message:'Free tier users do not have access to this model. Upgrade to paid credits'}}),'paid_credits_required');
+ assert.equal(classifyGatewayFailure(403,{error:{code:'no_providers_available',message:'Provider unavailable'}}),'access_denied');
+ assert.equal(classifyGatewayFailure(401,{}),'authentication_required');
+ assert.equal(classifyGatewayFailure(402,{}),'quota_exceeded');
+ assert.equal(classifyGatewayFailure(503,{}),'request_failed');
+ const error=await gatewayError(new Response(JSON.stringify({error:{code:'no_providers_available',message:'Free tier users do not have access to this model. sk-SECRET'}}),{status:403}));
+ assert.equal(error.message,'AI_GATEWAY:paid_credits_required:403');
+ assert(!error.message.includes('SECRET'));
+ assert(!gatewayStaffMessage(error).includes('다시 올려'));
+ const malformed=await gatewayError(new Response('<html>private error</html>',{status:503}));
+ assert.equal(malformed.message,'AI_GATEWAY:request_failed:503');
+ const job={update_id:1,message_id:299,status:'failed',failure_reason:error.message,source_message:{photo:[{}]}};
+ const health={textModel:'openai/gpt-6.1-sol',visionModel:'openai/gpt-6.1-sol',sheetOk:true,historyOk:true,enabled:true};
+ assert(systemStatus([job],health).includes('유료 크레딧 충전 필요'));
+ assert(staffStatus([job]).text.includes('유료 크레딧 충전 필요'));
+ assert(!JSON.stringify(staffStatus([job]).buttons).includes('desk:retry'));
+ console.log('Gateway failure classification, secret suppression, staff message and status tests passed');
+})().catch(e=>{console.error(e);process.exitCode=1});
