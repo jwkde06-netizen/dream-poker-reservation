@@ -126,7 +126,12 @@ export async function handle(update:any){
   }
   const command=deskCommand(job.text);
   if(sheetStatusQuestion(job.text)&&!m.photo&&!m.document){
-   const view=await deskStatusView(job.update_id);await finish('ignored',view.text,view.buttons);return;
+   const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(m.date*1000));
+   const [rows]=await ranges(["'일일 입력'!A1:H5000"]);
+   const games=sheetContext(rows,[],date).games;
+   const latest=games.reduce((n:number,g:any)=>Math.max(n,g.gameNumber),0);
+   const message=latest?('현재 시트에는 '+latest+'번 게임까지 기록돼 있어요.\n다만 모든 영수증의 반영 여부까지 확인된 것은 아니에요.'):'오늘 시트에 기록된 게임은 아직 없어요.';
+   await finish('ignored',message);return;
   }
   const courtesy=politeAcknowledgement(job.text,!!m.reply_to_message?.from?.is_bot);
   if(courtesy){await finish('ignored',courtesy);return;}
