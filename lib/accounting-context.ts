@@ -3,6 +3,8 @@ import {norm,tableLabel} from './accounting-plan';
 export function playerIdentity(name:unknown,rules:any[]=[]){
  const value=norm(name);
  // Confirmed roster spelling for this player; never fuzzy-match unrelated names.
+ // Staff confirmed this receipt spelling on 2026-10-23.
+ if(value==='KIMGYUHYEON')return 'KIMGYUHYUN';
  if(value==='JOOCHEOLHEON')return 'JOOCHEOLHYEON';
  if(value==='CHANGCALEBYOONHO'&&rules.some(r=>/CHANG CALEB YOON-HO/.test(String(r.content))&&/CHANG YOON HO/.test(String(r.content))))return 'CHANGYOONHO';
  return value;
