@@ -1,3 +1,4 @@
+import {canRecoverGatewayPhoto} from '../../../../lib/accounting-recovery';
 import {resolveFnb} from '../../../../lib/accounting-intake';
 import {loadSettlement} from '../../../../lib/settlement-service';
 import {deskCommands} from '../../../../lib/accounting-conversation';
@@ -18,6 +19,19 @@ export async function POST(request:Request){
  if(!authorized(request,'ACCOUNTING_OPS_SECRET'))return NextResponse.json({error:'Unauthorized'},{status:401});
  try{
   const {action,messageId,caseName,imageData,caption}=await request.json();
+  if(action==='recoverGatewayPhoto'){
+   if(!Number.isSafeInteger(messageId))throw Error('Invalid message');
+   const q=await db().from('dream_accounting_jobs').select('*').eq('message_id',messageId).order('update_id',{ascending:false}).limit(1).single();
+   if(q.error||!canRecoverGatewayPhoto(q.data))throw Error('Only saved pre-write AI access failures can resume');
+   const j=q.data;
+   const changed=await db().from('dream_accounting_jobs').update({status:'received',failure_reason:null,reply_text:null,reply_id:null}).eq('update_id',j.update_id).eq('status','failed').eq('failure_reason',j.failure_reason).select('update_id');
+   if(changed.error||changed.data?.length!==1)throw Error('Job changed before recovery');
+   // handle re-reads the ledger under the existing workbook lock before writing.
+   await handle({update_id:j.update_id,message:{...j.source_message,message_id:j.message_id,text:j.text,chat:{id:Number(process.env.STAFF_TELEGRAM_CHAT_ID),type:'group'},from:{id:Number(j.sender_id),is_bot:false}}});
+   const after=await db().from('dream_accounting_jobs').select('status,reply_id,reply_text,failure_reason').eq('update_id',j.update_id).single();
+   if(after.error)throw Error('Recovery readback failed');
+   return NextResponse.json(after.data);
+  }
   if(action==='weeklyAudit'){
    const r=await loadSettlement(typeof caseName==='string'?caseName:new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()),null);
    return NextResponse.json({start:r.start,end:r.end,totals:r.totals,salary:r.salary,expense:r.expense,net:r.net,checks:r.checks,issueCounts:r.issues.reduce((a:any,i)=>({...a,[i.kind]:(a[i.kind]||0)+1}),{}),historyCount:r.history.length,business_rows_changed:false,telegram_messages_sent:false});
