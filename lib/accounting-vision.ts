@@ -5,7 +5,7 @@ import {correctedOperations,playerIdentity,canonicalPlayers} from './accounting-
 // Bind each independent paper to exactly one extraction group. Never borrow
 // a name/chip row from another game, even when the same player appears twice.
 function paperFor(op:any,documents:any[]){
- const matches=documents.filter(d=>!d.headerAmbiguous&&d.date===op.date&&d.table===op.table&&
+ const matches=documents.filter(d=>!d.headerAmbiguous&&d.date===op.date&&d.table===(op.confirmedPaperTable??op.table)&&
   (op.gameConfirmed===true&&Number.isInteger(op.printedGame)?d.printedGame===op.printedGame:
    Number.isInteger(d.handwrittenGame)&&d.handwrittenGame>0?d.handwrittenGame===op.game:
    Number.isInteger(op.printedGame)?d.printedGame===op.printedGame:d.printedGame===op.game));
@@ -115,4 +115,26 @@ export function continueChipConfirmation(text:string,previous:any){
  const confirmed=confirmChipCount(text,previous);if(!confirmed)return null;
  const remaining=(previous.plan.unverifiedOperations||[]).filter((o:any)=>!sameEntry(o,confirmed));
  return {documentType:'paper_game',operations:[confirmed],unverifiedOperations:remaining,question:remaining.length?`${remaining[0].player}님은 총 몇 바인인가요?`:null};
+}
+
+/** Bind an affirmative reply only to the exact pending rebuy/table question.
+ * Preserve the ledger game/table; the printed paper has its own identifiers.
+ */
+export function bindConfirmedRebuy(ops:any[],evidence:any,text:string,question:string,games:any[]){
+ if(!/^(네|예|넵|맞아|맞아요|맞습니다|응|ㅇㅇ)[.!\s]*$/.test(text.trim()))return ops;
+ const match=String(question||'').match(/사진의 Table (\d+) 명단은 기존 (\d+)번 게임\((\d+(?:-\d+)?)\)의 리바인 명단이 맞나요\?/);
+ if(!match)return ops;
+ const paperTable=Number(match[1]),game=Number(match[2]),label=match[3];
+ const targets=games.filter(g=>g.gameNumber===game&&String(g.tableLabel)===label);
+ if(targets.length!==1)return ops;
+ const target=targets[0];
+ const papers=(evidence?.documents||[]).filter((p:any)=>!p.headerAmbiguous&&p.date===target.date&&p.table===paperTable);
+ if(papers.length!==1)return ops;
+ const paper=papers[0];
+ return ops.map(op=>{
+  if(!['add','total'].includes(op.kind)||op.date!==target.date||op.game!==game||op.table!==target.tableNumber)return op;
+  if(!target.players.some((p:any)=>norm(p.name)===norm(op.player)))return op;
+  if(!(paper.names||[]).some((n:any)=>norm(n)===norm(op.player)))return op;
+  return {...op,kind:'total',gameConfirmed:true,printedGame:paper.printedGame,confirmedPaperTable:paperTable};
+ });
 }
