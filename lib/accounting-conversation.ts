@@ -22,7 +22,16 @@ export function completionReply(operations:any[],question:any,answeredQuestion:b
  // The planner knows which requests were skipped, already present or changed.
  // Do not report the model's proposed operations as completed work.
  if(verified){
-  const lines=Array.from(new Set(verified.summary.filter(Boolean)));
+  const lines=Array.from(new Set(verified.summary.filter(Boolean).map(line=>{
+   // Format verified planner outcomes only; skipped or existing rows stay explicit.
+   let m=line.match(/^(.*?) (\d+)바인으로 시트에 추가했어요\.$/);
+   if(m)return '✅ 일일 바인 시트 입력 완료 · '+m[1]+' · '+m[2]+'바인';
+   m=line.match(/^(.*?) 리바인 (-?\d+)회 반영해서 총 (\d+)바인으로 수정했어요\.$/);
+   if(m)return '✅ 바인 수정 완료 · '+m[1]+' · 총 '+m[3]+'바인';
+   m=line.match(/^(.*?) 명단에서 빼고 같은 게임의 빈칸도 정리했어요\.$/);
+   if(m)return '✅ 선수 삭제 완료 · '+m[1]+' · 빈칸 정리 완료';
+   return line;
+  })));
   const status=lines.length?lines.join('\n'):verified.changes.length?'확인된 항목을 반영했어요.':'새로 반영한 항목은 없어요.';
   return [status,question?String(question):null].filter(Boolean).join('\n');
  }
