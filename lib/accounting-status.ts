@@ -1,6 +1,28 @@
 import {canRetryPhoto} from './accounting-ai-response';
 import {resolvePendingJobs} from './accounting-workflow';
 
+export function systemStatus(jobs:any[],health:{textModel:string;visionModel:string;sheetOk:boolean;historyOk:boolean;enabled:boolean}){
+ const latest=new Map<number,any>();
+ for(const job of jobs){const prior=latest.get(job.message_id);if(!prior||Number(job.update_id)>Number(prior.update_id))latest.set(job.message_id,job);}
+ const ordered=Array.from(latest.values()).sort((a,b)=>Number(b.update_id)-Number(a.update_id));
+ const observed=ordered.find(j=>j.plan?.metrics?.responseModels?.length);
+ const recent=ordered.find(j=>['applied','review','failed','uncertain','writing','processing','received'].includes(j.status)&&!j.plan?.manual_handoff&&!j.plan?.resolvedBy);
+ const clean=(s:string)=>s.replace(/[\r\n]/g,' ').slice(0,120);
+ const lines=['Dream Buy-in Desk',`자동 정산: ${health.enabled?'켜짐':'꺼짐'}`,`설정 모델(대화): ${clean(health.textModel)}`,`설정 모델(사진): ${clean(health.visionModel)}`];
+ lines.push('최근 실제 응답 모델: '+(observed?observed.plan.metrics.responseModels.map(clean).join(', '):'아직 확인 기록 없음'));
+ lines.push('구글 시트: '+(health.sheetOk?'읽기 연결 정상 ✅':'연결 확인 실패 ⚠️'));
+ if(!health.historyOk)lines.push('최근 처리: 이력 조회 실패');
+ else if(recent){
+  const stamp=Date.parse(recent.created_at);
+  const time=Number.isFinite(stamp)?new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Ho_Chi_Minh',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(stamp):'';
+  const state:Record<string,string>={applied:recent.plan?.pendingQuestion?'일부 반영 · 확인 필요':'시트 반영 완료',review:'확인 필요',failed:'처리 실패',uncertain:'시트 대조 필요',writing:'시트 기록 중',processing:'처리 중',received:'접수됨'};
+  const games=Array.from(new Set((recent.plan?.operations||[]).map((o:any)=>o.game).filter((g:any)=>Number.isInteger(g)&&g>0)));
+  const label=games.length?games.join(', ')+'번 게임':recent.plan?.operations?.some((o:any)=>o.kind==='fnb')?'F&B':'요청';
+  lines.push(`최근 처리: ${time} ${label} ${state[recent.status]}`);
+ }else lines.push('최근 12시간 처리 내역 없음');
+ return lines.join('\n');
+}
+
 // Keep identifiers in callback data only. Both status entry points use this view.
 export function staffStatus(jobs:any[]){
  const latest=new Map<number,any>();

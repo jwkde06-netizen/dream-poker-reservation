@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict'),fs=require('fs'),ts=require('typescript');
+require.extensions['.ts']=(m,f)=>m._compile(ts.transpileModule(fs.readFileSync(f,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,f);
+const {systemStatus,staffStatus}=require('../lib/accounting-status.ts');
+const {deskCommand}=require('../lib/accounting-conversation.ts');
+const h={textModel:'openai/gpt-6-astra',visionModel:'openai/gpt-6-astra',sheetOk:true,historyOk:true,enabled:true};
+assert.equal(deskCommand('/status@dream_poker_reservation_bot'),'status');
+assert.equal(deskCommand('/status@another_bot'),null);
+const empty=systemStatus([],h);
+assert(empty.includes('아직 확인 기록 없음'));assert(empty.includes('읽기 연결 정상'));assert(empty.includes('최근 12시간 처리 내역 없음'));
+const job={update_id:1,message_id:100,status:'applied',created_at:'2026-10-23T07:00:00Z',plan:{operations:[{kind:'add',game:2}],metrics:{responseModels:['gpt-5.4']}}};
+const rendered=systemStatus([job],h);
+assert(rendered.includes('설정 모델(사진): openai/gpt-6-astra'));assert(rendered.includes('실제 응답 모델: gpt-5.4'));assert(rendered.includes('2번 게임 시트 반영 완료'));
+const partial={...job,update_id:2,plan:{...job.plan,pendingQuestion:'확인'}};
+assert(systemStatus([job,partial],h).includes('일부 반영 · 확인 필요'));
+const failed=systemStatus([],{...h,sheetOk:false,historyOk:false,enabled:false});
+assert(failed.includes('자동 정산: 꺼짐'));assert(failed.includes('연결 확인 실패'));assert(failed.includes('이력 조회 실패'));assert(!failed.includes('연결 정상'));
+assert.equal(staffStatus([]).text,'지금 확인할 항목은 없어요.');
+console.log('Accounting status checks passed');

@@ -1,6 +1,6 @@
 import {accountingModel} from './accounting-model';
 import {reconsiderPaper} from './accounting-decision';
-import {staffStatus} from './accounting-status';
+import {staffStatus,systemStatus} from './accounting-status';
 import {completeAIJson,InvalidAIResponse,canRetryPhoto} from './accounting-ai-response';
 import {easyHelp,easyMenu,parseDeskAction,pendingButtons,canMarkManual,buyinGuide} from './accounting-easy';
 import {rulesLinkText,rulesButton} from './accounting-rules-link';
@@ -52,11 +52,24 @@ export async function readChipColumns(image:string){
  if(!r.ok)throw Error('Chip verification unavailable');return r.json();
  },'columns');
 }
+async function deskStatusView(excludeUpdateId?:number){
+ const [history,google]=await Promise.allSettled([
+  db().from('dream_accounting_jobs').select('update_id,message_id,text,status,plan,reply_text,reply_id,source_message,created_at,failure_reason').gte('created_at',new Date(Date.now()-12*3600000).toISOString()).order('created_at',{ascending:false}).limit(200),
+  ranges(["'일일 입력'!A1:B1","'F&B 입력'!A1:B1"])
+ ]);
+ const historyOk=history.status==='fulfilled'&&!history.value.error;
+ const jobs=historyOk&&history.status==='fulfilled'?(history.value.data||[]).filter((j:any)=>j.update_id!==excludeUpdateId&&!deskCommand(j.text||'')):[];
+ const view=staffStatus(jobs);
+ const sheetOk=google.status==='fulfilled'&&google.value.length===2&&google.value.every((r:any[])=>r.length>0);
+ return {text:systemStatus(jobs,{textModel:accountingModel(false),visionModel:accountingModel(true),sheetOk,historyOk,enabled:process.env.ACCOUNTING_ENABLED==='true'})+'\n\n'+(historyOk?view.text:'최근 처리 이력을 확인하지 못했어요.'),buttons:view.buttons};
+}
 async function reply(message:number,text:string,buttons?:any){const r=await tg('sendMessage',{chat_id:process.env.STAFF_TELEGRAM_CHAT_ID,reply_parameters:{message_id:message,allow_sending_without_reply:true},text:text.slice(0,4000),...(text===rulesLinkText?{reply_markup:rulesButton()}:text===easyHelp?{reply_markup:easyMenu}:buttons?{reply_markup:buttons}:{})});return r.message_id;}
 async function save(id:number,value:any){const r=await db().from('dream_accounting_jobs').update(value).eq('update_id',id);if(r.error)throw Error('Job persistence failed');}
 export async function handle(update:any){
  if(update.callback_query){await handleDeskCallback(update.callback_query);return;}
  const started=Date.now();let aiCalls=0,totalTokens=0;
+ const responseModels=new Set<string>();
+ const recordAI=(result:any)=>{aiCalls++;totalTokens+=result._usage?.totalTokens||0;if(typeof result._model==='string')responseModels.add(result._model.slice(0,120));};
  const m=update.message||update.edited_message;if(!m||String(m.chat?.id)!==process.env.STAFF_TELEGRAM_CHAT_ID||!['group','supergroup'].includes(m.chat.type)||!m.from?.id||m.from.is_bot||m.sender_chat)return;
  if(!Number.isSafeInteger(update.update_id)||!Number.isSafeInteger(m.message_id))return;
  if(!m.text&&!m.caption&&!m.photo&&!m.document)return;
@@ -86,7 +99,7 @@ export async function handle(update:any){
   // A reaction acknowledges receipt without adding a second chat message.
   if(m.photo||m.document)await tg('setMessageReaction',{chat_id:m.chat.id,message_id:m.message_id,reaction:[{type:'emoji',emoji:'👀'}]}).catch(()=>null);
   let processingPlan:any=null;
-  const metrics=()=>({durationMs:Date.now()-started,aiCalls,totalTokens});
+  const metrics=()=>({durationMs:Date.now()-started,aiCalls,totalTokens,responseModels:Array.from(responseModels)});
   const finish=async(status:string,text:string,buttons?:any)=>{processingPlan={...(processingPlan||{}),metrics:metrics()};await save(job.update_id,{status,reply_text:text,plan:processingPlan,...(status==='review'&&processingPlan?{plan:{...processingPlan,pendingQuestion:text}}:{})});if(text){const id=await reply(m.message_id,text,buttons||(status==='review'?pendingButtons(m.message_id):undefined));await save(job.update_id,{reply_id:id});}};
   if(update.edited_message){
    const original=await db().from('dream_accounting_jobs').select('text,plan,status').eq('message_id',m.message_id).lt('update_id',job.update_id).order('update_id',{ascending:true}).limit(1).maybeSingle();
@@ -106,12 +119,11 @@ export async function handle(update:any){
    await finish('ignored',lines.length?'메뉴 가격표예요.\n'+lines.join('\n'):'아직 등록된 메뉴 가격이 없어요.');return;
   }
   if(command&&!['status','rules'].includes(command)){await finish('ignored','지원하는 명령은 /help 에서 확인해주세요.');return;}
+  if(command==='status'||/^\/?(정산상태|처리상태|미처리)(@\w+)?\s*$/i.test(job.text.trim())){
+   const view=await deskStatusView(job.update_id);await finish('ignored',view.text,view.buttons);return;
+  }
   const rq=await db().from('dream_accounting_rules').select('id,kind,content').eq('active',true).order('id').limit(50);if(rq.error)throw Error('Rule lookup failed');
   const businessRules=rq.data||[];
-  if(command==='status'||/^\/?(정산상태|처리상태|미처리)(@\w+)?\s*$/i.test(job.text.trim())){
-   const q=await db().from('dream_accounting_jobs').select('update_id,message_id,text,status,plan,reply_text,reply_id,source_message,created_at,failure_reason').gte('created_at',new Date(Date.now()-12*3600000).toISOString()).order('created_at',{ascending:false}).limit(200);if(q.error)throw Error('Status unavailable');
-   const view=staffStatus(q.data||[]);await finish('ignored',view.text,view.buttons);return;
-  }
   if(command==='rules'||/^(기억한|저장된|업무)?\s*규칙(\s*(목록|보여줘|알려줘|확인))?[.!?]?$/.test(job.text.trim())){await finish('ignored',rulesLinkText);return;}
   const history=intakeHistory?{data:intakeHistory,error:null}:await db().from('dream_accounting_jobs').select('message_id,sender_id,text,plan,status,reply_text,reply_id,source_message,created_at').lt('update_id',job.update_id).gte('created_at',new Date(Date.now()-12*3600000).toISOString()).order('created_at',{ascending:false}).limit(48);
   if(history.error)throw Error('History lookup failed');
@@ -147,10 +159,10 @@ export async function handle(update:any){
   let photoSource:any=ownPhoto?job:confirmedResult?previous:null;
   if(!confirmedResult&&!image&&previous?.source_message){await readPhoto(previous.source_message);if(image)photoSource=previous;}
   let result:any=confirmedResult||await extract(job.text,image,context);
-  if(!confirmedChips){aiCalls++;totalTokens+=result._usage?.totalTokens||0;}
+  if(!confirmedChips){recordAI(result);}
   if(!image&&Number.isSafeInteger(result.sourceMessageId)){
    const source=recent.find(r=>r.message_id===result.sourceMessageId);
-   if(source?.source_message&&!closed(source)){await readPhoto(source.source_message);if(image){photoSource=source;result=await extract(job.text,image,{...context,photoSourceMessageId:source.message_id});aiCalls++;totalTokens+=result._usage?.totalTokens||0;}}
+   if(source?.source_message&&!closed(source)){await readPhoto(source.source_message);if(image){photoSource=source;result=await extract(job.text,image,{...context,photoSourceMessageId:source.message_id});recordAI(result);}}
    else {await finish('review','그 사진에 답장으로 요청해주세요.');return;}
   }
   const taskPlan={sheetState,photoRetryCount:job.plan?.photoRetryCount||0,photoSourceDate:photoSource?.plan?.photoSourceDate||photoSource?.source_message?.date||null,contextMessageId:previous?.message_id||null,photoSourceMessageId:photoSource?.message_id||null,continuationText:taskText};
@@ -163,12 +175,12 @@ export async function handle(update:any){
   }
   const reconsidered=await reconsiderPaper(result,{
    hasImage:!!image,confirmed:!!confirmedResult,elapsed:()=>Date.now()-started,
-   readEvidence:async()=>{const e=await readChipColumns(image!);aiCalls++;totalTokens+=e._usage?.totalTokens||0;return e;},
+   readEvidence:async()=>{const e=await readChipColumns(image!);recordAI(e);return e;},
    decide:async(evidence,question)=>{
     const reviewed=await extract(taskText,image,{...context,decisionReview:{
      previousQuestion:question,photoEvidence:evidence,
      instruction:'Re-evaluate the CURRENT request using the independent transcription and current sheet. Read handwritten game number before printed number. Resolve a replacement caption against that same game. Use known master identities and saved aliases. Do not ask for information already present. Do not invent missing facts, register unknown players without authorization, or replay historical operations. Return the normal extraction schema; all writes are separately verified.'
-    }});aiCalls++;totalTokens+=reviewed._usage?.totalTokens||0;return reviewed;
+    }});recordAI(reviewed);return reviewed;
    }
   });
   result=reconsidered.result;
@@ -184,7 +196,7 @@ export async function handle(update:any){
    result.unverifiedOperations=result.operations;
    try{
     if(Date.now()-started>100000)throw Error('Verification time budget');
-    const evidence=reconsidered.evidence||await readChipColumns(image);if(!reconsidered.evidence){aiCalls++;totalTokens+=evidence._usage?.totalTokens||0;}
+    const evidence=reconsidered.evidence||await readChipColumns(image);if(!reconsidered.evidence){recordAI(evidence);}
     const coverage=completePhotoRoster(result.operations,evidence,master,businessRules);
     result.operations=coverage.operations;
     const verified=verifyChipEvidence(result.operations,evidence,businessRules);
@@ -302,8 +314,6 @@ async function handleDeskCallback(c:any){
  if(action.kind==='fnb'){await reply(c.message.message_id,'영수증 사진이나 “준기형님 아메리카노 1잔”처럼 보내주세요. 메뉴 가격은 자동으로 적용해요. 층을 따로 말하지 않으면 2F예요.');return;}
  if(action.kind==='rules'){await reply(c.message.message_id,rulesLinkText);return;}
  if(action.kind==='status'){
-  const r=await db().from('dream_accounting_jobs').select('update_id,message_id,text,status,plan,reply_text,reply_id,source_message,created_at,failure_reason').gte('created_at',new Date(Date.now()-12*3600000).toISOString()).order('created_at',{ascending:false}).limit(200);
-  if(r.error){await reply(c.message.message_id,'상태를 확인하지 못했어요. 잠시 후 다시 눌러주세요.');return;}
-  const view=staffStatus(r.data||[]);await reply(c.message.message_id,view.text,view.buttons);
+  const view=await deskStatusView();await reply(c.message.message_id,view.text,view.buttons);
  }
 }

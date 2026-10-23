@@ -1,7 +1,7 @@
 // Staff-room commands are deterministic: no model call or ledger write.
 export const deskCommands=[
  {command:'help',description:'사용 방법'},
- {command:'status',description:'처리 상태와 확인할 항목'},
+ {command:'status',description:'AI 모델 · 시트 연결 · 처리 상태'},
  {command:'rules',description:'저장된 업무 규칙'},
  {command:'sheet',description:'정산 시트 열기'},
  {command:'menu',description:'F&B 메뉴 가격표'},
