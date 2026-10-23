@@ -9,7 +9,7 @@ import {easyHelp,easyMenu,parseDeskAction,pendingButtons,canMarkManual,buyinGuid
 import {rulesLinkText,rulesButton} from './accounting-rules-link';
 import {deskCommand,deskHelp,politeAcknowledgement,completionReply} from './accounting-conversation';
 import {shouldProcessStaffMessage,resolveFnb} from './accounting-intake';
-import {completePhotoRoster,needsChipVerification,verifyChipEvidence,confirmChipCount,continueChipConfirmation,withheldChipOperations} from './accounting-vision';
+import {bindConfirmedRebuy,completePhotoRoster,needsChipVerification,verifyChipEvidence,confirmChipCount,continueChipConfirmation,withheldChipOperations} from './accounting-vision';
 import {defaultAgency,completeNamedArrival,cosmeticNameEdit,jobReport,compactExtractionContext} from './accounting-workflow';
 import {reconcileSheet,reconcileOperation,afterVerifiedWrite} from './accounting-reconcile';
 import {sheetContext,correctedOperations,focusedQuestion,certainOperations,clearResolvedIdentityQuestion} from './accounting-context';
@@ -215,6 +215,7 @@ export async function handle(update:any){
    try{
     if(Date.now()-started>100000)throw Error('Verification time budget');
     const evidence=reconsidered.evidence||await readChipColumns(image);if(!reconsidered.evidence){recordAI(evidence);}
+    result.operations=bindConfirmedRebuy(result.operations,evidence,job.text,previous?.plan?.pendingQuestion,context.games);
     const coverage=completePhotoRoster(result.operations,evidence,master,businessRules);
     result.operations=coverage.operations;
     const verified=verifyChipEvidence(result.operations,evidence,businessRules);
