@@ -13,6 +13,7 @@ const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
 const execute=new AsyncFunction('env',`
  let {daily,fnb,master,result,correctionOriginal,ranges,sheet,save,finish,makePlan,correctionBlocked}=env;
  let sheetState={},businessDate='2026-10-23',taskPlan={},processingPlan={},job={update_id:1,text:''},businessRules=[],imageKey=null,writeStarted=false;
+ const prepareDateFormats=async()=>{},verifyDateDisplays=async()=>{};
  const reconcileSheet=()=>({}),correctedOperations=ops=>ops;
  ${stripTypeScriptTypes(sameSource,{mode:'transform'})}
  ${block}

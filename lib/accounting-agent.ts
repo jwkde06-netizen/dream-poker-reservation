@@ -1,3 +1,4 @@
+import {prepareDateFormats,verifyDateDisplays} from './accounting-format';
 import {headerBindingInstruction,correctionBlocked} from './accounting-corrections';
 import {AccountingGatewayError,gatewayError,gatewayStaffMessage} from './accounting-gateway-error';
 import {accountingModel} from './accounting-model';
@@ -26,7 +27,7 @@ export function authorized(request:Request,key:string,header='authorization'){
  const a=Buffer.from(got),b=Buffer.from(expected);return a.length===b.length&&timingSafeEqual(a,b);
 }
 export async function sheet(path:string,body?:unknown){
- const r=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${accountingWorkbook}/${path}`,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+await accessToken(),'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined,cache:'no-store',signal:AbortSignal.timeout(20000)});
+ const r=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${accountingWorkbook}${path.startsWith(':')||path.startsWith('?')?'':'/'}${path}`,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+await accessToken(),'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined,cache:'no-store',signal:AbortSignal.timeout(20000)});
  if(!r.ok)throw Error('Google Sheets request failed '+r.status);return r.json();
 }
 export async function ranges(list:string[],formula=false){const p=new URLSearchParams({valueRenderOption:formula?'FORMULA':'UNFORMATTED_VALUE'});list.forEach(x=>p.append('ranges',x));const d=await sheet('values:batchGet?'+p);return d.valueRanges.map((x:any)=>x.values||[]);}
@@ -265,6 +266,7 @@ export async function handle(update:any){
   await save(job.update_id,{plan:processingPlan,image_key:imageKey||null});
   if(result.question&&!plan.changes.length){await finish('review',String(result.question));return;}
   if(plan.changes.length){
+   await prepareDateFormats(plan.changes,sheet);
    const current=await ranges(plan.changes.map(x=>x.range));
    if(!plan.changes.every((x,i)=>same(current[i],x.before))){await finish('review','직원이 시트를 수정해서 이번 입력은 멈췄어요. 변경된 내용 확인 후 다시 요청해주세요.');return;}
    await save(job.update_id,{status:'writing'});
@@ -277,6 +279,7 @@ export async function handle(update:any){
    writeStarted=true;
    await sheet('values:batchUpdate',{valueInputOption:'RAW',data:plan.changes.map(({range,values})=>({range,values}))});
    const actual=await ranges(plan.changes.map(x=>x.range));if(!plan.changes.every((x,i)=>same(actual[i],x.values)))throw Error('Write readback mismatch');
+   await verifyDateDisplays(plan.changes,sheet);
   }
   sheetState=afterVerifiedWrite(sheetState,daily,plan.changes);
   processingPlan={...processingPlan,sheetState,metrics:metrics()};
