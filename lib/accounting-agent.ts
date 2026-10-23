@@ -88,6 +88,17 @@ export async function handle(update:any){
  }
  const owner=randomUUID();const {data:lock,error:le}=await db().rpc('dream_accounting_acquire',{p_owner:owner});if(le||!lock)throw Error('Workbook busy or requires reconciliation');
  let writeStarted=false;
+ let progressId:number|undefined;
+ const progress=async(text:string)=>{
+  if(progressId)await tg('editMessageText',{chat_id:m.chat.id,message_id:progressId,text}).catch(()=>null);
+ };
+ const deliver=async(text:string,buttons?:any)=>{
+  if(progressId){
+   try{await tg('editMessageText',{chat_id:m.chat.id,message_id:progressId,text:text.slice(0,4000),reply_markup:buttons||{inline_keyboard:[]}});return progressId;}
+   catch{/* A deleted progress message must not suppress the result. */}
+  }
+  return reply(m.message_id,text,buttons);
+ };
  try{
   // The same Telegram update may have waited behind another execution. Re-read
   // under the workbook lock before doing any interpretation or write.
@@ -99,12 +110,14 @@ export async function handle(update:any){
   if(['writing','uncertain'].includes(latestJob.data.status)){writeStarted=true;throw Error('Previous write requires review');}
   if(latestJob.data.status==='processing')throw Error('Previous execution requires review');
   await save(job.update_id,{status:'processing'});
-  // A reaction acknowledges receipt without adding a second chat message.
+  // Show a visible receipt before photo download, sheet reads and model calls.
+  if(m.photo||m.document)progressId=await reply(m.message_id,'⏳ 사진을 받았어요. 내용을 확인하고 있어요.').catch(()=>undefined);
+  // Keep the existing receipt reaction.
   if(m.photo||m.document)await tg('setMessageReaction',{chat_id:m.chat.id,message_id:m.message_id,reaction:[{type:'emoji',emoji:'👀'}]}).catch(()=>null);
   let processingPlan:any=null;
   let learnedRuleNotice='';
   const metrics=()=>({durationMs:Date.now()-started,aiCalls,totalTokens,responseModels:Array.from(responseModels)});
-  const finish=async(status:string,text:string,buttons?:any)=>{const pendingText=text;if(learnedRuleNotice)text=[text,learnedRuleNotice].filter(Boolean).join('\n\n');processingPlan={...(processingPlan||{}),metrics:metrics()};await save(job.update_id,{status,reply_text:text,plan:processingPlan,...(status==='review'&&processingPlan?{plan:{...processingPlan,pendingQuestion:pendingText}}:{})});if(text){const id=await reply(m.message_id,text,buttons||(status==='review'?pendingButtons(m.message_id):undefined));await save(job.update_id,{reply_id:id});}};
+  const finish=async(status:string,text:string,buttons?:any)=>{const pendingText=text;if(learnedRuleNotice)text=[text,learnedRuleNotice].filter(Boolean).join('\n\n');processingPlan={...(processingPlan||{}),metrics:metrics()};await save(job.update_id,{status,reply_text:text,plan:processingPlan,...(status==='review'&&processingPlan?{plan:{...processingPlan,pendingQuestion:pendingText}}:{})});if(text){const id=await deliver(text,buttons||(status==='review'?pendingButtons(m.message_id):undefined));await save(job.update_id,{reply_id:id});}else if(progressId){await progress('확인했어요. 시트에 새로 입력한 내용은 없어요.');}};
   if(update.edited_message){
    const original=await db().from('dream_accounting_jobs').select('text,plan,status').eq('message_id',m.message_id).lt('update_id',job.update_id).order('update_id',{ascending:true}).limit(1).maybeSingle();
    if(original.error)throw Error('Edited source lookup failed');
@@ -269,6 +282,7 @@ export async function handle(update:any){
   await save(job.update_id,{plan:processingPlan,image_key:imageKey||null});
   if(result.question&&!plan.changes.length){await finish('review',String(result.question));return;}
   if(plan.changes.length){
+   await progress('⏳ 내용 확인 완료 · 구글 시트에 반영 중이에요.');
    await prepareDateFormats(plan.changes,sheet);
    const current=await ranges(plan.changes.map(x=>x.range));
    if(!plan.changes.every((x,i)=>same(current[i],x.before))){await finish('review','직원이 시트를 수정해서 이번 입력은 멈췄어요. 변경된 내용 확인 후 다시 요청해주세요.');return;}
@@ -288,11 +302,11 @@ export async function handle(update:any){
   processingPlan={...processingPlan,sheetState,metrics:metrics()};
   const completion=[completionReply(result.operations,result.question,!!previous?.plan?.pendingQuestion&&!ownPhoto,plan),learnedRuleNotice].filter(Boolean).join('\n\n');
   await save(job.update_id,{status:'applied',reply_text:completion,plan:processingPlan});writeStarted=false;
-  const id=await reply(m.message_id,completion,result.question?pendingButtons(m.message_id):undefined);await save(job.update_id,{reply_id:id});
+  const id=await deliver(completion,result.question?pendingButtons(m.message_id):undefined);await save(job.update_id,{reply_id:id});
  }catch(e){
-  if(writeStarted){await save(job.update_id,{status:'uncertain',failure_reason:'Write outcome requires reconciliation'});throw e;}
+  if(writeStarted){await progress('⚠️ 시트 반영 결과를 확인하지 못했어요. 중복 입력을 막기 위해 처리를 멈췄어요. 관리자 확인이 필요해요.');await save(job.update_id,{status:'uncertain',failure_reason:'Write outcome requires reconciliation'});throw e;}
   const latest=await db().from('dream_accounting_jobs').select('status').eq('update_id',job.update_id).single();
-  if(!['applied','review','ignored'].includes(latest.data?.status||'')){const text=e instanceof AccountingGatewayError?gatewayStaffMessage(e):e instanceof InvalidAIResponse?'사진 처리 연결에 문제가 생겨 기록하지 못했어요. 원본은 저장돼 있어 아래 버튼으로 다시 처리할 수 있어요.':'오류가 나서 이번 건은 기록하지 못했어요. 관리자 확인이 필요해요.';await save(job.update_id,{status:'failed',failure_reason:e instanceof Error?e.message:'Processing failed',reply_text:text});const errorReplyId=await reply(m.message_id,text,e instanceof InvalidAIResponse?{inline_keyboard:[[{text:'해당 사진 다시 처리',callback_data:'desk:retry:'+m.message_id}]]}:undefined);await save(job.update_id,{reply_id:errorReplyId});}
+  if(!['applied','review','ignored'].includes(latest.data?.status||'')){const text=e instanceof AccountingGatewayError?gatewayStaffMessage(e):e instanceof InvalidAIResponse?'사진 처리 연결에 문제가 생겨 기록하지 못했어요. 원본은 저장돼 있어 아래 버튼으로 다시 처리할 수 있어요.':'오류가 나서 이번 건은 기록하지 못했어요. 관리자 확인이 필요해요.';await save(job.update_id,{status:'failed',failure_reason:e instanceof Error?e.message:'Processing failed',reply_text:text});const errorReplyId=await deliver(text,e instanceof InvalidAIResponse?{inline_keyboard:[[{text:'해당 사진 다시 처리',callback_data:'desk:retry:'+m.message_id}]]}:undefined);await save(job.update_id,{reply_id:errorReplyId});}
   throw e;
  }finally{if(!writeStarted){const r=await db().rpc('dream_accounting_release',{p_owner:owner});if(r.error)throw Error('Lock release failed');}}
 }
