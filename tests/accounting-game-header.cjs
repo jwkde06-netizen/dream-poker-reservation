@@ -7,8 +7,11 @@ const master=[['name','card','agency'],...paper.names.map(n=>[n,'','KOREA'])];
 const result=completePhotoRoster([op],{documents:[paper]},master);
 assert.equal(result.questions.length,0);assert.equal(result.operations.length,3);assert(result.operations.every(o=>o.game===17));
 assert.equal(verifyChipEvidence(result.operations,{documents:[paper]}).operations.length,3);
-for(const bad of [{...op,kind:'total'},{...op,gameConfirmed:true},{...op,printedGame:19},{...op,table:4}]){
+for(const bad of [{...op,kind:'total'},{...op,printedGame:19},{...op,table:4}]){
  assert.equal(completePhotoRoster([bad],{documents:[paper]},master).operations.length,0);
 }
 assert.equal(completePhotoRoster([op],{documents:[paper,{...paper}]},master).operations.length,0);
 console.log('Handwritten game correction and ambiguity guards passed');
+
+const confirmed=completePhotoRoster([{...op,gameConfirmed:true}],{documents:[paper]},master);
+assert.equal(confirmed.questions.length,0);assert(confirmed.operations.every(o=>o.game===16));
