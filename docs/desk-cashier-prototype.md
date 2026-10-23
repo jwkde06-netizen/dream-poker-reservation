@@ -31,3 +31,17 @@ Automated Kakao ingestion, automatic free-text translation and closed-app push r
 ## Verification
 
 `tests/reservation-demo.cjs` covers the transition model and actual route handlers with a transactional test adapter. `tests/reservation-demo.sql` rolls back capability, expiry, CAS, idempotency and operational-isolation checks. `tests/reservation-demo-live.cjs` runs concurrent requests against a deployed demo API only. Browser verification must additionally demonstrate the same booking changing in the desk and cashier UI; deployment alone is not acceptance.
+
+## Acceptance evidence — 23 October 2026
+
+Verified on the deployed `/demo` flow, using independent desk and cashier browser tabs and fake names only (room `94f7b8b0-aba6-46d9-ba55-43fdb13577fd`):
+
+- Desk request appeared on cashier screen without reload, with zero confirmed seats until approval. Cashier approval produced the desk confirmation banner and actor/time history.
+- Bilingual rejection appeared on the desk. A separate change from two to four guests kept the original two seats until approval. Cashier proposed 18:00; desk adopted it and cashier approved; both screens showed four guests at 18:00.
+- Simulated acknowledgement loss showed an uncertain result and disabled new mutations. Cashier received the booking. Retrying produced one booking and one request event.
+- Desk cancellation held the confirmed seat until cashier approval; both screens then showed cancelled and the seat count fell from five to four.
+- Cashier tested at 390px phone and 768px tablet widths: no horizontal overflow; phone decision buttons are 58px high. These are browser viewport checks, not physical-device tests.
+- Deployed API integration suite passed: same-command concurrent replay, desk approval denied, two six-person approvals competing for nine seats (only one accepted), bilingual rejection, change/cancel approval and invalid capability denied.
+- Unit/API, rollback SQL, existing Telegram/webhook/staff suites and TypeScript passed.
+
+No production reservation or Telegram message was created by these checks. The preview deployment is protected and its create-room request did not succeed; acceptance above was performed on the isolated demo routes at the production domain.

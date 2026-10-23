@@ -44,7 +44,7 @@ function details(value:DemoDetails|undefined,state:DemoState,now:string):DemoDet
 export function occupiedSeats(state:DemoState,game:string,except?:string){return state.bookings.filter(b=>b.game_id===game&&b.status==='confirmed'&&b.id!==except).reduce((n,b)=>n+b.party_size,0);}
 function unique(state:DemoState,d:DemoDetails,id?:string){if(state.bookings.some(b=>b.id!==id&&['pending','confirmed'].includes(b.status)&&(b.name===d.name&&b.game_id===d.game_id||b.proposed?.name===d.name&&b.proposed?.game_id===d.game_id)))throw new DemoError('duplicate');}
 
-// Both screens, the demo Telegram controls and retries use this single transition function.
+// Both screens and retries use this single transition function; Telegram is preview-only.
 // The database commits the entire room with compare-and-swap, so capacity checks serialize.
 export function applyDemoCommand(original:DemoState,c:DemoCommand,role:DemoRole,now:string):DemoState {
  if(!c||!/^[-0-9a-f]{36}$/i.test(c.id))throw new DemoError('invalid');
