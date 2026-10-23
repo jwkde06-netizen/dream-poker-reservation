@@ -3,6 +3,10 @@
     {
       "path": "/api/exchange/daily-close",
       "schedule": "30 20 * * 0"
+    },
+    {
+      "path": "/api/accounting/staff-reminder",
+      "schedule": "30 8 23 10 *"
     }
   ]
 }
