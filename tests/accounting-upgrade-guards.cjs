@@ -23,9 +23,9 @@ assert.equal(verifyChipEvidence(result.operations,paper,rules).operations.length
 const unchanged=completionReply([op],null,false,{summary:['CHANG YOON HO은 이미 시트에 있어요.'],changes:[]});
 assert.match(unchanged,/이미/);assert(!unchanged.includes('기록 완료'));
 const empty=completionReply([op],'소속을 확인해주세요.',false,{summary:[],changes:[]});
-assert.match(empty,/새로 반영한 항목은 없어요/);assert(!empty.includes('기록했어요'));
+assert.equal(empty,'소속을 확인해주세요.');assert(!empty.includes('완료'));
 const cancelled=completionReply([{...op,kind:'cancel'}],null,false,{summary:['12-2 테이블 CHANG YOON HO 명단에서 빼고 같은 게임의 빈칸도 정리했어요.'],changes:[{}]});
-assert.match(cancelled,/빈칸/);assert(!cancelled.includes('바이인 기록 완료'));
+assert.equal(cancelled,'✅ 구글 시트 반영 완료');
 assert.match(completionReply([{...op,kind:'cancel'}],null,false),/선수 삭제 완료/);
 console.log('Upgrade guards passed: malformed evidence, duplicates, ambiguous handwriting, uncircled known players, truthful completion');
 // A short answer must retain new-entry semantics, not seek a nonexistent row.
