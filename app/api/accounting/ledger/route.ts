@@ -6,6 +6,7 @@ import {db,ranges,sheet,same} from '../../../../lib/accounting-agent';
 import {deskPlan,sourceHash,LedgerSource} from '../../../../lib/desk-ledger-plan';
 import {ledgerView,assertReservationOperation} from '../../../../lib/desk-ledger-view';
 import {prepareDateFormats,verifyDateDisplays} from '../../../../lib/accounting-format';
+import {readSettlementJobs,settlementIntake} from '../../../../lib/settlement-intake';
 export const dynamic='force-dynamic';export const maxDuration=120;
 const json=(x:any,status=200)=>NextResponse.json(x,{status,headers:{'Cache-Control':'no-store'}});
 async function read():Promise<LedgerSource>{const [daily,fnb,master,menu]=await ranges(["'일일 입력'!A1:O5000","'F&B 입력'!A1:D2000","'플레이어 명단'!A1:D2500","'F&B 가격표'!A1:E100"],true);return {daily,fnb,master,menu};}
@@ -25,6 +26,7 @@ export async function GET(req:Request){
  try{
  const day=new URL(req.url).searchParams.get('day')||new Date(Date.now()+7*3600000).toISOString().slice(0,10);
  const [s,[calculated]]=await Promise.all([read(),ranges(["'일일 입력'!A1:O5000"])]),view=ledgerView(s,day,calculated),client=db();
+ const intakeTask=readSettlementJobs(client,day,day).then(jobs=>({intake:settlementIntake(jobs,calculated,s.master,day,day),intakeError:null})).catch(()=>({intake:null,intakeError:'스캔 처리 내역을 확인하지 못했어요. 새로고침해주세요.'}));
  const gameStates=await client.from('dream_sheet_game_status').select('business_date,game_no,table_label,physical_table,blind,status,source_no,version,updated_at').eq('business_date',day);
  if(gameStates.error)throw Error('게임 진행 상태를 불러오지 못했어요.');
  const q=await client.from('dream_desk_commands').select('id,status,summary,created_at,completed_at').eq('created_by',user.id).order('created_at',{ascending:false}).limit(20);
@@ -33,7 +35,7 @@ export async function GET(req:Request){
  const reservations=await client.from('reservations').select('id,game_id,player_name,player_name_en,player_name_ko,status,version,arrival_at,game:reservation_games(title,table_no,game_no,is_default_queue)').eq('is_test',false).gte('arrival_at',from.toISOString()).lt('arrival_at',to.toISOString()).order('arrival_at',{ascending:true}).limit(501);
  if(reservations.error)throw Error('예약 내역을 불러오지 못했어요.');
  if(reservations.data.length>500)throw Error('하루 예약이 500건을 초과하여 전체 대조가 필요합니다.');
- return json({...view,gameStates:gameStates.data,reservations:reservations.data,checkedAt:new Date().toISOString(),players:s.master.slice(1).filter(r=>r[0]).map(r=>({name:r[0],card:r[1]||'',agency:r[2]||''})),menu:s.menu.slice(1).filter(r=>r[0]).map(r=>({name:r[0],price:r[2],unit:r[3]})),history:q.data,sourceHash:sourceHash(s)});
+ return json({...view,...(await intakeTask),gameStates:gameStates.data,reservations:reservations.data,checkedAt:new Date().toISOString(),players:s.master.slice(1).filter(r=>r[0]).map(r=>({name:r[0],card:r[1]||'',agency:r[2]||''})),menu:s.menu.slice(1).filter(r=>r[0]).map(r=>({name:r[0],price:r[2],unit:r[3]})),history:q.data,sourceHash:sourceHash(s)});
  }catch(e){return json({error:(e as Error).message},400);}
 }
 export async function POST(req:Request){

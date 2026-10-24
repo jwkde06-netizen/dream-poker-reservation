@@ -1,6 +1,6 @@
 import {createHash} from 'node:crypto';
 import {settlementProfile as profile} from './settlement-profile';
-export type Issue={kind:string;message:string;sheet?:string;row?:number};
+export type Issue={kind:string;message:string;sheet?:string;row?:number;date?:string;game?:number;messageId?:number};
 export function isoDate(v:any):string|null{
  if(typeof v==='number'&&Number.isFinite(v)&&v>25000&&v<100000)return new Date(Math.floor(v-25569)*86400000).toISOString().slice(0,10);
  if(typeof v!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(v))return null;
@@ -19,27 +19,33 @@ export function buildSettlement(day:string,daily:any[][],fnb:any[][],weekly:any[
  if(!profile.dailyHeaders.every((v,i)=>daily[0]?.[i]===v))throw Error('일일 입력의 열 구성이 변경됐어요. 연결 설정을 확인해주세요.');
  const sourceDaily:any[]=[],sourceFnb:any[]=[],invalid:any[]=[],seen=new Set<string>();
  const totals={buyins:0,rake:0,back:0,mongol:0,japan:0,china:0,house:0,korea2:0,fnb:0,fnbExcluded:0,fnbDeductible:0};
- const days:Record<string,{date:string;buyins:number;rake:number;back:number;fnb:number}>={};
- for(let i=0;i<7;i++){const d=new Date(start+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+i);const date=d.toISOString().slice(0,10);days[date]={date,buyins:0,rake:0,back:0,fnb:0};}
+ const days:Record<string,{date:string;buyins:number;rake:number;back:number;fnb:number;fnbDeductible:number;fnbExcluded:number;payout:number;net:number;participants:number;games:number;issues:Issue[]}>={};
+ const dailyGames:Record<string,Set<string>>={};
+ for(let i=0;i<7;i++){const d=new Date(start+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+i);const date=d.toISOString().slice(0,10);days[date]={date,buyins:0,rake:0,back:0,fnb:0,fnbDeductible:0,fnbExcluded:0,payout:0,net:0,participants:0,games:0,issues:[]};dailyGames[date]=new Set();}
  const groups:Record<string,{agency:string;buyins:number;rake:number;back:number}>={};
+ let currentGame:number|undefined,lastDate:string|null=null;
  daily.slice(1).forEach((r,i)=>{
+  const rowDate=isoDate(r[columns.date]);if(rowDate&&rowDate!==lastDate){currentGame=undefined;lastDate=rowDate;}if(present(r[0]))currentGame=Number(r[0]);
   if(!present(r[4]))return;
   const date=isoDate(r[columns.date]);if(!date){issues.push({kind:'date',message:'참가자의 날짜를 확인해주세요.',sheet:profile.tabs.daily,row:i+2});invalid.push(['daily',i+2,r]);return;}
   if(date<start||date>end)return;sourceDaily.push({row:i+2,values:r});
+  const location={sheet:profile.tabs.daily,row:i+2,date,game:Number.isInteger(currentGame)?currentGame:undefined};
+  days[date].participants++;dailyGames[date].add([currentGame??'',r[2],r[3]].join('|'));
   const key=[date,r[columns.table],String(r[4]).replace(/\s/g,'').toUpperCase()].join('|');
-  if(seen.has(key))issues.push({kind:'duplicate',message:`${r[4]} · ${r[2]} 중복 여부 확인`,sheet:profile.tabs.daily,row:i+2});seen.add(key);
-  if(!present(r[2])||!present(r[3])||!present(r[6]))issues.push({kind:'missing',message:'테이블·블라인드·소속을 확인해주세요.',sheet:profile.tabs.daily,row:i+2});
+  if(seen.has(key))issues.push({kind:'duplicate',message:`${r[4]} · ${r[2]} 중복 여부 확인`,...location});seen.add(key);
+  if(!present(r[2])||!present(r[3])||!present(r[6]))issues.push({kind:'missing',message:`${r[4]} · 테이블·블라인드·소속을 확인해주세요.`,...location});
   const agency=String(r[6]||'미지정');groups[agency]??={agency,buyins:0,rake:0,back:0};
   for(const field of ['buyins','rake','back','mongol','japan','china','house','korea2'] as const){
-   const v=r[columns[field]];if(!money(v)){issues.push({kind:'amount',message:`${profile.dailyHeaders[columns[field]]} 값 또는 수식 오류`,sheet:profile.tabs.daily,row:i+2});continue;}
+   const v=r[columns[field]];if(!money(v)){issues.push({kind:'amount',message:`${r[4]} · ${profile.dailyHeaders[columns[field]]} 값 또는 수식 오류`,...location});continue;}
    totals[field]+=v;if(field==='buyins'||field==='rake'||field==='back'){days[date][field]+=v;groups[agency][field]+=v;}
+   else days[date].payout+=v;
   }
  });
  fnb.slice(1).forEach((r,i)=>{
   if(!r.some(present))return;const date=isoDate(r[0]);
   if(!date){issues.push({kind:'date',message:'F&B 날짜를 확인해주세요.',sheet:profile.tabs.fnb,row:i+2});invalid.push(['fnb',i+2,r]);return;}
   if(date<start||date>end)return;sourceFnb.push({row:i+2,values:r});
-  if(!money(r[2]))issues.push({kind:'amount',message:'F&B 금액을 확인해주세요.',sheet:profile.tabs.fnb,row:i+2});else{totals.fnb+=r[2];days[date].fnb+=r[2];if(r[1]==='3F')totals.fnbExcluded+=r[2];else totals.fnbDeductible+=r[2];}
+  if(!money(r[2]))issues.push({kind:'amount',message:'F&B 금액을 확인해주세요.',sheet:profile.tabs.fnb,row:i+2,date});else{totals.fnb+=r[2];days[date].fnb+=r[2];if(r[1]==='3F'){totals.fnbExcluded+=r[2];days[date].fnbExcluded+=r[2];}else{totals.fnbDeductible+=r[2];days[date].fnbDeductible+=r[2];}}
  });
  if(salary!==null&&!money(salary))throw Error('급여 선지출은 0 이상의 정수로 입력해주세요.');
  const sheetWeek=isoDate(weekly[1]?.[1]),sameWeek=sheetWeek===start;
@@ -53,7 +59,8 @@ export function buildSettlement(day:string,daily:any[][],fnb:any[][],weekly:any[
  if(checks.some(c=>!c.match))issues.push({kind:'comparison',message:'기존 주간정산표와 합계가 달라요. 원본 수식을 확인해주세요.'});
  const shares=sameWeek?weekly.slice(17,20).map(r=>({label:String(r?.[0]||''),amount:r?.[1]??null})):[];
  if(shares.some(s=>typeof s.amount==='number'&&s.amount<0))issues.push({kind:'share',message:'기존 주간정산표의 배분액이 음수예요. 반올림 잔액과 배분 기준을 확인해주세요.'});
- pending.forEach(p=>issues.push({kind:'pending',message:p.question||'처리를 확인할 메시지가 있어요.'}));
+ pending.forEach(p=>issues.push({kind:'pending',message:p.question||'처리를 확인할 메시지가 있어요.',date:p.date,game:p.games?.length===1?p.games[0]:undefined,messageId:p.messageId}));
+ for(const d of Object.values(days)){d.games=dailyGames[d.date].size;d.net=d.back-d.fnbDeductible-d.payout;d.issues=issues.filter(i=>i.date===d.date||(!i.date&&i.kind==='date'));}
  // The shared weekly tab's date selector is not a source transaction. Moving it
  // to another week must not invalidate an otherwise unchanged saved report.
  const sourceHash=createHash('sha256').update(JSON.stringify({fnbPolicy:'exclude-3F-v1',profile, start,end,sourceDaily,sourceFnb,invalid,salaryValue,pending})).digest('hex');
