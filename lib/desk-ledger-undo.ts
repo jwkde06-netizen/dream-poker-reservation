@@ -18,7 +18,7 @@ export function projectChanges(s:LedgerSource,changes:CellChange[]):LedgerSource
  return out;
 }
 export function undoPlan(original:any,source:LedgerSource){
- if(original.status!=='applied'||original.operation?.kind==='undo'||!['game','buyins','participant','cancel'].includes(original.operation?.kind))throw Error('실행 취소할 입력을 확인해주세요.');
+ if(original.status!=='applied'||original.operation?.kind==='undo'||!['game','scan','buyins','participant','cancel'].includes(original.operation?.kind))throw Error('실행 취소할 입력을 확인해주세요.');
  if(!original.operation.undoHash||original.operation.undoHash!==undoHash(source))throw Error('이후 기록이 변경되어 실행 취소할 수 없습니다. 현재 기록을 확인해주세요.');
  return {changes:original.changes.map((c:CellChange)=>({range:c.range,before:c.values,values:c.before})),summary:['실행 취소 · '+(original.summary?.[0]||'최근 입력')]};
 }

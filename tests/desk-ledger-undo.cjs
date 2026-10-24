@@ -29,6 +29,7 @@ module.exports=(async()=>{
   if(n.endsWith('/telegram'))return {requireAdmin:async()=>admin?{id:'admin'}:null};
   if(n.endsWith('/desk-ledger-plan'))return mod('lib/desk-ledger-plan.ts');
   if(n.endsWith('/desk-ledger-undo'))return undo;
+  if(n.endsWith('/desk-game-settings'))return mod('lib/desk-game-settings.ts');
   if(n.endsWith('/desk-ledger-view')||n.endsWith('/sheet-game-status')||n.endsWith('/settlement-intake'))return {};
   if(n.endsWith('/accounting-format'))return {prepareDateFormats:async()=>{},verifyDateDisplays:async()=>{}};
   if(n.endsWith('/accounting-agent'))return {db:()=>client,ranges:async list=>list.length===4?[current.daily,current.fnb,current.master,current.menu]:list.map(rangeValues),same:(a,b)=>JSON.stringify(a)===JSON.stringify(b),sheet:async(path,body)=>{assert.equal(path,'values:batchUpdate');writes++;current=undo.projectChanges(current,body.data);}};

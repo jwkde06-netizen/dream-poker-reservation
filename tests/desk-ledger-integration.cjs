@@ -33,6 +33,7 @@ const route=moduleAt('app/api/accounting/ledger/route.ts',n=>{
  if(n.endsWith('/desk-ledger-plan'))return planner;
  if(n.endsWith('/desk-ledger-view'))return view;
  if(n.endsWith('/sheet-game-status'))return lifecycle;
+ if(n.endsWith('/desk-game-settings'))return moduleAt('lib/desk-game-settings.ts',x=>x==='./sheet-game-status'?lifecycle:require(x));
  if(n.endsWith('/desk-ledger-undo'))return moduleAt('lib/desk-ledger-undo.ts',require);
  if(n.endsWith('/settlement-intake'))return {readSettlementJobs:async()=>[],settlementIntake:()=>({items:[],counts:{verified:0,review:0,failed:0,processing:0,manual:0},total:0})};
  if(n.endsWith('/accounting-format'))return {prepareDateFormats:async()=>{formats++},verifyDateDisplays:async()=>{displayChecks++}};

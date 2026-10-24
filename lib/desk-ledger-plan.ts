@@ -8,7 +8,24 @@ const pad=(r:any[],n:number)=>Array.from({length:n},(_,i)=>r[i]??'');
 export function deskPlan(b:any,s:LedgerSource){
  let changes:CellChange[]=[],summary:string[]=[];
  const codes=Array.from(new Set(s.master.slice(1).map(r=>String(r[2]||'').trim()).filter(Boolean)));
- if(b.kind==='game'){
+ if(b.kind==='game_edit'){
+  const date=serial(b.date);integer(b.game,1,100);
+  if(typeof b.tableLabel!=='string'||!/^([1-9]\d?)(?:-([1-9]\d?))?$/.test(b.tableLabel)||!['3M','5M','10M','15M'].includes(b.blind))throw Error('테이블과 게임 포맷을 확인해주세요.');
+  if(typeof b.sourceNo!=='string'||!/^\d{0,8}$/.test(b.sourceNo))throw Error('No.는 8자리 이내 숫자로 입력해주세요.');
+  let game=0,lastDate:any=null;const members:{r:any[];i:number}[]=[];
+  for(let i=1;i<s.daily.length;i++){const r=s.daily[i];if(r[1]!==''&&r[1]!=null&&r[1]!==lastDate){game=0;lastDate=r[1];}if(r[0]!==''&&r[0]!=null)game=Number(r[0]);if(Number(r[1])!==date||!r[4])continue;if(game===b.game)members.push({r,i});else if(tableLabel(r[2])===b.tableLabel)throw Error('이 테이블 표기는 다른 게임에서 사용 중입니다. 테이블 회차를 확인해주세요.');}
+  if(!members.length||members.some(({r})=>tableLabel(r[2])!==b.expectedTable||r[3]!==b.expectedBlind))throw Error('게임 정보가 변경됐습니다. 새로고침 후 수정해주세요.');
+  for(const {r,i} of members){if([0,1,2,3,4,7].some(c=>String(r[c]||'').startsWith('=')))throw Error('수기 수식이 포함된 게임은 자동 수정할 수 없습니다.');changes.push({range:`'일일 입력'!C${i+1}:D${i+1}`,before:[[r[2],r[3]]],values:[[b.tableLabel,b.blind]]});}
+  summary=[`${b.game}번 · 테이블 ${b.tableLabel} · ${b.blind} · No. ${b.sourceNo||'—'} 수정`];
+ }else if(b.kind==='scan'){
+  const date=serial(b.date);integer(b.game,1,100);integer(b.table,1,100);
+  if(!['new','existing'].includes(b.mode)||!['3M','5M','10M','15M'].includes(b.blind)||!Array.isArray(b.players)||!b.players.length||b.players.length>20)throw Error('입력할 게임과 명단을 확인해주세요.');
+  let game=0,lastDate:any=null;const current=s.daily.filter(r=>{if(r[1]!==''&&r[1]!=null&&r[1]!==lastDate){game=0;lastDate=r[1];}if(r[0]!==''&&r[0]!=null)game=Number(r[0]);return Number(r[1])===date&&game===b.game&&r[4];});
+  if(b.mode==='new'&&current.length)throw Error('이미 있는 게임입니다. 기존 게임을 선택해주세요.');
+  if(b.mode==='existing'&&(!current.length||current.some(r=>Number(tableLabel(r[2]).split('-')[0])!==b.table||r[3]!==b.blind)))throw Error('선택한 게임의 테이블·포맷이 변경됐습니다. 다시 확인해주세요.');
+  const seen=new Set<string>(),ops=b.players.map((p:any)=>{const player=txt(p.player,80),k=norm(player);if(seen.has(k))throw Error('같은 플레이어가 중복되었습니다.');seen.add(k);return {kind:current.some(r=>norm(r[4])===k)?'total':'add',date:b.date,game:b.game,table:b.table,blind:b.blind,player,buyins:integer(p.buyins,1,50),gameConfirmed:true};});
+  const p=planOperations(ops,s.daily,s.fnb,s.master,{tableRoundLabels:true,photoSnapshot:true});changes=p.changes;summary=p.summary;
+ }else if(b.kind==='game'){
   serial(b.date);integer(b.game,1,100);integer(b.table,1,100);
   if(!['3M','5M','10M','15M'].includes(b.blind)||!Array.isArray(b.players)||!b.players.length||b.players.length>20)throw Error('게임과 참가자를 확인해주세요.');
   const seen=new Set();const ops=b.players.map((p:any)=>{const player=txt(p.player,80),key=norm(player);if(seen.has(key))throw Error('같은 선수가 두 번 선택됐어요.');seen.add(key);return {kind:'add',date:b.date,game:b.game,table:b.table,blind:b.blind,player,buyins:integer(p.buyins,1,50)};});
