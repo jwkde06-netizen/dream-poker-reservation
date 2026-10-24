@@ -30,10 +30,11 @@ export function settlementIntake(jobs:any[],daily:any[][],master:any[][],start:s
   const checked=ops.filter(matches).length;
   // A saved F&B write has its own readback audit; equal expense totals are not an identity.
   const verified=ops.length>0&&ops.every(o=>o.kind==='fnb'?j.status==='applied':matches(o));
-  const state=p.manual_handoff?'manual':['received','processing','writing'].includes(j.status)?'processing':!p.pendingQuestion&&!p.unverifiedOperations?.length&&!p.deferredRegistrations?.length&&verified?'verified':j.status==='failed'?'failed':'review';
-  return [{messageId:j.message_id,rootMessageId:root(j),date:relevant[0],dates:relevant,games:Array.from(new Set<number>(all.map(o=>o.game).filter(g=>Number.isInteger(g)&&g>0))),players:Array.from(new Set<string>(all.map(o=>String(o.player||'')).filter(Boolean))),status:state,checked,total:ops.length,question:state==='verified'||state==='manual'?null:p.pendingQuestion||(state==='processing'?'사진 내용을 확인하고 있습니다.':state==='failed'?'이 요청은 처리되지 않았어요. 참가 기록과 대조해주세요.':'현재 장부와 이 요청을 대조해주세요.'),createdAt:j.created_at}];
+  const unresolved=!!p.pendingQuestion||!!p.unverifiedOperations?.length||!!p.deferredRegistrations?.length;
+  const state=p.manual_handoff?'manual':['received','processing','writing'].includes(j.status)?'processing':!unresolved&&verified?'verified':!unresolved&&j.status==='applied'?'changed':j.status==='failed'?'failed':'review';
+  return [{messageId:j.message_id,rootMessageId:root(j),date:relevant[0],dates:relevant,games:Array.from(new Set<number>(all.map(o=>o.game).filter(g=>Number.isInteger(g)&&g>0))),players:Array.from(new Set<string>(all.map(o=>String(o.player||'')).filter(Boolean))),status:state,checked,total:ops.length,question:state==='verified'||state==='manual'?null:p.pendingQuestion||(state==='processing'?'사진 내용을 확인하고 있습니다.':state==='changed'?'반영 당시와 현재 장부가 다릅니다. 이후 정정·리바인 기록을 확인해주세요.':state==='failed'?'이 요청은 처리되지 않았어요. 참가 기록과 대조해주세요.':'현재 장부와 이 요청을 대조해주세요.'),createdAt:j.created_at}];
  });
- const counts={verified:0,review:0,failed:0,processing:0,manual:0};for(const i of items)counts[i.status as keyof typeof counts]++;
+ const counts={verified:0,review:0,failed:0,processing:0,manual:0,changed:0};for(const i of items)counts[i.status as keyof typeof counts]++;
  return {items,counts,total:items.length};
 }
 

@@ -60,7 +60,7 @@ export function buildSettlement(day:string,daily:any[][],fnb:any[][],weekly:any[
  const shares=sameWeek?weekly.slice(17,20).map(r=>({label:String(r?.[0]||''),amount:r?.[1]??null})):[];
  if(shares.some(s=>typeof s.amount==='number'&&s.amount<0))issues.push({kind:'share',message:'기존 주간정산표의 배분액이 음수예요. 반올림 잔액과 배분 기준을 확인해주세요.'});
  pending.forEach(p=>issues.push({kind:'pending',message:p.question||'처리를 확인할 메시지가 있어요.',date:p.date,game:p.games?.length===1?p.games[0]:undefined,messageId:p.messageId}));
- for(const d of Object.values(days)){d.games=dailyGames[d.date].size;d.net=d.back-d.fnbDeductible-d.payout;d.issues=issues.filter(i=>i.date===d.date||(!i.date&&i.kind==='date'));}
+ for(const d of Object.values(days)){d.games=dailyGames[d.date].size;d.net=d.back-d.fnbDeductible-d.payout;d.issues=issues.filter(i=>i.date===d.date);}
  // The shared weekly tab's date selector is not a source transaction. Moving it
  // to another week must not invalidate an otherwise unchanged saved report.
  const sourceHash=createHash('sha256').update(JSON.stringify({fnbPolicy:'exclude-3F-v1',profile, start,end,sourceDaily,sourceFnb,invalid,salaryValue,pending})).digest('hex');
