@@ -7,11 +7,13 @@ begin
  insert into auth.users(id,email) values(desk_id,'test-desk-'||desk_id||'@example.invalid'),(cashier_id,'test-cashier-'||cashier_id||'@example.invalid');
  insert into user_profiles(user_id,role,active,display_name) values(desk_id,'desk',true,'TEST DESK'),(cashier_id,'cashier',true,'TEST CASHIER')
  on conflict(user_id) do update set role=excluded.role,active=true,display_name=excluded.display_name;
- insert into reservation_games(id,title,starts_at,capacity,is_open,is_default_queue,is_test) values(game,'TEST SQL',now(),3,true,true,true);
+ update user_profiles set display_name='',username='TEST DESK' where user_id=desk_id;
+ insert into reservation_games(id,title,starts_at,capacity,is_open,is_default_queue,is_test) values(game,'TEST SQL',now(),3,true,false,true);
  perform set_config('request.jwt.claim.sub',desk_id::text,true);
  request:=jsonb_build_object('game_id',game,'player_name_en','TEST ALPHA','arrival_at',now()+interval '30 minutes','party_size',2,'guest_note','TEST ONLY','source','desk');
  result:=submit_reservation_request(cmd,request); rid:=(result->>'reservation_id')::uuid;
  assert (select status='pending' and party_size=2 and is_test from reservations where id=rid),'desk submission remains pending';
+ assert (select updated_actor='TEST DESK' from reservations where id=rid),'blank display name uses staff username';
  assert submit_reservation_request(cmd,request)=result,'response loss retry returns same booking';
  assert (select count(*)=1 from reservations where game_id=game),'idempotent creation';
  begin perform submit_reservation_request(cmd,request||'{"party_size":3}'); raise exception 'FAIL reused command'; exception when raise_exception then if sqlerrm<>'Request ID already used' then raise; end if; end;

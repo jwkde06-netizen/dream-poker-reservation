@@ -43,7 +43,7 @@ async function request(body){
 }
 (async()=>{
  await pg.exec(fs.readFileSync('tests/fixtures/reservation-schema.sql','utf8'));
- for(const file of ['20261024092735_reservation_operations.sql','20261024094526_reservation_operations_transitions.sql','20261024094527_reservation_sheet_delivery.sql','20261024100342_reservation_test_queue_isolation.sql'])await pg.exec(fs.readFileSync('supabase/migrations/'+file,'utf8'));
+ for(const file of ['20261024092735_reservation_operations.sql','20261024094526_reservation_operations_transitions.sql','20261024094527_reservation_sheet_delivery.sql','20261024100342_reservation_test_queue_isolation.sql','20261024101021_reservation_request_actor_label.sql'])await pg.exec(fs.readFileSync('supabase/migrations/'+file,'utf8'));
  await pg.exec(`grant usage on schema public,auth to authenticated;grant select on reservations,reservation_games,reservation_audit to authenticated;
  alter table reservations enable row level security;create policy staff_read on reservations for select to authenticated using(current_app_role() in ('admin','staff','desk','cashier'));
  alter table reservation_audit enable row level security;create policy staff_read on reservation_audit for select to authenticated using(current_app_role() in ('admin','staff','desk','cashier'));`);

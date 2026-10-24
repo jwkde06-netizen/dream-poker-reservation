@@ -4,8 +4,9 @@ const {PGlite}=require(process.env.PGLITE_MODULE||'@electric-sql/pglite');
  const db=new PGlite();
  try{
   await db.exec(fs.readFileSync('tests/fixtures/reservation-schema.sql','utf8'));
-  for(const file of ['20261024092735_reservation_operations.sql','20261024094526_reservation_operations_transitions.sql','20261024094527_reservation_sheet_delivery.sql','20261024100342_reservation_test_queue_isolation.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+file,'utf8'));
+  for(const file of ['20261024092735_reservation_operations.sql','20261024094526_reservation_operations_transitions.sql','20261024094527_reservation_sheet_delivery.sql','20261024100342_reservation_test_queue_isolation.sql','20261024101021_reservation_request_actor_label.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+file,'utf8'));
   await db.exec("insert into reservation_games(title,starts_at,is_default_queue) values('Existing operational queue',now(),true)");
+  await db.exec("insert into reservation_games(title,starts_at,is_default_queue,is_test) values('Existing test queue',now(),true,true)");
   await db.exec(fs.readFileSync('tests/reservation-operations.sql','utf8'));
   await db.exec(fs.readFileSync('tests/reservation-delivery-postgres.sql','utf8'));
   console.log('Isolated PostgreSQL checks passed: exact migration, staff roles, retries, capacity, changes, cancellation, audit and test isolation.');
