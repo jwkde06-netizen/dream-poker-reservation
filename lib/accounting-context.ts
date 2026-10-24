@@ -37,9 +37,10 @@ export function sheetContext(daily:any[][],master:any[][],businessDate:string){
  }
  return {businessDate,players,games:Object.values(games)};
 }
-export function correctedOperations(ops:any[],text:string,master:any[][],rules:any[]=[]){
+export function correctedOperations(ops:any[],text:string,master:any[][],rules:any[]=[],previous?:any){
  const gameNumbers=Array.from(new Set(Array.from(text.matchAll(/((?:\d{1,2}\s*[,·/]\s*)*\d{1,2})\s*(?:번째|번)\s*게임/g)).flatMap(m=>m[1].split(/[,·/]/).map(Number))));
  const game=gameNumbers.length===1?gameNumbers[0]:null;
+ const replacement=(ops||[]).some(o=>o.kind==='cancel')&&(ops||[]).some(o=>['add','total'].includes(o.kind));
  const attendance=(ops||[]).filter(o=>['add','total','cancel'].includes(o.kind));
  const tables=new Set(attendance.map(o=>Number(o.table)));
  const mentionedTables=Array.from(new Set(Array.from(text.matchAll(/(\d{1,2})\s*번\s*테이블/g)).map(m=>Number(m[1]))));
@@ -52,9 +53,17 @@ export function correctedOperations(ops:any[],text:string,master:any[][],rules:a
  return (ops||[]).map(op=>{
   const matches=players.filter(r=>norm(r[0])===playerIdentity(op.player,rules));
   // A follow-up about one receipt must never renumber every receipt in a photo.
-  const applies=game&&['add','total','cancel'].includes(op.kind)&&(scopedTable?Number(op.table)===scopedTable:tables.size===1);
+  const applies=game&&['add','total','cancel'].includes(op.kind)&&!(replacement&&op.kind==='cancel')&&(scopedTable?Number(op.table)===scopedTable:tables.size===1);
   const fixed={...op,...(matches.length===1?{player:matches[0][0]}:{}),...(applies?{game:game,gameConfirmed:true}:gameNumbers.length>1&&gameNumbers.includes(op.game)?{gameConfirmed:true}:{})};
-  if(!applies&&Number.isInteger(op.printedGame)&&['add','total','cancel'].includes(op.kind)){
+  // A correction's destination is not the source to remove. Recover the source
+  // from the applied reply target even if the model echoed the new number.
+  if(replacement&&op.kind==='cancel'&&previous?.status==='applied'){
+   const source=(previous.plan?.operations||[]).filter((p:any)=>['add','total'].includes(p.kind)&&p.date===op.date&&p.table===op.table&&p.blind===op.blind&&playerIdentity(p.player,rules)===playerIdentity(op.player,rules));
+   const games=Array.from(new Set(source.map((p:any)=>p.game)));
+   if(games.length!==1)throw Error('정정할 기존 게임 번호를 하나로 확인하지 못했어요. 해당 사진에 답장해주세요.');
+   fixed.game=games[0];fixed.gameConfirmed=true;
+  }
+  if(!(replacement&&op.kind==='cancel')&&!applies&&Number.isInteger(op.printedGame)&&['add','total','cancel'].includes(op.kind)){
    for(const rule of rules){if(!String(rule.content).startsWith('게임번호 대응: '))continue;try{const a=JSON.parse(rule.content.slice('게임번호 대응: '.length));if(a.date===op.date&&a.table===op.table&&a.printedGame===op.printedGame&&Number.isInteger(a.game)&&a.game>0&&a.game<=100){fixed.game=a.game;fixed.gameConfirmed=true;}}catch{}}
   }
   if(op.kind==='fnb'&&onlyFnb){

@@ -35,7 +35,17 @@ async function run(text,mode='status',fixture=null){
  const tg=async(method,data)=>{events.push({method,...data});if(method==='getFile')return {file_path:'fixture.jpg'};if(method==='getChatMember')return {status:mode==='unauthorized'?'left':'member'};return {message_id:900};};
  const fetch=async(url,init={})=>{
   if(url.startsWith('https://sheets.googleapis.com')){
-   assert(!init.body,'no Sheets mutation permitted');const u=new URL(url);
+   const u=new URL(url);
+   if(fixture?.allowWrites){
+    const coords=r=>{const m=r.match(/!([A-Z]+)(\d+)(?::([A-Z]+)(\d+))?$/);assert(m,r);const col=s=>[...s].reduce((n,c)=>n*26+c.charCodeAt(0)-64,0)-1;return [Number(m[2])-1,col(m[1]),Number(m[4]||m[2])-1,col(m[3]||m[1])];};
+    if(u.searchParams.has('fields'))return {ok:true,json:async()=>({sheets:[{properties:{title:'일일 입력',sheetId:1}}]})};
+    if(init.body){const body=JSON.parse(init.body);if(body.data){writes++;for(const c of body.data){assert(c.range.startsWith("'일일 입력'!"));const [r,col]=coords(c.range);c.values.forEach((row,i)=>row.forEach((v,j)=>{assert(![5,6,8,9,10,11,12,13,14].includes(col+j),'formula column preserved');daily[r+i]??=[];daily[r+i][col+j]=v;}));}}else assert(body.requests.every(r=>r.repeatCell?.fields==='userEnteredFormat.numberFormat'));
+     return {ok:true,json:async()=>({})};
+    }
+    const values=u.searchParams.getAll('ranges').map(r=>{if(!r.includes('일일 입력'))return r.includes('플레이어')?master:[];const [r1,c1,r2,c2]=coords(r);return daily.slice(r1,r2+1).map(row=>Array.from({length:c2-c1+1},(_,i)=>{const v=row[c1+i]??'';return u.searchParams.get('valueRenderOption')==='FORMATTED_VALUE'&&c1+i===1&&typeof v==='number'?new Date((v-25569)*86400000).toISOString().slice(0,10):v;}));});
+    return {ok:true,json:async()=>({valueRanges:values.map(values=>({values}))})};
+   }
+   assert(!init.body,'no Sheets mutation permitted');
    const values=u.searchParams.getAll('ranges').map(r=>r.includes('플레이어')?master:r.includes('일일 입력')?(r.endsWith('O2')?daily.slice(0,2):daily):[]);
    return {ok:true,json:async()=>({valueRanges:values.map(values=>({values}))})};
   }
@@ -60,8 +70,8 @@ async function run(text,mode='status',fixture=null){
   new Function('require','exports','process','Buffer','fetch',compile(fs.readFileSync(path.join(__dirname,'../lib',name.replace('./','')+'.ts'),'utf8')))(load,exports,{env:{STAFF_TELEGRAM_CHAT_ID:'-1',AI_GATEWAY_API_KEY:'fixture'}},Buffer,fetch);
   return exports;
  }
- let failure;try{await load('./accounting-agent').handle({update_id:400,message:{message_id:400,date:stamp,chat:{id:-1,type:'supergroup'},from:{id:1},text,...(fixture?{photo:[{file_id:'new-fixture',file_unique_id:'new-fixture'}]}:{})}});}catch(e){failure=e;}
- return {failure,rules,job:jobs.find(j=>j.message_id===400),events,ai,load};
+ let failure;try{await load('./accounting-agent').handle({update_id:400,message:{message_id:400,date:stamp,chat:{id:-1,type:'supergroup'},from:{id:1},text,...(fixture?.replyTo?{reply_to_message:{message_id:fixture.replyTo}}:fixture?{photo:[{file_id:'new-fixture',file_unique_id:'new-fixture'}]}:{})}});}catch(e){failure=e;}
+ return {failure,rules,writes,daily,job:jobs.find(j=>j.message_id===400),events,ai,load};
 }
 module.exports=(async()=>{
  const status=await run('@dream_poker_reservation_bot 시트에 다 입력된거야?');
@@ -148,6 +158,26 @@ module.exports=(async()=>{
   assert.equal(verifyChipEvidence(bound,{documents:[bad]}).operations.length,0,'binding must not bypass chip mismatch');
  }
  console.log('Midnight rebuy fixtures passed: No19/table4 -> game18/4-5; No20/table5 -> game19/5-5; mixed operation kinds; preserved absent/manual players; zero Sheet writes; ambiguous sessions and new numbers not inferred.');
+
+
+ // Oct 24: paper No.7 was applied as ledger game7; reply to receipt411
+ // says "이건 6번게임이지". Model may also mislabel cancellation as game6.
+ for(const cancelGame of [7,6]){
+  const day='2026-10-24',time=Date.parse(day+'T17:34:05+07:00')/1000;
+  const names=['LEE HAE WON','BAEK JAE HUI','LEE SUNG WON'];
+  const source=names.map(player=>({kind:'add',date:day,game:7,printedGame:7,table:15,blind:'5M',player,buyins:1,chips:100000}));
+  const history=[{update_id:390,message_id:410,reply_id:411,sender_id:'1',status:'applied',text:'',created_at:day+'T10:33:09Z',source_message:{date:time-56,photo:[{file_id:'fixture',file_unique_id:'fixture'}]},plan:{operations:source}}];
+  const fixture={allowWrites:true,replyTo:411,op:source[0],paper:{date:day,printedGame:7,table:15,names,chipAmounts:[100000,100000,100000],selected:[true,true,true],hasSelectionMarkers:true},operations:[...source.map(o=>({...o,kind:'cancel',game:cancelGame})),...source.map(o=>({...o,game:6}))],history,master:[['NAME','CARD','CODE'],...names.map(n=>[n,'','KOREA'])],rows:[[5,46319,'14-1','5M','PARK SOO MIN','','KOREA',1],[],...names.map((n,i)=>[i?'':7,46319,'15-1','5M',n,'','KOREA',1])],stamp:time};
+  const fixed=await run('이건 6번게임이지','correction',fixture);
+  assert.ifError(fixed.failure);assert.equal(fixed.job.status,'applied',fixed.job.reply_text);
+  assert.equal(fixed.writes,1);assert.deepEqual(fixed.job.plan.operations.filter(o=>o.kind==='cancel').map(o=>o.game),[7,7,7]);
+  const games=fixed.load('./accounting-context').sheetContext(fixed.daily,fixture.master,day).games;
+  const target=games.find(g=>g.gameNumber===6);assert(target);assert.equal(target.tableNumber,15);assert.deepEqual(target.players.map(p=>[p.name,p.buyins]),names.map(n=>[n,1]));
+  assert(!games.some(g=>g.gameNumber===7));assert.equal(games.find(g=>g.gameNumber===5).players[0].buyins,1);
+  assert.match(fixed.job.reply_text,/6번 게임/);
+  const {correctedOperations}=fixed.load('./accounting-context');
+  assert.throws(()=>correctedOperations(fixture.operations,'이건 6번게임이지',fixture.master,[],{...history[0],plan:{operations:[...source,{...source[0],game:8}]}}),/기존 게임 번호/);
+ }
 
  console.log('Actual handler replay passed: tagged status, chain deduplication, no AI/no sheet writes for status, rebuy confirmation before guards, persisted binding, rule/status separation.');
 })();
