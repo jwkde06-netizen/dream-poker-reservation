@@ -7,7 +7,7 @@ begin
  insert into auth.users(id,email) values(actor,'telegram-test@example.invalid');
  insert into user_profiles(user_id,role,active,display_name) values(actor,'cashier',true,'TEST CASHIER');
  perform set_config('request.jwt.claim.sub',actor::text,true);
- insert into reservation_games(id,title,starts_at,capacity,is_open,is_default_queue) values(game,'LOCAL DELIVERY TEST',now(),3,true,true);
+ insert into reservation_games(id,title,starts_at,capacity,is_open,is_default_queue) values(game,'LOCAL DELIVERY TEST',now(),3,true,false);
  response:=submit_reservation_request(gen_random_uuid(),jsonb_build_object('game_id',game,'player_name_en','TEST DELIVERY','arrival_at',now()+interval '1 hour','party_size',2,'source','desk'));
  rid:=(response->>'reservation_id')::uuid;
  select id into job from reservation_private.outbox where reservation_id=rid and version=0;

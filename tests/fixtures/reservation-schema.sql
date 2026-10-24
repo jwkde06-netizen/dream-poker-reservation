@@ -10,6 +10,7 @@ create table public.reservation_games (id uuid default gen_random_uuid() not nul
 alter table public.reservation_games add CHECK ((booking_state = ANY (ARRAY['open'::text, 'closed'::text])));
 alter table public.reservation_games add CHECK (((capacity >= 1) AND (capacity <= 30)));
 alter table public.reservation_games add PRIMARY KEY (id);
+create unique index reservation_single_default_queue on public.reservation_games(is_default_queue) where is_default_queue;
 alter table public.reservation_games add CHECK ((schedule_kind = ANY (ARRAY['manual'::text, 'live'::text])));
 create table public.reservations (id uuid default gen_random_uuid() not null,game_id uuid not null,player_name text not null,arrival_at timestamp with time zone not null,lookup_token uuid default gen_random_uuid() not null,status text default 'pending'::text not null,note text default ''::text not null,created_at timestamp with time zone default now() not null,updated_at timestamp with time zone default now() not null,reviewed_by uuid,reviewed_at timestamp with time zone,member_number text,member_user_id uuid,guest_note text default ''::text not null,telegram_notification_claimed_at timestamp with time zone,telegram_notified_at timestamp with time zone,version integer default 0 not null,player_name_en text,player_name_ko text,contact_required boolean default false not null);
 alter table public.reservations add CHECK (((player_name_en IS NULL) OR ((length(player_name_en) >= 2) AND (length(player_name_en) <= 80))));
