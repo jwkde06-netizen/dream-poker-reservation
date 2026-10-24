@@ -14,6 +14,7 @@ export function tableLabel(value:unknown){
 const normalizeTable=tableLabel;
 export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][],settings:{tableRoundLabels?:boolean;rebuySnapshot?:boolean;photoSnapshot?:boolean;partialAttendance?:boolean;registrationApprovals?:Record<string,{agency:string;card?:string}>;reconcile?:(op:any)=>{op:any;question?:string;skip?:boolean}}={}){
  if(!Array.isArray(ops)||ops.length<1||ops.length>20)throw Error('처리할 항목을 구체적으로 알려주세요.');
+ const rebuyUpdates:{game:number;player:string;added:number;total:number}[]=[];
  const changes:CellChange[]=[],summary:string[]=[],review:string[]=[];const work=daily.map(r=>[...r]),masterWork=master.map(r=>[...r]);let frow=fnb.length+1,mrow=master.length+1;
  const names=new Map<string,string[]>();for(const r of master.slice(1)){if(!r[0])continue;const k=norm(r[0]);names.set(k,Array.from(new Set([...(names.get(k)||[]),String(r[0])])));}
  let next=Math.max(3,work.length+1),reflow=false;
@@ -148,6 +149,7 @@ export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][
    if(op.buyins!==Number(r[7]))add(`'일일 입력'!H${row}`,[[r[7]??'']],[[op.buyins]]);work[idx][7]=op.buyins;
   }
  }
+ if(op.kind==='total'&&op.buyins>previousBuyins)rebuyUpdates.push({game:op.game,player:name,added:op.buyins-previousBuyins,total:op.buyins});
  const label=Number(displayTable)>100?String(op.table):String(displayTable);
  const who=`${label} 테이블 ${name}`;
  summary.push(op.kind==='cancel'?`${who} 명단에서 빼고 같은 게임의 빈칸도 정리했어요.`:op.kind==='add'?`${who} ${op.buyins}바인으로 시트에 추가했어요.`:op.buyins===previousBuyins?`${who}은 이미 총 ${op.buyins}바인으로 적혀 있어요.`:`${who} 리바인 ${op.buyins-previousBuyins}회 반영해서 총 ${op.buyins}바인으로 수정했어요.`);
@@ -159,7 +161,7 @@ export function planOperations(ops:any[],daily:any[][],fnb:any[][],master:any[][
    if(before.slice(0,5).some((v,j)=>v!==after[j]))other.push({range:`'일일 입력'!A${i+1}:E${i+1}`,before:[before.slice(0,5)],values:[after.slice(0,5)]});
    if(before[7]!==after[7])other.push({range:`'일일 입력'!H${i+1}`,before:[[before[7]]],values:[[after[7]]]});
   }
-  return {changes:other,summary,review};
+  return {changes:other,summary,review,rebuyUpdates};
  }
- return {changes,summary,review};
+ return {changes,summary,review,rebuyUpdates};
 }

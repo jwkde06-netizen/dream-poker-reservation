@@ -18,7 +18,7 @@ export function politeAcknowledgement(text:string,replyToBot:boolean){
  if(/^(?:고마워|고맙습니다|감사합니다|수고했어|수고했어요)[.!~\s]*$/.test(text.trim()))return '네, 필요하시면 말씀해주세요.';
  return null;
 }
-export function completionReply(operations:any[],question:any,answeredQuestion:boolean,verified?:{summary:string[];changes:any[];rebuyGames?:number[]}){
+export function completionReply(operations:any[],question:any,answeredQuestion:boolean,verified?:{summary:string[];changes:any[];rebuyGames?:number[];rebuyUpdates?:{game:number;player:string;added:number;total:number}[]}){
  // The planner knows which requests were skipped, already present or changed.
  // Do not report the model's proposed operations as completed work.
  if(verified){
@@ -30,7 +30,12 @@ export function completionReply(operations:any[],question:any,answeredQuestion:b
   if(attendance.length&&games.length&&!operations.some(o=>o.kind==='fnb')){
    return games.sort((a,b)=>a-b).map(game=>{
     const entries=attendance.filter(o=>o.game===game);
-    const kind=entries.every(o=>o.kind==='cancel')?'선수 삭제':entries.some(o=>o.kind==='cancel')?'명단 수정':verified.rebuyGames?.includes(game)||entries.some(o=>o.kind==='total'||o.rebuyBinding)?'리바인':'바이인';
+    const kind=entries.every(o=>o.kind==='cancel')?'선수 삭제':entries.some(o=>o.kind==='cancel')?'명단 수정':verified.rebuyUpdates?.some(u=>u.game===game)||verified.rebuyGames?.includes(game)||entries.some(o=>o.kind==='total'||o.rebuyBinding)?'리바인':'바이인';
+    const updates=(verified.rebuyUpdates||[]).filter(u=>u.game===game&&u.added>0);
+    if(kind==='리바인'&&updates.length&&verified.changes.length)return updates.map(u=>{
+     const name=u.player.replace(/[^A-Za-z가-힣]/g,'').toUpperCase()==='PARKSOOMIN'?'박수민':u.player;
+     return '✅ '+game+'번 게임 '+name+' 리바인 '+u.added+'회 반영 완료';
+    }).join('\n');
     return '✅ '+game+'번 게임 '+kind+(verified.changes.length?' 반영 완료':' 이미 반영됨');
    }).join('\n');
   }

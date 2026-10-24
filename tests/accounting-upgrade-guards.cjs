@@ -63,3 +63,12 @@ assert.equal(completionReply([{...op,game:2}],null,false,{summary:[],changes:[{}
 assert.equal(completionReply([{...op,game:2,kind:'total'}],null,false,{summary:[],changes:[]}),'✅ 2번 게임 리바인 이미 반영됨');
 assert.equal(completionReply([{...op,game:2},{...op,game:2,kind:'total',player:'OLIVER'}],null,false,{summary:[],changes:[{}]}),'✅ 2번 게임 리바인 반영 완료');
 assert.equal(completionReply([{...op,game:2},{...op,game:3,kind:'total'}],null,false,{summary:[],changes:[{}]}),'✅ 2번 게임 바이인 반영 완료\n✅ 3번 게임 리바인 반영 완료');
+
+const namedMaster=[['NAME','CARD','AGENCY'],['PARK SOO MIN','','KOREA'],['KIM DAE HYUN','','KOREA']];
+const namedDaily=[[],[2,46318,'4-1','5M','PARK SOO MIN','','KOREA',1],['',46318,'4-1','5M','KIM DAE HYUN','','KOREA',2]];
+const namedOps=[{kind:'total',date:'2026-10-23',game:2,table:4,blind:'5M',player:'PARK SOO MIN',buyins:2},{kind:'total',date:'2026-10-23',game:2,table:4,blind:'5M',player:'KIM DAE HYUN',buyins:2}];
+const namedPlan=planOperations(namedOps,namedDaily,[],namedMaster);
+assert.deepEqual(namedPlan.rebuyUpdates,[{game:2,player:'PARK SOO MIN',added:1,total:2}]);
+assert.equal(completionReply(namedOps,null,false,namedPlan),'✅ 2번 게임 박수민 리바인 1회 반영 완료');
+const multiPlan=planOperations([namedOps[0],{...namedOps[1],buyins:4}],namedDaily,[],namedMaster);
+assert.equal(completionReply(namedOps,null,false,multiPlan),'✅ 2번 게임 박수민 리바인 1회 반영 완료\n✅ 2번 게임 KIM DAE HYUN 리바인 2회 반영 완료');
