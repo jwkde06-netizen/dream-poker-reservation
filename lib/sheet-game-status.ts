@@ -11,7 +11,7 @@ export function sheetGameIdentity(s:LedgerSource,day:string,game:number){
 export async function changeSheetGameStatus(client:any,s:LedgerSource,b:any,userId:string){
  const reference=b.action==='game_reference';
  if(reference&&(typeof b.sourceNo!=='string'||!/^\d{0,8}$/.test(b.sourceNo)))throw Error('K홀덤 No.는 8자리 이내 숫자로 입력해주세요.');
- if((!reference&&!['active','closed'].includes(b.status))||!(b.version===null||typeof b.version==='string'))throw Error('진행 상태 요청을 확인해주세요.');
+ if((!reference&&!['prepared','active','closed'].includes(b.status))||!(b.version===null||typeof b.version==='string'))throw Error('진행 상태 요청을 확인해주세요.');
  const identity=sheetGameIdentity(s,b.day,b.game);
  const q=await client.from('dream_sheet_game_status').select('*').eq('business_date',b.day).eq('game_no',b.game).maybeSingle();
  if(q.error)throw Error('게임 상태를 읽지 못했습니다.');
