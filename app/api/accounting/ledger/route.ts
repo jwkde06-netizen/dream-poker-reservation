@@ -1,3 +1,4 @@
+import {changeSheetGameStatus} from '../../../../lib/sheet-game-status';
 import {NextResponse} from 'next/server';
 import {randomUUID} from 'node:crypto';
 import {requireAdmin} from '../../../../lib/telegram';
@@ -24,19 +25,26 @@ export async function GET(req:Request){
  try{
  const day=new URL(req.url).searchParams.get('day')||new Date(Date.now()+7*3600000).toISOString().slice(0,10);
  const s=await read(),view=ledgerView(s,day),client=db();
+ const gameStates=await client.from('dream_sheet_game_status').select('business_date,game_no,table_label,physical_table,blind,status,version,updated_at').eq('business_date',day);
+ if(gameStates.error)throw Error('게임 진행 상태를 불러오지 못했어요.');
  const q=await client.from('dream_desk_commands').select('id,status,summary,created_at,completed_at').eq('created_by',user.id).order('created_at',{ascending:false}).limit(20);
  if(q.error)throw Error('처리 이력을 불러오지 못했어요.');
  const from=new Date(day+'T00:00:00+07:00'),to=new Date(from.getTime()+86400000);
  const reservations=await client.from('reservations').select('id,game_id,player_name,player_name_en,player_name_ko,status,version,arrival_at,game:reservation_games(title,table_no,game_no,is_default_queue)').eq('is_test',false).gte('arrival_at',from.toISOString()).lt('arrival_at',to.toISOString()).order('arrival_at',{ascending:true}).limit(501);
  if(reservations.error)throw Error('예약 내역을 불러오지 못했어요.');
  if(reservations.data.length>500)throw Error('하루 예약이 500건을 초과하여 전체 대조가 필요합니다.');
- return json({...view,reservations:reservations.data,checkedAt:new Date().toISOString(),players:s.master.slice(1).filter(r=>r[0]).map(r=>({name:r[0],card:r[1]||'',agency:r[2]||''})),menu:s.menu.slice(1).filter(r=>r[0]).map(r=>({name:r[0],price:r[2],unit:r[3]})),history:q.data,sourceHash:sourceHash(s)});
+ return json({...view,gameStates:gameStates.data,reservations:reservations.data,checkedAt:new Date().toISOString(),players:s.master.slice(1).filter(r=>r[0]).map(r=>({name:r[0],card:r[1]||'',agency:r[2]||''})),menu:s.menu.slice(1).filter(r=>r[0]).map(r=>({name:r[0],price:r[2],unit:r[3]})),history:q.data,sourceHash:sourceHash(s)});
  }catch(e){return json({error:(e as Error).message},400);}
 }
 export async function POST(req:Request){
  const user=await requireAdmin(req);if(!user)return json({error:'관리자 로그인이 필요해요.'},403);
  const client=db();let locked=false,writing=false,owner=randomUUID();
  try{const raw=await req.text();if(raw.length>15000)return json({error:'요청이 너무 길어요.'},413);const b=JSON.parse(raw);
+  if(b.action==='game_status'){
+   const s=await read();if(b.sourceHash!==sourceHash(s))return json({error:'시트가 변경됐어요. 새로고침 후 상태를 확인해주세요.'},409);
+   await changeSheetGameStatus(client,s,b,user.id);
+   return json({statusSaved:true});
+  }
   if(b.action==='preview'){
    const s=await read();if(b.sourceHash!==sourceHash(s))return json({error:'원본이 변경됐어요. 새로고침 후 다시 작성해주세요.'},409);
    await checkReservation(b.operation);
