@@ -6,3 +6,4 @@ node_modules
 *.tsbuildinfo
 
 supabase/.temp/
+.test-build/
