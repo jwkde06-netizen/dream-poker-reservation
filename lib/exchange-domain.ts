@@ -178,9 +178,9 @@ function addPosting(plan: ExchangePlan, state: ExchangeState, code: ExchangeAcco
   const amount = safeMoney((prior?.amount_minor || 0) + delta);
   const bookDelta = prior?.book_delta_vnd === null || book === null ? null : safeMoney((prior?.book_delta_vnd || 0) + book);
   const after = safeMoney(before.balance_minor + amount);
-  if (after < 0) throw new ExchangeReview(`${EXCHANGE_ACCOUNTS[code].label} 잔액이 부족합니다. 현재 ${formatMoney(before.balance_minor, code)}입니다. 누락된 보충/거래를 먼저 확인해주세요.`);
+  if (!isVnd(code) && after < 0) throw new ExchangeReview(`${EXCHANGE_ACCOUNTS[code].label} 잔액이 부족합니다. 현재 ${formatMoney(before.balance_minor, code)}입니다. 누락된 보충/거래를 먼저 확인해주세요.`);
   const afterBook = after === 0 ? 0 : before.book_vnd === null || bookDelta === null ? null : safeMoney(before.book_vnd + bookDelta);
-  if (afterBook !== null && afterBook < 0) throw new ExchangeReview('원가 잔액이 맞지 않습니다. 원거래를 먼저 확인해주세요.');
+  if (!isVnd(code) && afterBook !== null && afterBook < 0) throw new ExchangeReview('원가 잔액이 맞지 않습니다. 원거래를 먼저 확인해주세요.');
   const p: ExchangePosting = { account: code, amount_minor: amount, book_delta_vnd: bookDelta, before_minor: before.balance_minor, before_book_vnd: before.book_vnd, after_minor: after, after_book_vnd: afterBook };
   if (prior) Object.assign(prior, p); else plan.postings.push(p);
 }
