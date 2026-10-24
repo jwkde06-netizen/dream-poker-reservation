@@ -338,7 +338,7 @@ export async function handle(update:any){
   }
   sheetState=afterVerifiedWrite(sheetState,daily,plan.changes);
   processingPlan={...processingPlan,sheetState,metrics:metrics()};
-  const completion=[completionReply(result.operations,result.question,!!previous?.plan?.pendingQuestion&&!ownPhoto,plan),learnedRuleNotice].filter(Boolean).join('\n\n');
+  const completion=[completionReply(result.operations,result.question,!!previous?.plan?.pendingQuestion&&!ownPhoto,{...plan,rebuyGames:result.operations.filter((op:any)=>['add','total'].includes(op.kind)&&context.games.some((g:any)=>g.date===op.date&&g.gameNumber===op.game&&g.tableNumber===op.table&&(rebuyCaption(taskText)||g.players.some((p:any)=>norm(p.name)===norm(op.player)&&op.buyins>p.buyins)))).map((op:any)=>op.game)}),learnedRuleNotice].filter(Boolean).join('\n\n');
   await save(job.update_id,{status:'applied',reply_text:completion,plan:processingPlan});writeStarted=false;
   const id=await deliver(completion,result.question?pendingButtons(m.message_id):undefined);await save(job.update_id,{reply_id:id});
  }catch(e){
