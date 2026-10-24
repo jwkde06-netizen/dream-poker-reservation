@@ -15,9 +15,9 @@ export function deskPlan(b:any,s:LedgerSource){
   const p=planOperations(ops,s.daily,s.fnb,s.master,{tableRoundLabels:true});changes=p.changes;summary=p.summary;
  }else if(b.kind==='buyins'||b.kind==='cancel'||b.kind==='participant'){
   const row=integer(b.row,2,s.daily.length),r=s.daily[row-1];if(!r?.[4])throw Error('선수 기록이 없어요. 새로고침해주세요.');if(JSON.stringify(b.expected)!==JSON.stringify([...pad(r,5),r[7]??'']))throw Error('선수 기록이 변경됐어요. 새로고침해주세요.');
-  if(b.kind==='buyins'){const count=integer(b.buyins,1,50);if(count<Number(r[7]))txt(b.reason,200);changes=[{range:`'일일 입력'!H${row}`,before:[[r[7]??'']],values:[[count]]}];summary=[`${r[4]} · ${r[2]} 테이블 · 총 ${r[7]} → ${count}바인`,...(b.reason?[String(b.reason)]:[])];}
+  if(b.kind==='buyins'){const count=integer(b.buyins,1,50);changes=[{range:`'일일 입력'!H${row}`,before:[[r[7]??'']],values:[[count]]}];summary=[`${r[4]} · ${r[2]} 테이블 · 총 ${r[7]} → ${count}바인`,...(b.reason?[String(b.reason)]:[])];}
   else{
-   txt(b.reason,200);
+   const reason=b.reason?txt(b.reason,200):b.kind==='cancel'?'직접 삭제':'직접 수정';
    let start=row-1;while(start>1&&!s.daily[start][0])start--;
    const game=Number(s.daily[start][0]);if(!Number.isSafeInteger(game)||game<1)throw Error('게임 번호를 확인해주세요.');
    let end=start+1;while(end<s.daily.length&&!s.daily[end][0])end++;
@@ -27,7 +27,7 @@ export function deskPlan(b:any,s:LedgerSource){
     const name=String(matches[0][0]),count=integer(b.buyins,1,50);
     if(s.daily.slice(start,end).some((entry,i)=>start+i!==row-1&&norm(entry[4])===norm(name)))throw Error('이 게임에 이미 있는 선수입니다. 기존 기록을 확인해주세요.');
     changes=[{range:`'일일 입력'!E${row}`,before:[[r[4]]],values:[[name]]},{range:`'일일 입력'!H${row}`,before:[[r[7]??'']],values:[[count]]}];
-    summary=[`${game}번 · ${r[4]} → ${name} · ${count}바인`,b.reason];
+    summary=[`${game}번 · ${r[4]} → ${name} · ${count}바인`,reason];
    }else{
     const members=s.daily.slice(start,end).filter((entry,i)=>{
      if(start+i===row-1||[0,1,2,3,4,7].every(c=>entry[c]===''||entry[c]==null))return false;
@@ -39,7 +39,7 @@ export function deskPlan(b:any,s:LedgerSource){
      if(JSON.stringify(before.slice(0,5))!==JSON.stringify(after.slice(0,5)))changes.push({range:`'일일 입력'!A${i+1}:E${i+1}`,before:[before.slice(0,5)],values:[after.slice(0,5)]});
      if(before[7]!==after[7])changes.push({range:`'일일 입력'!H${i+1}`,before:[[before[7]]],values:[[after[7]]]});
     }
-    summary=[`${game}번 · ${r[4]} 참가 기록 삭제`,b.reason];
+    summary=[`${game}번 · ${r[4]} 참가 기록 삭제`,reason];
    }
   }
  }else if(b.kind==='fnb'||b.kind==='fnb_edit'){

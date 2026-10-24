@@ -8,7 +8,8 @@ function apply(p){const out=structuredClone(s.daily);for(const c of p.changes){c
 let p=deskPlan({kind:'participant',row:5,expected:expected(4),player:'NEW',buyins:2,reason:'이름 정정'},s);let out=apply(p);assert.equal(out[4][4],'NEW');assert.equal(out[4][7],2);
 for(const player of ['FIRST','UNKNOWN'])assert.throws(()=>deskPlan({kind:'participant',row:5,expected:expected(4),player,buyins:1,reason:'정정'},s));
 assert.throws(()=>deskPlan({kind:'participant',row:5,expected:['old'],player:'NEW',buyins:1,reason:'정정'},s));
-assert.throws(()=>deskPlan({kind:'participant',row:5,expected:expected(4),player:'NEW',buyins:1,reason:''},s));
+assert(deskPlan({kind:'participant',row:5,expected:expected(4),player:'NEW',buyins:1},s).changes.length);
+assert(deskPlan({kind:'cancel',row:5,expected:expected(4)},s).changes.length);
 out=apply(deskPlan({kind:'cancel',row:5,expected:expected(4),reason:'중복'},s));assert.equal(out[4][4],'LAST');assert.equal(out[4][7],3);assert.equal(out[5][4]||'','');
 out=apply(deskPlan({kind:'cancel',row:4,expected:expected(3),reason:'중복'},s));assert.equal(out[3][0],8);assert.equal(out[3][4],'MIDDLE');
 const manual=structuredClone(s);manual.daily[5]=['',d,'5-3','5M','','','',4];assert.throws(()=>deskPlan({kind:'cancel',row:5,expected:expected(4),reason:'중복'},manual));

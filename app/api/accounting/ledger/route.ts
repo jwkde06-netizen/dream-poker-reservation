@@ -6,6 +6,7 @@ import {db,ranges,sheet,same} from '../../../../lib/accounting-agent';
 import {deskPlan,sourceHash,LedgerSource} from '../../../../lib/desk-ledger-plan';
 import {ledgerView,assertReservationOperation} from '../../../../lib/desk-ledger-view';
 import {prepareDateFormats,verifyDateDisplays} from '../../../../lib/accounting-format';
+import {projectChanges,undoHash,undoPlan} from '../../../../lib/desk-ledger-undo';
 import {readSettlementJobs,settlementIntake} from '../../../../lib/settlement-intake';
 export const dynamic='force-dynamic';export const maxDuration=120;
 const json=(x:any,status=200)=>NextResponse.json(x,{status,headers:{'Cache-Control':'no-store'}});
@@ -53,8 +54,13 @@ export async function POST(req:Request){
    const plan=deskPlan(b.operation,s);if(!plan.changes.length)return json({noop:true,summary:plan.summary});
    const result=await client.from('dream_desk_commands').insert({created_by:user.id,status:'preview',source_hash:sourceHash(s),operation:b.operation,changes:plan.changes,summary:plan.summary}).select('id,summary').single();if(result.error)throw Error('변경안을 저장하지 못했어요.');return json(result.data);
   }
-  if(!['apply','reconcile','result'].includes(b.action)||!/^[-a-f0-9]{36}$/.test(b.id||''))return json({error:'요청을 확인해주세요.'},400);
+  if(!['apply','reconcile','result','undo_preview'].includes(b.action)||!/^[-a-f0-9]{36}$/.test(b.id||''))return json({error:'요청을 확인해주세요.'},400);
   const saved=await client.from('dream_desk_commands').select('*').eq('id',b.id).eq('created_by',user.id).single();if(saved.error)throw Error('변경안을 찾지 못했어요.');const plan=saved.data;
+  if(b.action==='undo_preview'){
+   const s=await read(),reverse=undoPlan(plan,s);
+   const made=await client.from('dream_desk_commands').insert({created_by:user.id,status:'preview',source_hash:sourceHash(s),operation:{kind:'undo',undoOf:plan.id},changes:reverse.changes,summary:reverse.summary}).select('id,summary').single();
+   if(made.error)throw Error('실행 취소 요청을 저장하지 못했습니다.');return json(made.data);
+  }
   if(b.action==='result')return json({status:plan.status,applied:plan.status==='applied',summary:plan.summary});
   if(plan.status==='applied')return json({applied:true,summary:plan.summary});
   if(b.action==='reconcile'){
@@ -73,7 +79,7 @@ export async function POST(req:Request){
   const fresh=await read();if(sourceHash(fresh)!==plan.source_hash)return json({error:'직원이 원본을 수정했어요. 새로고침 후 변경안을 다시 확인해주세요.'},409);
   await checkReservation(plan.operation);
   const current=await ranges(plan.changes.map((c:any)=>c.range));if(!plan.changes.every((c:any,i:number)=>same(current[i],c.before)))return json({error:'원본 값이 변경됐어요. 다시 확인해주세요.'},409);
-  const claimed=await client.from('dream_desk_commands').update({status:'writing',lock_owner:owner,writing_started_at:new Date().toISOString()}).eq('id',plan.id).eq('status','preview').select('id').single();if(claimed.error)throw Error('이미 처리 중인 요청입니다.');writing=true;
+  const claimed=await client.from('dream_desk_commands').update({status:'writing',lock_owner:owner,writing_started_at:new Date().toISOString(),operation:{...plan.operation,undoHash:undoHash(projectChanges(fresh,plan.changes))}}).eq('id',plan.id).eq('status','preview').select('id').single();if(claimed.error)throw Error('이미 처리 중인 요청입니다.');writing=true;
   await prepareDateFormats(plan.changes,sheet);
   await sheet('values:batchUpdate',{valueInputOption:'RAW',data:plan.changes.map((c:any)=>({range:c.range,values:c.values}))});
   const actual=await ranges(plan.changes.map((c:any)=>c.range));if(!plan.changes.every((c:any,i:number)=>same(actual[i],c.values)))throw Error('저장 결과를 확인해야 합니다. 중복 저장하지 마세요.');

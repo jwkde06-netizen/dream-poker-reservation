@@ -33,6 +33,7 @@ const route=moduleAt('app/api/accounting/ledger/route.ts',n=>{
  if(n.endsWith('/desk-ledger-plan'))return planner;
  if(n.endsWith('/desk-ledger-view'))return view;
  if(n.endsWith('/sheet-game-status'))return lifecycle;
+ if(n.endsWith('/desk-ledger-undo'))return moduleAt('lib/desk-ledger-undo.ts',require);
  if(n.endsWith('/settlement-intake'))return {readSettlementJobs:async()=>[],settlementIntake:()=>({items:[],counts:{verified:0,review:0,failed:0,processing:0,manual:0},total:0})};
  if(n.endsWith('/accounting-format'))return {prepareDateFormats:async()=>{formats++},verifyDateDisplays:async()=>{displayChecks++}};
  if(n.endsWith('/accounting-agent'))return {db:()=>client,ranges:async list=>list.length===4?[source.daily,source.fnb,source.master,source.menu]:list[0]==="'일일 입력'!A1:O5000"?[source.daily]:[writes&&!readbackBad?[[2]]:[[1]]],same:(a,b)=>JSON.stringify(a)===JSON.stringify(b),sheet:async()=>{writes++}};

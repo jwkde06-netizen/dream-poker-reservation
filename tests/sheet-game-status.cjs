@@ -52,7 +52,7 @@ assert.equal(prepared.status,'prepared');
 await assert.rejects(()=>change(client,source,{day:'2026-10-24',game:10,status:'invented',version:prepared.version},'tester'),/요청/);
 await change(client,source,{day:'2026-10-24',game:8,status:'closed',version:state[0].version},'tester');
 assert.equal(state[0].source_no,'28');
-await assert.rejects(()=>change(client,source,{action:'game_reference',day:'2026-10-24',game:8,sourceNo:'invalid',version:state[0].version},'tester'),/K홀덤/);
+await assert.rejects(()=>change(client,source,{action:'game_reference',day:'2026-10-24',game:8,sourceNo:'invalid',version:state[0].version},'tester'),/No\./);
 console.log('PASS: separate casino reference, internal number preserved, lifecycle preserved, invalid reference rejected;  multiple live games, no automatic game 10, close/reopen, stale version rejection, missing/ambiguous game rejection, table conflict, audit history. No external writes.');
 
 })();
