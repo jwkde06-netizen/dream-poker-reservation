@@ -54,6 +54,7 @@ async function request(body){
  await pg.exec("insert into reservation_games(title,starts_at,capacity,is_open,is_default_queue,is_test) values('TEST · Dream Poker 5M',now(),9,true,true,true)");
  http.createServer(async(req,res)=>{
   try{
+   if(req.method==='GET'&&req.url==='/mobile'){res.setHeader('Content-Type','text/html');res.end('<!doctype html><html><meta charset="utf-8"><title>Cashier mobile verification</title><style>body{background:#24262b;color:#fff;font-family:Arial;margin:0;padding:12px}iframe{display:block;width:390px;height:800px;border:1px solid #555;margin:10px auto}</style><p>LOCAL VERIFICATION · 390px mobile viewport</p><iframe title="Cashier mobile viewport" src="/cashier?test=1"></iframe></html>');return}
    if(req.method==='GET'&&req.url.startsWith('/react')){const file=req.url==='/react.js'?'node_modules/react/umd/react.development.js':'node_modules/react-dom/umd/react-dom.development.js';res.setHeader('Content-Type','text/javascript');res.end(fs.readFileSync(file));return}
    if(req.method==='POST'&&req.url==='/test-api'){
     const buffers=[];for await(const chunk of req){buffers.push(chunk);if(Buffer.concat(buffers).length>10000)throw Error('Request too large')}

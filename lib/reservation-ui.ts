@@ -1,6 +1,7 @@
 export type ReservationLanguage = 'ko' | 'en' | 'vi';
 
 const en = {
+ queueTitle:'Reservations',reviewEmpty:'All requests reviewed',reviewEmptyHelp:'New requests will appear here automatically.',searchEmpty:'No matching reservations',backToList:'Back to list',backToReservations:'Back to reservations',manage:'Games & settings',moreActions:'Other actions',workspaceMenu:'Workspace menu',sendReply:'Send reply',dismiss:'Close',connectionDetails:'Connection & notifications',replyRequired:'A reason is required so the desk can follow up.',
  desk:'Korean desk', cashier:'Cashier', guestPage:'Guest page', logout:'Log out', test:'Test only', live:'Live',
  testWarning:'Test reservations are not sent to Telegram or the settlement sheet.', prepareTest:'Prepare test game',
  connected:'Connected', disconnected:'Check connection', polling:'Auto-check every 2 seconds', refresh:'Refresh',
@@ -37,6 +38,7 @@ const en = {
 };
 type Copy = {[K in keyof typeof en]: typeof en[K] extends string ? string : {[P in keyof typeof en[K]]:string}};
 const ko:Copy = {
+ queueTitle:'예약 목록',reviewEmpty:'미처리 예약이 없습니다',reviewEmptyHelp:'새 요청이 오면 여기에 자동으로 표시됩니다.',searchEmpty:'검색 결과가 없습니다',backToList:'예약 목록으로',backToReservations:'예약 화면으로',manage:'게임·설정',moreActions:'추가 작업',workspaceMenu:'화면 메뉴',sendReply:'답변 보내기',dismiss:'닫기',connectionDetails:'연결·알림 안내',replyRequired:'데스크에 전달할 사유를 입력하세요.',
  desk:'한국인 데스크',cashier:'캐셔',guestPage:'손님 화면',logout:'로그아웃',test:'검증 전용',live:'실제 운영',
  testWarning:'검증 예약은 텔레그램과 정산시트로 전송되지 않습니다.',prepareTest:'검증 게임 준비',
  connected:'연결됨',disconnected:'연결 확인 필요',polling:'2초 간격 자동 확인',refresh:'다시 확인',
@@ -72,6 +74,7 @@ const ko:Copy = {
  receipt:{unassigned:'게임 배정 후 영수증을 대조할 수 있습니다.',multiple:'복수 기록이 있습니다. 직원 확인이 필요합니다.',group:'대표자 정산 기록이 있습니다. 일행은 별도로 확인하세요.',matched:'동일 이름·게임의 정산 기록이 있습니다. 참가 여부는 확인이 필요합니다.',none:'일치 기록이 없습니다. 미방문으로 판정한 것은 아닙니다.'},
 };
 const vi:Copy = {
+ queueTitle:'Danh sách đặt chỗ',reviewEmpty:'Đã xử lý hết yêu cầu',reviewEmptyHelp:'Yêu cầu mới sẽ tự động hiện ở đây.',searchEmpty:'Không tìm thấy đặt chỗ',backToList:'Về danh sách',backToReservations:'Về đặt chỗ',manage:'Trò chơi & cài đặt',moreActions:'Thao tác khác',workspaceMenu:'Menu giao diện',sendReply:'Gửi phản hồi',dismiss:'Đóng',connectionDetails:'Kết nối & thông báo',replyRequired:'Nhập lý do để bàn Hàn Quốc báo lại cho khách.',
  desk:'Bàn Hàn Quốc',cashier:'Thu ngân',guestPage:'Trang khách',logout:'Đăng xuất',test:'Chỉ kiểm tra',live:'Đang vận hành',
  testWarning:'Đặt chỗ kiểm tra không được gửi đến Telegram hoặc bảng quyết toán.',prepareTest:'Tạo trò chơi kiểm tra',
  connected:'Đã kết nối',disconnected:'Kiểm tra kết nối',polling:'Tự kiểm tra mỗi 2 giây',refresh:'Làm mới',

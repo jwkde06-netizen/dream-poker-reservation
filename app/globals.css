@@ -805,3 +805,9 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
  .staffDeskGrid .tabletDetailClose{display:none}
 }
 @media(max-width:760px){.deskWorkspace .staffMobileNav{grid-template-columns:1fr 1fr}}
+
+/* Operational cashier owns its layout; do not inherit the narrow guest form width. */
+.staffShell:has([data-workspace="cashier"]){max-width:1440px;padding:18px 28px 30px}
+.staffShell:has([data-workspace="cashier"])>.header{margin-bottom:20px;padding-bottom:12px}
+.staffShell:has([data-workspace="cashier"])>footer{padding-top:18px}
+@media(max-width:800px){.staffShell:has([data-workspace="cashier"]){padding:12px 14px 24px}.staffShell:has([data-workspace="cashier"])>.header{margin-bottom:16px}}
