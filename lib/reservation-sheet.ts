@@ -10,12 +10,15 @@ const normalize=(s:unknown)=>String(s??'').trim().replace(/\s+/g,' ').toUpperCas
 function sheetDate(v:unknown){if(typeof v==='number')return new Date(Date.UTC(1899,11,30)+Math.floor(v)*86400000).toISOString().slice(0,10);return String(v||'').trim().replace(/[./]/g,'-').slice(0,10)}
 
 // A match is only a receipt-ledger hint. It never changes attendance or financial data.
-export function receiptEvidence(r:ReservationSheetRow,ledger:unknown[][]){
- if(r.is_default_queue||!r.game_no||!r.table_no)return '게임 배정 후 대조 · Cần xếp bàn/game';
+export function receiptEvidenceCode(r:ReservationSheetRow,ledger:unknown[][]){
+ if(r.is_default_queue||!r.game_no||!r.table_no)return 'unassigned';
  const candidates=ledger.filter(row=>normalize(row[4])===normalize(r.player_name)&&normalize(row[0])===normalize(r.game_no)&&normalize(row[2])===normalize(r.table_no)&&sheetDate(row[1])===date(r.starts_at));
- if(candidates.length>1)return '복수 기록 · 직원 확인 필요 / Nhiều bản ghi, cần kiểm tra';
- if(candidates.length===1&&Number(candidates[0][7])>0)return r.party_size>1?'대표자 정산 기록 있음 · 일행 별도 확인 / Có biên lai đại diện':'동일 이름·게임 정산 기록 있음 · 참가 확인 필요 / Có bản ghi, cần xác minh';
- return '일치 기록 없음 · 미방문 판정 아님 / Chưa khớp, không tự kết luận';
+ if(candidates.length>1)return 'multiple';
+ if(candidates.length===1&&Number(candidates[0][7])>0)return r.party_size>1?'group':'matched';
+ return 'none';
+}
+export function receiptEvidence(r:ReservationSheetRow,ledger:unknown[][]){
+ return {unassigned:'게임 배정 후 대조 · Cần xếp bàn/game',multiple:'복수 기록 · 직원 확인 필요 / Nhiều bản ghi, cần kiểm tra',group:'대표자 정산 기록 있음 · 일행 별도 확인 / Có biên lai đại diện',matched:'동일 이름·게임 정산 기록 있음 · 참가 확인 필요 / Có bản ghi, cần xác minh',none:'일치 기록 없음 · 미방문 판정 아님 / Chưa khớp, không tự kết luận'}[receiptEvidenceCode(r,ledger)];
 }
 export function reservationSheetValues(rows:ReservationSheetRow[],ledger:unknown[][]){
  return [reservationHeaders,...rows.map(r=>[r.id,stamp(r.created_at),r.player_name,r.game_title,r.table_no,r.game_no,stamp(r.arrival_at),r.party_size,statuses[r.status]||r.status,

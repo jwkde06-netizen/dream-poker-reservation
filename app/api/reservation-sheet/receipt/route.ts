@@ -1,7 +1,7 @@
 import {NextResponse} from 'next/server';
 import {createClient} from '@supabase/supabase-js';
 import {projectUrl,publicKey} from '../../../../lib/telegram';
-import {readReceiptLedger,receiptEvidence,type ReservationSheetRow} from '../../../../lib/reservation-sheet';
+import {readReceiptLedger,receiptEvidence,receiptEvidenceCode,type ReservationSheetRow} from '../../../../lib/reservation-sheet';
 export const runtime='nodejs';
 export const maxDuration=45;
 export async function GET(request:Request){
@@ -18,7 +18,7 @@ export async function GET(request:Request){
  if(error||!r)return NextResponse.json({error:'Reservation not found'},{status:404});
  try{
   const game=(Array.isArray(r.game)?r.game[0]:r.game) as Record<string,unknown>;
-  const message=receiptEvidence({...r,...game} as unknown as ReservationSheetRow,await readReceiptLedger());
-  return NextResponse.json({message,financial_write:false,attendance_changed:false},{headers:{'Cache-Control':'no-store'}});
+  const row={...r,...game} as unknown as ReservationSheetRow,ledger=await readReceiptLedger();
+  return NextResponse.json({code:receiptEvidenceCode(row,ledger),message:receiptEvidence(row,ledger),financial_write:false,attendance_changed:false},{headers:{'Cache-Control':'no-store'}});
  }catch{return NextResponse.json({error:'Could not read receipt ledger; no changes made'},{status:503})}
 }

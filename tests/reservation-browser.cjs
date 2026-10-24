@@ -5,7 +5,7 @@ const fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypt
 const {PGlite}=require(process.env.PGLITE_MODULE||'@electric-sql/pglite');
 const pg=new PGlite(),users={desk:crypto.randomUUID(),cashier:crypto.randomUUID()};let queue=Promise.resolve();
 const transpile=file=>ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
-const component=transpile('app/OperationalReservations.tsx'),command=transpile('lib/reservation-command.ts');
+const component=transpile('app/OperationalReservations.tsx'),command=transpile('lib/reservation-command.ts'),copy=transpile('lib/reservation-ui.ts');
 const client=String.raw`
 const role=location.pathname.includes('cashier')?'cashier':'desk';
 async function api(body){try{const r=await fetch('/test-api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,role})});return await r.json()}catch(e){return{error:{message:e.message}}}}
@@ -14,10 +14,13 @@ const commands={exports:{}};
 `;
 function html(){return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dream Poker · Isolated operational verification</title><style>body{margin:0;background:#101115;color:#eee;font-family:Arial,sans-serif}*{box-sizing:border-box}.verification{background:#3c2714;padding:10px 24px;color:#e8c77e;font-size:14px}a{color:#d7ba77}${fs.readFileSync('app/OperationalReservations.module.css','utf8')}</style></head><body><div class="verification">LOCAL VERIFICATION · 실제 운영 코드 + 분리된 PostgreSQL · 외부 전송 없음</div><div id="root"></div><script src="/react.js"></script><script src="/react-dom.js"></script><script>${client}
 (function(module,exports){${command}})(commands,commands.exports);
+const copyModule={exports:{}};
+(function(module,exports){${copy}})(copyModule,copyModule.exports);
 const componentModule={exports:{}};
-function require(n){if(n==='react')return React;if(n==='react/jsx-runtime')return{jsx:(t,p,k)=>React.createElement(t,{...p,key:k}),jsxs:(t,p,k)=>React.createElement(t,{...p,key:k}),Fragment:React.Fragment};if(n.endsWith('/db'))return{db};if(n.endsWith('/reservation-command'))return commands.exports;if(n.endsWith('.css'))return{default:new Proxy({},{get:(_,k)=>k})};throw Error(n)}
+function require(n){if(n==='react')return React;if(n==='react/jsx-runtime')return{jsx:(t,p,k)=>React.createElement(t,{...p,key:k}),jsxs:(t,p,k)=>React.createElement(t,{...p,key:k}),Fragment:React.Fragment};if(n.endsWith('/db'))return{db};if(n.endsWith('/reservation-command'))return commands.exports;if(n.endsWith('/reservation-ui'))return copyModule.exports;if(n.endsWith('.css'))return{default:new Proxy({},{get:(_,k)=>k})};throw Error(n)}
 (function(module,exports){${component}})(componentModule,componentModule.exports);
-ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(componentModule.exports.default,{workspace:role,profileName:'TEST '+role.toUpperCase(),admin:false,onLogout:()=>{},management:React.createElement('p',null,'Existing management tools are outside this isolated test.')}));
+function Verification(){const [lang,setLang]=React.useState('ko');return React.createElement(React.Fragment,null,React.createElement('select',{'aria-label':'Language',value:lang,onChange:e=>setLang(e.target.value)},['ko','en','vi'].map(v=>React.createElement('option',{key:v,value:v},v))),React.createElement(componentModule.exports.default,{lang,workspace:role,profileName:'TEST '+role.toUpperCase(),admin:false,onLogout:()=>{},management:null}))}
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(Verification));
 </script></body></html>`}
 async function request(body){
  if(!users[body.role])throw Error('Invalid test role');
