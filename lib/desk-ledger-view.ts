@@ -1,12 +1,17 @@
 import {serial,tableLabel,norm} from './accounting-plan';
 import type {LedgerSource} from './desk-ledger-plan';
-export function ledgerView(s:LedgerSource,day:string){
+import {settlementProfile} from './settlement-profile';
+const inputs=(rows:any[][])=>{const values=rows.map(r=>[...Array.from({length:5},(_,j)=>r[j]??''),r[7]??'']);while(values.length&&values[values.length-1].every(v=>v===''))values.pop();return values;};
+const amount=(value:any)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:null;
+export function ledgerView(s:LedgerSource,day:string,calculated:any[][]=s.daily){
  const date=serial(day);let game:number|null=null,lastDate:unknown=null;
+ const verified=settlementProfile.dailyHeaders.every((v,i)=>calculated[0]?.[i]===v)&&JSON.stringify(inputs(s.daily))===JSON.stringify(inputs(calculated));
  const daily=s.daily.flatMap((r,i)=>{
   if(r[1]!==lastDate&&r[1]!=null&&r[1]!==''){game=null;lastDate=r[1];}
   if(r[0]!==''&&r[0]!=null)game=Number.isSafeInteger(Number(r[0]))?Number(r[0]):null;
   if(Number(r[1])!==date||!r[4])return [];
-  return [{row:i+1,game,table:tableLabel(r[2]),blind:String(r[3]||''),player:String(r[4]),buyins:r[7]??'',expected:[...Array.from({length:5},(_,j)=>r[j]??''),r[7]??'']}];
+  const values=verified?calculated[i]:null;
+  return [{row:i+1,game,table:tableLabel(r[2]),blind:String(r[3]||''),player:String(r[4]),buyins:r[7]??'',rake:amount(values?.[settlementProfile.columns.rake]),rakeback:amount(values?.[settlementProfile.columns.back]),expected:[...Array.from({length:5},(_,j)=>r[j]??''),r[7]??'']}];
  });
  const fnb=s.fnb.flatMap((r,i)=>Number(r[0])===date?[{row:i+1,date:day,floor:r[1],amount:r[2],note:r[3],expected:Array.from({length:4},(_,j)=>r[j]??'')}]:[]);
  return {day,daily,fnb};

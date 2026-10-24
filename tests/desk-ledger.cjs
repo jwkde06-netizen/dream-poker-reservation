@@ -6,7 +6,7 @@ const expected=[...s.daily[1].slice(0,5),1];
 let p=deskPlan({kind:'buyins',row:2,expected,buyins:2},s);assert.equal(p.changes.length,1);assert.equal(p.changes[0].range,"'일일 입력'!H2");
 assert.throws(()=>deskPlan({kind:'buyins',row:2,expected:['stale'],buyins:2},s));
 const more=JSON.parse(JSON.stringify(s));more.daily[1][7]=3;assert.throws(()=>deskPlan({kind:'buyins',row:2,expected:[...expected.slice(0,5),3],buyins:2},more));
-p=deskPlan({kind:'cancel',row:2,expected,reason:'다음 게임 참가'},s);assert.equal(p.changes[0].range,"'일일 입력'!A3");assert.equal(p.changes[0].values[0][0],7);assert(!p.changes.some(c=>/[FGI-O]\d/.test(c.range)));
+p=deskPlan({kind:'cancel',row:2,expected,reason:'다음 게임 참가'},s);assert.equal(p.changes[0].range,"'일일 입력'!A2:E2");assert.equal(p.changes[0].values[0][0],7);assert.equal(p.changes[0].values[0][4],'KIM SEON HAK');assert(!p.changes.some(c=>/[FGI-O]\d/.test(c.range)));
 p=deskPlan({kind:'game',date:'2026-10-21',game:7,table:13,blind:'5M',players:[{player:'LEE KWANG TAE',buyins:1}]},s);assert.equal(p.changes.length,0);
 assert.throws(()=>deskPlan({kind:'game',date:'2026-10-21',game:7,table:13,blind:'5M',players:[{player:'UNKNOWN',buyins:1}]},s));
 p=deskPlan({kind:'fnb_edit',date:'2026-10-21',floor:'2F',amount:120000,note:'아메리카노 2잔',row:2,expected:s.fnb[1]},s);assert.equal(p.changes[0].values[0][2],120000);

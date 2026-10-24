@@ -24,7 +24,7 @@ export async function GET(req:Request){
  const user=await requireAdmin(req);if(!user)return json({error:'관리자 로그인이 필요해요.'},403);
  try{
  const day=new URL(req.url).searchParams.get('day')||new Date(Date.now()+7*3600000).toISOString().slice(0,10);
- const s=await read(),view=ledgerView(s,day),client=db();
+ const [s,[calculated]]=await Promise.all([read(),ranges(["'일일 입력'!A1:O5000"])]),view=ledgerView(s,day,calculated),client=db();
  const gameStates=await client.from('dream_sheet_game_status').select('business_date,game_no,table_label,physical_table,blind,status,source_no,version,updated_at').eq('business_date',day);
  if(gameStates.error)throw Error('게임 진행 상태를 불러오지 못했어요.');
  const q=await client.from('dream_desk_commands').select('id,status,summary,created_at,completed_at').eq('created_by',user.id).order('created_at',{ascending:false}).limit(20);
@@ -51,8 +51,9 @@ export async function POST(req:Request){
    const plan=deskPlan(b.operation,s);if(!plan.changes.length)return json({noop:true,summary:plan.summary});
    const result=await client.from('dream_desk_commands').insert({created_by:user.id,status:'preview',source_hash:sourceHash(s),operation:b.operation,changes:plan.changes,summary:plan.summary}).select('id,summary').single();if(result.error)throw Error('변경안을 저장하지 못했어요.');return json(result.data);
   }
-  if(!['apply','reconcile'].includes(b.action)||!/^[-a-f0-9]{36}$/.test(b.id||''))return json({error:'요청을 확인해주세요.'},400);
+  if(!['apply','reconcile','result'].includes(b.action)||!/^[-a-f0-9]{36}$/.test(b.id||''))return json({error:'요청을 확인해주세요.'},400);
   const saved=await client.from('dream_desk_commands').select('*').eq('id',b.id).eq('created_by',user.id).single();if(saved.error)throw Error('변경안을 찾지 못했어요.');const plan=saved.data;
+  if(b.action==='result')return json({status:plan.status,applied:plan.status==='applied',summary:plan.summary});
   if(plan.status==='applied')return json({applied:true,summary:plan.summary});
   if(b.action==='reconcile'){
    if(Date.now()-Date.parse(plan.writing_started_at||plan.created_at)<150000)return json({error:'저장 확인 중입니다. 3분 뒤 다시 확인해주세요.'},409);

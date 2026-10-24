@@ -8,7 +8,8 @@ function compile(source){
 }
 function moduleAt(file,imports){const exports={};vm.runInNewContext(compile(fs.readFileSync(root+'/'+file,'utf8')),{exports,require:imports,URL,URLSearchParams,Date,JSON,Error,Number,Array,Set,Map});return exports;}
 const plan=moduleAt('lib/accounting-plan.ts',require);
-const view=moduleAt('lib/desk-ledger-view.ts',n=>n==='./accounting-plan'?plan:require(n));
+const profile=moduleAt('lib/settlement-profile.ts',require);
+const view=moduleAt('lib/desk-ledger-view.ts',n=>n==='./accounting-plan'?plan:n==='./settlement-profile'?profile:require(n));
 const lifecycle=moduleAt('lib/sheet-game-status.ts',n=>n==='./desk-ledger-view'?view:require(n));
 const context=lifecycle;
 module.exports=(async()=>{

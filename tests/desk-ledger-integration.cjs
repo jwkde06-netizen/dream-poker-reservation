@@ -8,7 +8,8 @@ function compile(source){
 }
 function moduleAt(file,imports){const exports={};vm.runInNewContext(compile(fs.readFileSync(root+'/'+file,'utf8')),{exports,require:imports,URL,URLSearchParams,Date,JSON,Error,Number,Array,Set,Map});return exports;}
 const plan=moduleAt('lib/accounting-plan.ts',require);
-const view=moduleAt('lib/desk-ledger-view.ts',n=>n==='./accounting-plan'?plan:require(n));
+const profile=moduleAt('lib/settlement-profile.ts',require);
+const view=moduleAt('lib/desk-ledger-view.ts',n=>n==='./accounting-plan'?plan:n==='./settlement-profile'?profile:require(n));
 const lifecycle=moduleAt('lib/sheet-game-status.ts',n=>n==='./desk-ledger-view'?view:require(n));
 const day='2026-10-24',serial=plan.serial(day);
 const source={daily:[['Game','Date'],[4,serial,'4-1','5M','PARK SOO MIN','','',1],['',serial,'4-1','5M','KANG JIN HO','','',2],[1,serial+1,'2-1','5M','NEXT DAY','','',1]],fnb:[['Date'],[serial,'2F',100,'coffee']],master:[['Name'],['PARK SOO MIN','','KOREA'],['KANG JIN HO','','KOREA']],menu:[]};
@@ -33,13 +34,14 @@ const route=moduleAt('app/api/accounting/ledger/route.ts',n=>{
  if(n.endsWith('/desk-ledger-view'))return view;
  if(n.endsWith('/sheet-game-status'))return lifecycle;
  if(n.endsWith('/accounting-format'))return {prepareDateFormats:async()=>{formats++},verifyDateDisplays:async()=>{displayChecks++}};
- if(n.endsWith('/accounting-agent'))return {db:()=>client,ranges:async list=>list.length===4?[source.daily,source.fnb,source.master,source.menu]:[writes&&!readbackBad?[[2]]:[[1]]],same:(a,b)=>JSON.stringify(a)===JSON.stringify(b),sheet:async()=>{writes++}};
+ if(n.endsWith('/accounting-agent'))return {db:()=>client,ranges:async list=>list.length===4?[source.daily,source.fnb,source.master,source.menu]:list[0]==="'일일 입력'!A1:O5000"?[source.daily]:[writes&&!readbackBad?[[2]]:[[1]]],same:(a,b)=>JSON.stringify(a)===JSON.stringify(b),sheet:async()=>{writes++}};
  throw Error(n);
 });
 const post=(action,id=saved.id)=>route.POST({text:async()=>JSON.stringify({action,id})});
 module.exports=(async()=>{
  reset();admin=false;assert.equal((await route.GET({url:'https://test/api?day='+day})).status,403);assert.equal((await post('apply')).status,403);assert.equal(writes,0);admin=true;
  reset();const get=await route.GET({url:'https://test/api?day='+day});assert.equal(get.status,200);assert.equal(get.body.daily.length,2);assert.equal(get.body.reservations.length,1);assert.equal(writes,0);
+ reset();assert.equal((await post('result')).body.status,'preview');assert.equal(writes,0);saved.status='writing';assert.equal((await post('result')).body.status,'writing');assert.equal(writes,0);saved.status='applied';assert.equal((await post('result')).body.applied,true);assert.equal(writes,0);
  reset();assert.equal((await post('apply')).body.applied,true);assert.equal(writes,1);assert.equal(formats,1);assert.equal(displayChecks,1);assert.equal(released,1);await post('apply');assert.equal(writes,1);
  reset();saved.source_hash='stale';assert.equal((await post('apply')).status,409);assert.equal(writes,0);
  reset();locked=true;assert.equal((await post('apply')).status,409);assert.equal(writes,0);
