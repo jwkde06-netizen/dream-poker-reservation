@@ -8,7 +8,7 @@
     "start": "next start",
     "test:accounting": "node tests/run-accounting-offline.cjs",
     "prebuild": "npm run test:accounting && npm run test:reservations",
-    "test:reservations": "node tests/reservation-operations.cjs && node tests/reservation-postgres.cjs && node tests/reservation-webhook.cjs"
+    "test:reservations": "node tests/reservation-operations.cjs && node tests/reservation-postgres.cjs && node tests/reservation-webhook.cjs && node tests/reservation-workflow.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.49.1",

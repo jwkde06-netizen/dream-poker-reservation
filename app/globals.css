@@ -852,3 +852,5 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
  .staffMobileShell.themeLight .bookingHeaderActions select{background:#fff;color:#171b22}
 }
 @media(max-width:360px){.staffMobileShell .brand strong{font-size:15px}.staffMobileShell .brandLogo{width:26px;height:26px}.staffMobileShell .bookingHeaderActions{gap:4px}.staffMobileShell .bookingHeaderActions select{max-width:104px}.staffMobileShell .themeSwitch{display:none}}
+.staffShell:has([data-workspace="desk"]){max-width:1440px;padding:18px 24px 32px}.staffShell:has([data-workspace="desk"])>.header{margin-bottom:20px}.staffShell:has([data-workspace="desk"])>footer{display:none}
+@media(max-width:800px){.staffShell:has([data-workspace="desk"]){padding:12px 14px 24px}}
