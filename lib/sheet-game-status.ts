@@ -9,15 +9,19 @@ export function sheetGameIdentity(s:LedgerSource,day:string,game:number){
  return {business_date:day,game_no:game,table_label:rows[0].table,physical_table:String(rows[0].table).split('-')[0],blind:rows[0].blind};
 }
 export async function changeSheetGameStatus(client:any,s:LedgerSource,b:any,userId:string){
- if(!['active','closed'].includes(b.status)||!(b.version===null||typeof b.version==='string'))throw Error('진행 상태 요청을 확인해주세요.');
+ const reference=b.action==='game_reference';
+ if(reference&&(typeof b.sourceNo!=='string'||!/^\d{0,8}$/.test(b.sourceNo)))throw Error('K홀덤 No.는 8자리 이내 숫자로 입력해주세요.');
+ if((!reference&&!['active','closed'].includes(b.status))||!(b.version===null||typeof b.version==='string'))throw Error('진행 상태 요청을 확인해주세요.');
  const identity=sheetGameIdentity(s,b.day,b.game);
  const q=await client.from('dream_sheet_game_status').select('*').eq('business_date',b.day).eq('game_no',b.game).maybeSingle();
  if(q.error)throw Error('게임 상태를 읽지 못했습니다.');
  const previous=q.data;
  if((previous?.version??null)!==b.version)throw Error('다른 직원이 상태를 변경했습니다. 새로고침 후 확인해주세요.');
- if(previous&&previous.status===b.status&&previous.table_label===identity.table_label&&previous.blind===identity.blind)return;
+ const nextStatus=reference?(previous?.table_label===identity.table_label&&previous?.blind===identity.blind?previous.status:'unconfirmed'):b.status;
+ const sourceNo=reference?(b.sourceNo||null):(previous?.source_no??null);
+ if(previous&&previous.source_no===sourceNo&&previous.status===nextStatus&&previous.table_label===identity.table_label&&previous.blind===identity.blind)return;
  const now=new Date().toISOString();
- const record={...identity,status:b.status,version:randomUUID(),updated_at:now,updated_by:userId,history:[...(previous?.history||[]),{at:now,by:userId,from:previous?.status??null,to:b.status,table:identity.table_label}]};
+ const record={...identity,status:nextStatus,source_no:sourceNo,version:randomUUID(),updated_at:now,updated_by:userId,history:[...(previous?.history||[]),{at:now,by:userId,from:previous?.status??null,to:nextStatus,table:identity.table_label,sourceNo,previousSourceNo:previous?.source_no??null}]};
  const result=previous?await client.from('dream_sheet_game_status').update(record).eq('business_date',b.day).eq('game_no',b.game).eq('version',b.version).select('version'):await client.from('dream_sheet_game_status').insert(record).select('version');
  if(result.error?.code==='23505')throw Error('이 테이블에 이미 진행 중인 게임이 있거나 다른 직원이 상태를 변경했습니다. 새로고침 후 확인해주세요.');
  if(result.error||result.data?.length!==1)throw Error('상태 저장을 확인하지 못했습니다. 새로고침 후 확인해주세요.');

@@ -25,7 +25,7 @@ export async function GET(req:Request){
  try{
  const day=new URL(req.url).searchParams.get('day')||new Date(Date.now()+7*3600000).toISOString().slice(0,10);
  const s=await read(),view=ledgerView(s,day),client=db();
- const gameStates=await client.from('dream_sheet_game_status').select('business_date,game_no,table_label,physical_table,blind,status,version,updated_at').eq('business_date',day);
+ const gameStates=await client.from('dream_sheet_game_status').select('business_date,game_no,table_label,physical_table,blind,status,source_no,version,updated_at').eq('business_date',day);
  if(gameStates.error)throw Error('게임 진행 상태를 불러오지 못했어요.');
  const q=await client.from('dream_desk_commands').select('id,status,summary,created_at,completed_at').eq('created_by',user.id).order('created_at',{ascending:false}).limit(20);
  if(q.error)throw Error('처리 이력을 불러오지 못했어요.');
@@ -40,7 +40,7 @@ export async function POST(req:Request){
  const user=await requireAdmin(req);if(!user)return json({error:'관리자 로그인이 필요해요.'},403);
  const client=db();let locked=false,writing=false,owner=randomUUID();
  try{const raw=await req.text();if(raw.length>15000)return json({error:'요청이 너무 길어요.'},413);const b=JSON.parse(raw);
-  if(b.action==='game_status'){
+  if(['game_status','game_reference'].includes(b.action)){
    const s=await read();if(b.sourceHash!==sourceHash(s))return json({error:'시트가 변경됐어요. 새로고침 후 상태를 확인해주세요.'},409);
    await changeSheetGameStatus(client,s,b,user.id);
    return json({statusSaved:true});

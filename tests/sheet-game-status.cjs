@@ -28,7 +28,14 @@ var conflict={...source,daily:[...source.daily,[11,plan.serial('2026-10-24'),'5-
 await assert.rejects(()=>change(client,conflict,{day:'2026-10-24',game:11,status:'active',version:null},'tester'),/이미 진행/);
 var ambiguous={...source,daily:[...source.daily,[8,plan.serial('2026-10-24'),'13-1','5M','D','','',1]]};
 await assert.rejects(()=>change(client,ambiguous,{day:'2026-10-24',game:8,status:'active',version:state[0].version},'tester'),/하나로 확인/);
-console.log('PASS: multiple live games, no automatic game 10, close/reopen, stale version rejection, missing/ambiguous game rejection, table conflict, audit history. No external writes.');
+await change(client,source,{action:'game_reference',day:'2026-10-24',game:8,sourceNo:'28',version:state[0].version},'tester');
+assert.equal(state[0].game_no,8);assert.equal(state[0].source_no,'28');assert.equal(state[0].status,'active');
+await change(client,source,{action:'game_reference',day:'2026-10-24',game:10,sourceNo:'31',version:null},'tester');
+assert.equal(state.find(x=>x.game_no===10).status,'unconfirmed');
+await change(client,source,{day:'2026-10-24',game:8,status:'closed',version:state[0].version},'tester');
+assert.equal(state[0].source_no,'28');
+await assert.rejects(()=>change(client,source,{action:'game_reference',day:'2026-10-24',game:8,sourceNo:'invalid',version:state[0].version},'tester'),/K홀덤/);
+console.log('PASS: separate casino reference, internal number preserved, lifecycle preserved, invalid reference rejected;  multiple live games, no automatic game 10, close/reopen, stale version rejection, missing/ambiguous game rejection, table conflict, audit history. No external writes.');
 
 })();
 if(require.main===module)module.exports.catch(e=>{console.error(e);process.exitCode=1});
