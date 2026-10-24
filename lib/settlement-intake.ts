@@ -23,8 +23,8 @@ export function settlementIntake(jobs:any[],daily:any[][],master:any[][],start:s
   return op.kind==='cancel'?entries.some(r=>r.date===op.date&&r.game===op.game&&r.table===op.table)&&rows.length===0:rows.length===1&&Number(rows[0].buyins)===op.buyins;
  };
  const items=Array.from(latest.values()).flatMap(j=>{
-  const p=j.plan||{},ops=p.operations||[],all=[...ops,...(p.unverifiedOperations||[])];
-  const dates=Array.from(new Set<string>(all.map(o=>isoDate(o.date)).filter(Boolean)));
+  const p=j.plan||{},ops:any[]=p.operations||[],all=[...ops,...(p.unverifiedOperations||[])];
+  const dates=Array.from(new Set<string>(all.map(o=>isoDate(o.date)).filter((d):d is string=>d!==null)));
   const fallback=new Date(j.created_at||0);const date=dates[0]||(!Number.isNaN(fallback.getTime())?new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(fallback):'');
   const relevant=(dates.length?dates:[date]).filter(d=>d>=start&&d<=end);if(!relevant.length)return [];
   const checked=ops.filter(matches).length;
