@@ -179,5 +179,41 @@ module.exports=(async()=>{
   assert.throws(()=>correctedOperations(fixture.operations,'이건 6번게임이지',fixture.master,[],{...history[0],plan:{operations:[...source,{...source[0],game:8}]}}),/기존 게임 번호/);
  }
 
- console.log('Actual handler replay passed: tagged status, chain deduplication, no AI/no sheet writes for status, rebuy confirmation before guards, persisted binding, rule/status separation.');
+ // Oct 24 messages 436/438/444: an unapproved OCR registration for the
+ // circled THOMAS blocked two verified master players, including YANG JUNMO.
+ // Replay the real handler with local Sheets/Telegram doubles only.
+ const swapDay='2026-10-24',swapTime=Date.parse(swapDay+'T22:09:42+07:00')/1000;
+ const swapMaster=[['NAME','CARD','CODE'],['YUN SANG WOO','4407','KOREA'],['YANG JUNMO','','KOREA'],['LEE SUNG WON','','KOREA']];
+ const protectedRows=[[5,46319,'5-2','5M','PARK SOO MIN','','KOREA',1],[],[6,46319,'13-2','5M','BAEK JAE HUI','','KOREA2',1],[],[9,46319,'13-3','5M','YUN SANG WOO','','KOREA',1],['',46319,'13-3','5M','LEE SUNG WON','','KOREA',1]];
+ const swapBase={kind:'add',date:swapDay,game:11,printedGame:12,table:13,blind:'5M',buyins:1,chips:100000};
+ const thomas={kind:'register',player:'THOMAS VAN NEDERVELDE',agency:'KOREA'};
+ for(const [player,handwrittenGame,caption] of [['YUN SANG WOO',11,''],['YANG JUNMO',4,'11번게임']]){
+  const paper={date:swapDay,table:13,printedGame:12,handwrittenGame,headerCorrections:[{field:'game',value:handwrittenGame}],names:['NGUYEN TRONG NAM HUNG','TRAN DINH LOC','NGUYEN KHAC DUNG',player,'TRAN MINH HIEU B','LEE SUNGWON','HUYNH NGOC THINH','MIAO JINMING','THOMAS VAN NEDERVELDE'],chipAmounts:Array(9).fill(100000),selected:[false,false,false,true,false,true,false,false,true],crossedOut:Array(9).fill(false),hasSelectionMarkers:true};
+  const operations=[thomas,...[player,'LEE SUNG WON','THOMAS VAN NEDERVELDE'].map(player=>({...swapBase,player}))];
+  const fixture={allowWrites:true,op:operations[1],paper,operations,history:[],master:swapMaster,rows:protectedRows.map(r=>[...r]),stamp:swapTime};
+  const fixed=await run(caption,'photo',fixture);
+  assert.ifError(fixed.failure);assert.equal(fixed.job.status,'applied',fixed.job.reply_text);
+  assert.equal(fixed.writes,1);assert.deepEqual(fixed.daily.slice(2,2+protectedRows.length),protectedRows,'manual games 5/6 and earlier game 9 remain unchanged');
+  assert.deepEqual(fixed.job.plan.operations.map(o=>o.player).sort(),[player,'LEE SUNG WON'].sort());
+  assert(fixed.job.plan.operations.every(o=>o.game===11));
+  assert(!fixed.job.plan.changes.some(c=>c.range.includes('플레이어 명단')),'no inferred KOREA registration');
+  assert.match(fixed.job.plan.pendingQuestion,/THOMAS VAN NEDERVELDE.*소속 코드/);
+  assert(!fixed.job.reply_text.includes('새로 등록할 선수 이름'));
+  assert.match(fixed.job.reply_text,/11번 게임/);
+  assert.equal(fixed.events.filter(e=>e.method==='sendMessage').length,1,'one receipt updated to a partial result');
+  const repeat=await run(caption,'photo',{...fixture,rows:Array.from(fixed.daily.slice(2),r=>r||[])});
+  assert.ifError(repeat.failure);assert.equal(repeat.writes,0,'same corrected roster must not duplicate players');
+  assert.deepEqual(repeat.daily,Array.from(fixed.daily,r=>r||[]));
+  const {isolateUnapprovedRegistrations}=fixed.load('./accounting-followup');
+  const blocked=isolateUnapprovedRegistrations([thomas,{...swapBase,player:thomas.player}],caption,swapMaster);
+  assert.equal(blocked.operations.length,0);assert.equal(blocked.deferredRegistrations.length,1);
+  const authorized=isolateUnapprovedRegistrations([thomas],'THOMAS VAN NEDERVELDE 신규 등록 KOREA',swapMaster);
+  assert.equal(authorized.operations.length,1,'explicit named registration retains the existing authorization path');
+  assert.equal(isolateUnapprovedRegistrations([thomas],caption,swapMaster,'',[{content:'신규 선수 기본 코드는 KOREA'}]).operations.length,0,'default agency alone never authorizes a photo registration');
+  const replacement=[{...swapBase,kind:'cancel',player:'YUN SANG WOO'},thomas,{...swapBase,player:thomas.player}];
+  const held=isolateUnapprovedRegistrations(replacement,caption,swapMaster);
+  assert(fixed.load('./accounting-corrections').correctionBlocked(replacement,held.operations,held.question),'unverified replacement must not delete the existing player');
+ }
+
+ console.log('Actual handler replay passed: tagged status, chain deduplication, rebuy confirmation, rule/status separation, corrected game11 roster, partial unknown-player review, protected manual games and duplicate prevention.');
 })();

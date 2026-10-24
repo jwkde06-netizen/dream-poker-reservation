@@ -23,7 +23,11 @@ export function completionReply(operations:any[],question:any,answeredQuestion:b
  // Do not report the model's proposed operations as completed work.
  if(verified){
   const skipped=verified.summary.some(line=>/건너뛰/.test(line));
-  if(question)return [verified.changes.length?'확인된 항목만 구글 시트에 반영했어요.':null,String(question)].filter(Boolean).join('\n');
+  if(question){
+   const games=Array.from(new Set(operations.filter(o=>['add','total','cancel'].includes(o.kind)).map(o=>o.game)));
+   const scope=games.length===1&&Number.isInteger(games[0])?`${games[0]}번 게임 `:'';
+   return [verified.changes.length?`${scope}확인된 항목만 구글 시트에 반영했어요.`:null,String(question)].filter(Boolean).join('\n');
+  }
   if(skipped)return '일부 항목은 기존 기록을 유지했어요. 확인이 필요해요.';
   const attendance=(operations||[]).filter(o=>['add','total','cancel'].includes(o.kind));
   const games=Array.from(new Set(attendance.map(o=>o.game).filter(g=>Number.isInteger(g)&&g>0)));

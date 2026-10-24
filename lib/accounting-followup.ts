@@ -25,6 +25,21 @@ export function continuationText(current:string,previous:HistoryJob|null){
  if(!previous||closed(previous))return current;
  return [previous.plan?.continuationText||previous.text,current].filter(Boolean).join('\n').slice(-5000);
 }
+// A circled, unregistered photo player is not authorization to create a master
+// identity or infer an agency. Hold only that player; known attendance can pass
+// the usual photo, correction, conflict and readback guards independently.
+export function isolateUnapprovedRegistrations(ops:any[],evidence:string,master:any[][],pendingQuestion='',rules:any[]=[]){
+ const named=norm([evidence,pendingQuestion,...rules.map(r=>r.content)].join(' '));
+ const unapproved=ops.filter(op=>op.kind==='register'&&(!norm(op.player)||!named.includes(norm(op.player))));
+ const blocked=new Set(unapproved.map(op=>norm(op.player)));
+ const known=new Set(master.slice(1).filter(r=>r[0]&&String(r[2]||'').trim()).map(r=>norm(r[0])));
+ const deferred=Array.from(new Set(unapproved.map(op=>String(op.player||'').trim()).filter(player=>norm(player)&&!known.has(norm(player)))));
+ return {
+  operations:ops.filter(op=>!blocked.has(norm(op.player))||(op.kind!=='register'&&known.has(norm(op.player)))),
+  deferredRegistrations:deferred.map(player=>({player,reason:'named_registration_not_authorized'})),
+  question:deferred.length?`${deferred[0]}님은 등록 확인이 필요해요. 정산 대상이면 소속 코드를 알려주세요.`:null
+ };
+}
 export function registrationApprovals(ops:any[],evidence:string,master:any[][],pendingQuestion='',rules:any[]=[]){
  const codes=new Set(master.slice(1).map(r=>String(r[2]||'').trim()).filter(Boolean));
  const result:Record<string,{agency:string;card?:string}>={};

@@ -14,7 +14,7 @@ import {missingRebuyPlayers,missingRebuyQuestion,bindRebuyHistory,confirmedRebuy
 import {defaultAgency,completeNamedArrival,cosmeticNameEdit,jobReport,compactExtractionContext} from './accounting-workflow';
 import {reconcileSheet,reconcileOperation,afterVerifiedWrite} from './accounting-reconcile';
 import {sheetContext,correctedOperations,focusedQuestion,certainOperations,clearResolvedIdentityQuestion} from './accounting-context';
-import {closed,followupContext,continuationText,registrationApprovals,rebuyCaption} from './accounting-followup';
+import {closed,followupContext,continuationText,isolateUnapprovedRegistrations,registrationApprovals,rebuyCaption} from './accounting-followup';
 import {getVercelOidcToken} from '@vercel/oidc';
 import {createClient} from '@supabase/supabase-js';
 import {randomUUID,timingSafeEqual} from 'node:crypto';
@@ -203,7 +203,7 @@ export async function handle(update:any){
   }
   const confirmedRebuy=confirmedRebuyContext(job.text,previous,context.games);
   if(confirmedRebuy&&!confirmedRebuy.confirmedByMessageId)confirmedRebuy.confirmedByMessageId=m.message_id;
-  const taskPlan={confirmedRebuy,sheetState,photoRetryCount:job.plan?.photoRetryCount||0,photoSourceDate:photoSource?.plan?.photoSourceDate||photoSource?.source_message?.date||null,contextMessageId:previous?.message_id||null,photoSourceMessageId:photoSource?.message_id||null,continuationText:taskText};
+  const taskPlan={deferredRegistrations:[] as {player:string;reason:string}[],confirmedRebuy,sheetState,photoRetryCount:job.plan?.photoRetryCount||0,photoSourceDate:photoSource?.plan?.photoSourceDate||photoSource?.source_message?.date||null,contextMessageId:previous?.message_id||null,photoSourceMessageId:photoSource?.message_id||null,continuationText:taskText};
   if(photoSource&&photoSource.message_id!==m.message_id){await save(job.update_id,{source_message:{...photoSource.source_message,message_id:m.message_id,date:m.date,reply_to_message_id:m.reply_to_message?.message_id}});}
   if(image&&result.documentType==='phone_game'){
    // Retain seating context without treating screenshots as ledger evidence.
@@ -263,6 +263,10 @@ export async function handle(update:any){
     throw new InvalidAIResponse('verification_unavailable');
    }
   }
+  const registrationReview=isolateUnapprovedRegistrations(result.operations,taskText,master,previous?.plan?.pendingQuestion||'',businessRules);
+  result.operations=registrationReview.operations;
+  taskPlan.deferredRegistrations=registrationReview.deferredRegistrations;
+  if(registrationReview.question&&(!result.question||registrationReview.deferredRegistrations.some(r=>norm(result.question).includes(norm(r.player)))))result.question=registrationReview.question;
   if(correctionBlocked(correctionOriginal,result.operations,result.question)){
    await finish('review',result.question||'정정할 새 항목을 확인하지 못해 기존 기록은 유지했어요.');return;
   }
@@ -296,9 +300,6 @@ export async function handle(update:any){
   if(!result.operations?.length){if(image&&result.documentType==='phone_game'){await finish('ignored','');return;}if(image&&result.documentType==='paper_game')await finish('review','사진에서 표시된 선수가 잘 안 보여요. 이름만 알려주시겠어요?');else await finish('ignored',addressedToDesk(job.text)?'질문을 받았지만 어떤 내용을 확인할지 파악하지 못했어요. 확인할 게임이나 선수, 또는 처리 상태를 말씀해주세요.':'');return;}
   // A linked applied F&B receipt is context, never a second expense.
   if(photoSource?.status==='applied'&&result.operations.some((op:any)=>op.kind==='fnb')){await finish('review','이미 기록한 영수증이에요. 어느 부분을 바꿀까요?');return;}
-  const registrations=(result.operations||[]).filter((op:any)=>op.kind==='register');
-  const registrationEvidence=taskText+' '+businessRules.map(r=>r.content).join(' ');
-  if(registrations.some((op:any)=>!norm(registrationEvidence+' '+(previous?.plan?.pendingQuestion||'')).includes(norm(op.player)))){await finish('review','새로 등록할 선수 이름을 알려주세요.');return;}
   const makePlan=()=>planOperations(result.operations,daily,fnb,master,{tableRoundLabels:businessRules.some(r=>r.kind==='table_round_labels'),rebuySnapshot:rebuyCaption(taskText),photoSnapshot:!!image||!!confirmedResult,partialAttendance:true,registrationApprovals:registrationApprovals(result.operations,taskText,master,previous?.plan?.pendingQuestion||'',businessRules),reconcile:op=>reconcileOperation(op,{state:sheetState,sourceMessageId:photoSource?.plan?.photoSourceMessageId||photoSource?.message_id,sourceTime:photoSource?.plan?.photoSourceDate||photoSource?.source_message?.date||m.date,photo:!!image||!!confirmedResult,text:job.text,pendingQuestion:previous?.plan?.pendingQuestion||''})});
   let plan;try{plan=makePlan()}catch(e){await finish('review',e instanceof Error?e.message:'항목 확인이 필요합니다.');return;}
   // Re-read ALL daily inputs before committing, not only target cells. A human
