@@ -811,3 +811,44 @@ body:has(.themeLight){background:#f2f4f7}.themeLight .hero h1,.themeLight .brand
 .staffShell:has([data-workspace="cashier"])>.header{margin-bottom:20px;padding-bottom:12px}
 .staffShell:has([data-workspace="cashier"])>footer{padding-top:18px}
 @media(max-width:800px){.staffShell:has([data-workspace="cashier"]){padding:12px 14px 24px}.staffShell:has([data-workspace="cashier"])>.header{margin-bottom:16px}}
+
+/* Staff sign-in and shared mobile chrome. Inputs stay >=16px to avoid iOS zoom. */
+.staffWorkspaceLogin{max-width:440px;padding:24px;background:#131518;border-color:#34383e}
+.staffWorkspaceLogin>p{font-size:15px;line-height:1.6}
+.staffWorkspaceLogin>label{margin:20px 0 8px;font-size:15px}
+.staffWorkspaceLogin input{min-height:54px;font-size:17px;background:#0d0f12;color:#f4f4f5;border-color:#444a54}
+.staffWorkspaceLogin input:focus{outline:2px solid #d8bb7d;outline-offset:2px}
+.staffWorkspaceLogin input:-webkit-autofill{-webkit-text-fill-color:#f4f4f5;box-shadow:0 0 0 1000px #202329 inset}
+.staffPasswordField{display:flex;position:relative;align-items:center}
+.staffPasswordField input{padding-right:76px}
+.staffPasswordField button{position:absolute;right:4px;min-width:64px;min-height:46px;border:0;border-radius:7px;background:transparent;color:#d8bb7d;font-size:14px}
+.staffWorkspaceLogin .primary{min-height:56px;font-size:18px;margin-top:24px}
+.staffLoginLink{display:flex;align-items:center;justify-content:center;width:100%;min-height:48px;margin-top:10px;border:0;background:transparent;color:#d8bb7d;text-decoration:none;font-size:15px;cursor:pointer}
+.staffWorkspaceLogin .staffWorkspaceLinks{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:20px 0 6px;text-align:center}
+.staffWorkspaceLogin .staffWorkspaceLinks a{min-height:48px;display:flex;align-items:center;justify-content:center;font-size:15px}
+.staffWorkspaceLogin p.staffLoginError,.staffWorkspaceLogin p.staffLoginSuccess{margin:16px 0 0;padding:12px;border-radius:8px;font-size:14px;line-height:1.6}
+.staffLoginError{background:#352123;color:#ffc1c7;border:1px solid #78434a}
+.staffLoginSuccess{background:#19382a;color:#b1e1c6;border:1px solid #346548}
+.themeLight .staffWorkspaceLogin input{background:#fff;color:#171b22}
+.themeLight .staffWorkspaceLogin input:-webkit-autofill{-webkit-text-fill-color:#171b22;box-shadow:0 0 0 1000px #fff inset}
+.themeLight .staffLoginLink,.themeLight .staffPasswordField button{color:#76541b}
+@media(max-width:800px){
+ .staffMobileShell,.staffShell.staffMobileShell:has([data-workspace="cashier"]){padding:12px max(14px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));min-height:100dvh}
+ .staffMobileShell>.header{gap:8px;min-height:56px;margin-bottom:18px;padding:0 0 12px;flex-wrap:wrap}
+ .staffMobileShell .brand{gap:7px;min-width:0;flex:1}
+ .staffMobileShell .brandLogo{width:32px;height:32px;flex-shrink:0}
+ .staffMobileShell .brand strong{font-size:17px;letter-spacing:-.02em;white-space:nowrap}
+ .staffMobileShell .brand small{display:none}
+ .staffMobileShell .bookingHeaderActions{gap:6px}
+ .staffMobileShell .bookingHeaderActions select{font-size:16px;min-height:44px;max-width:120px;padding:9px 7px;background:#1c1f23;border-color:#41464e}
+ .staffMobileShell .themeSwitch{min-width:44px;min-height:44px;padding:7px!important}
+ .staffMobileShell .themeSwitch>span:last-child{display:none}
+ .staffMobileShell .roomSettingsToggle{min-width:44px;min-height:44px}
+ .staffMobileShell .roomSettingsMenu{display:none}
+ .staffMobileShell .staffWorkspaceLogin{padding:20px 18px;margin:0 auto;border-radius:14px}
+ .staffMobileShell .staffWorkspaceLogin h1{font-size:28px;margin:0 0 8px}
+ .staffMobileShell>footer{padding-top:24px;font-size:10px}
+ .staffMobileShell:has([data-workspace="cashier"])>footer{display:none}
+ .staffMobileShell.themeLight .bookingHeaderActions select{background:#fff;color:#171b22}
+}
+@media(max-width:360px){.staffMobileShell .brand strong{font-size:15px}.staffMobileShell .brandLogo{width:26px;height:26px}.staffMobileShell .bookingHeaderActions{gap:4px}.staffMobileShell .bookingHeaderActions select{max-width:104px}.staffMobileShell .themeSwitch{display:none}}

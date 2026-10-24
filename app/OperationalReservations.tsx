@@ -84,10 +84,10 @@ export default function OperationalReservations({workspace,lang,profileName,admi
  if(!desk&&tools)return <div className={styles.managementView} lang={lang}><button className={styles.managementBack} onClick={()=>setTools(false)}>← {t.backToReservations}</button>{management}</div>;
  if(!desk){
   const groups=[{id:'review',label:t.pendingCount,count:bookings.filter(needsReview).length},{id:'confirmed',label:t.statuses.confirmed,count:bookings.filter(b=>b.status==='confirmed').length},{id:'arrived',label:t.arrivedCount,count:bookings.filter(b=>b.status==='checked_in').length},{id:'all',label:t.all,count:bookings.length}];
-  return <section className={`${styles.workspace} ${styles.cashierWorkspace}`} data-workspace="cashier" lang={lang}>
+  return <section className={`${styles.workspace} ${styles.cashierWorkspace}`} data-workspace="cashier" data-detail-open={detailOpen} lang={lang}>
    <header className={styles.cashierTop}>
     <div className={styles.cashierTitle}><h1>{t.cashier}</h1><span className={online?styles.connected:styles.disconnected}>● {online?t.connected:t.disconnected}</span>{test&&<span className={styles.testBadge}>{t.test}</span>}</div>
-    <nav><button onClick={()=>setTools(true)}>{t.manage}</button><details className={styles.workspaceMenu}><summary aria-label={t.workspaceMenu}>•••</summary><div><small>{profileName}</small><a href={'/desk'+(test?'?test=1':'')}>{t.desk}</a><a href="/">{t.guestPage}</a><button onClick={onLogout}>{t.logout}</button></div></details></nav>
+    <nav><button className={styles.manageButton} onClick={()=>setTools(true)}>{t.manage}</button><details className={styles.workspaceMenu}><summary aria-label={t.workspaceMenu}>•••</summary><div><small>{profileName}</small><button className={styles.mobileManage} onClick={()=>setTools(true)}>{t.manage}</button><a href={'/desk'+(test?'?test=1':'')}>{t.desk}</a><a href="/">{t.guestPage}</a><button onClick={onLogout}>{t.logout}</button></div></details></nav>
    </header>
    {test&&<div className={styles.warning}>{t.testWarning}{admin&&!games.length&&<button onClick={()=>void prepareTest()} disabled={busy}>{t.prepareTest}</button>}</div>}
    {error&&<div role="alert" className={styles.warning}>{errorText}<button disabled={busy} onClick={()=>{setError(null);void refresh()}}>{t.refresh}</button></div>}
@@ -98,7 +98,7 @@ export default function OperationalReservations({workspace,lang,profileName,admi
      <div className={styles.queueHeading}><h2>{t.queueTitle}</h2><button aria-expanded={showForm} onClick={()=>{setShowForm(v=>!v);setEditing(false);setDraft(fresh())}}>＋ {t.add}</button></div>
      {showForm&&!editing&&form}
      <input className={styles.queueSearch} aria-label={t.search} placeholder={t.search} value={search} onChange={e=>{setSearch(e.target.value);setSelected('')}}/>
-     <div className={styles.cashierList}>{!loaded?<p className={styles.emptyQueue}>{t.loading}</p>:!rows.length?<div className={styles.emptyQueue}><span>✓</span><h2>{search?t.searchEmpty:filter==='review'?t.reviewEmpty:t.empty}</h2>{!search&&filter==='review'&&<p>{t.reviewEmptyHelp}</p>}</div>:rows.map(b=><button key={b.id} className={`${styles.cashierCard} ${current?.id===b.id?styles.selected:''}`} aria-pressed={current?.id===b.id} onClick={()=>{setSelected(b.id);setDetailOpen(true);setShowForm(false)}}>
+     <div className={styles.cashierList}>{!loaded?<p className={styles.emptyQueue}>{t.loading}</p>:!rows.length?<div className={styles.emptyQueue}><span>✓</span><h2>{search?t.searchEmpty:filter==='review'?t.reviewEmpty:t.empty}</h2>{!search&&filter==='review'&&<p>{t.reviewEmptyHelp}</p>}</div>:rows.map(b=><button key={b.id} className={`${styles.cashierCard} ${current?.id===b.id?styles.selected:''}`} aria-pressed={current?.id===b.id} onClick={()=>{setSelected(b.id);setDetailOpen(true);setShowForm(false);if(window.matchMedia("(max-width: 800px)").matches)window.scrollTo({top:0})}}>
       <span className={styles.cardTop}><strong>{b.player_name}</strong><span>{people(b.party_size)}</span></span>
       <small>{gameLabel(b.game_id)}</small><span className={styles.cardBottom}><time>{clock(b.arrival_at)} (VN)</time><span className={styles.pill} data-status={needsReview(b)?'pending':b.status}>{bookingStatus(b)}</span></span>
      </button>)}</div>
