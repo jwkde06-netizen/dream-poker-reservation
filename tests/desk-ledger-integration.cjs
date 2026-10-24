@@ -9,6 +9,7 @@ function compile(source){
 function moduleAt(file,imports){const exports={};vm.runInNewContext(compile(fs.readFileSync(root+'/'+file,'utf8')),{exports,require:imports,URL,URLSearchParams,Date,JSON,Error,Number,Array,Set,Map});return exports;}
 const plan=moduleAt('lib/accounting-plan.ts',require);
 const view=moduleAt('lib/desk-ledger-view.ts',n=>n==='./accounting-plan'?plan:require(n));
+const lifecycle=moduleAt('lib/sheet-game-status.ts',n=>n==='./desk-ledger-view'?view:require(n));
 const day='2026-10-24',serial=plan.serial(day);
 const source={daily:[['Game','Date'],[4,serial,'4-1','5M','PARK SOO MIN','','',1],['',serial,'4-1','5M','KANG JIN HO','','',2],[1,serial+1,'2-1','5M','NEXT DAY','','',1]],fnb:[['Date'],[serial,'2F',100,'coffee']],master:[['Name'],['PARK SOO MIN','','KOREA'],['KANG JIN HO','','KOREA']],menu:[]};
 const result=view.ledgerView(source,day);
@@ -23,13 +24,14 @@ let admin=true,writes=0,released=0,locked=false,readbackBad=false,formats=0,disp
 const change={range:"'일일 입력'!H2",before:[[1]],values:[[2]]};
 function reset(){writes=0;released=0;locked=false;readbackBad=false;formats=0;displayChecks=0;existing=false;reservation={...booking};saved={id:booking.id,created_by:'admin',status:'preview',created_at:new Date().toISOString(),source_hash:planner.sourceHash(source),changes:[change],summary:['2바인'],operation:{kind:'buyins'}};}
 const client={from:table=>{let update,contains=false;
- const q={select:()=>q,eq:()=>q,in:()=>q,gte:()=>q,lt:()=>q,order:()=>q,limit:()=>q,contains:()=>{contains=true;return q;},update:v=>{update=v;return q;},single:async()=>{if(update)Object.assign(saved,update);return {data:table==='reservations'?reservation:table==='dream_accounting_mutex'?{owner:saved.lock_owner}:saved};},then:resolve=>{if(update)Object.assign(saved,update);return Promise.resolve({data:table==='reservations'?[reservation]:contains?(existing?[{id:'other'}]:[]):[saved]}).then(resolve);}};return q;},rpc:async name=>{if(name.endsWith('acquire')){if(locked)return {data:false};locked=true;return {data:true};}released++;locked=false;return {data:true};}};
+ const q={select:()=>q,eq:()=>q,in:()=>q,gte:()=>q,lt:()=>q,order:()=>q,limit:()=>q,contains:()=>{contains=true;return q;},update:v=>{update=v;return q;},single:async()=>{if(update)Object.assign(saved,update);return {data:table==='reservations'?reservation:table==='dream_accounting_mutex'?{owner:saved.lock_owner}:saved};},then:resolve=>{if(update)Object.assign(saved,update);return Promise.resolve({data:table==='dream_sheet_game_status'?[]:table==='reservations'?[reservation]:contains?(existing?[{id:'other'}]:[]):[saved]}).then(resolve);}};return q;},rpc:async name=>{if(name.endsWith('acquire')){if(locked)return {data:false};locked=true;return {data:true};}released++;locked=false;return {data:true};}};
 const route=moduleAt('app/api/accounting/ledger/route.ts',n=>{
  if(n==='next/server')return {NextResponse:{json:(body,o)=>({body,status:o?.status||200})}};
  if(n==='node:crypto')return require(n);
  if(n.endsWith('/telegram'))return {requireAdmin:async()=>admin?{id:'admin'}:null};
  if(n.endsWith('/desk-ledger-plan'))return planner;
  if(n.endsWith('/desk-ledger-view'))return view;
+ if(n.endsWith('/sheet-game-status'))return lifecycle;
  if(n.endsWith('/accounting-format'))return {prepareDateFormats:async()=>{formats++},verifyDateDisplays:async()=>{displayChecks++}};
  if(n.endsWith('/accounting-agent'))return {db:()=>client,ranges:async list=>list.length===4?[source.daily,source.fnb,source.master,source.menu]:[writes&&!readbackBad?[[2]]:[[1]]],same:(a,b)=>JSON.stringify(a)===JSON.stringify(b),sheet:async()=>{writes++}};
  throw Error(n);

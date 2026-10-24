@@ -1,3 +1,4 @@
+import {randomUUID} from 'node:crypto';
 import {ledgerView} from './desk-ledger-view';
 import type {LedgerSource} from './desk-ledger-plan';
 export function sheetGameIdentity(s:LedgerSource,day:string,game:number){
@@ -16,7 +17,7 @@ export async function changeSheetGameStatus(client:any,s:LedgerSource,b:any,user
  if((previous?.version??null)!==b.version)throw Error('다른 직원이 상태를 변경했습니다. 새로고침 후 확인해주세요.');
  if(previous&&previous.status===b.status&&previous.table_label===identity.table_label&&previous.blind===identity.blind)return;
  const now=new Date().toISOString();
- const record={...identity,status:b.status,version:crypto.randomUUID(),updated_at:now,updated_by:userId,history:[...(previous?.history||[]),{at:now,by:userId,from:previous?.status??null,to:b.status,table:identity.table_label}]};
+ const record={...identity,status:b.status,version:randomUUID(),updated_at:now,updated_by:userId,history:[...(previous?.history||[]),{at:now,by:userId,from:previous?.status??null,to:b.status,table:identity.table_label}]};
  const result=previous?await client.from('dream_sheet_game_status').update(record).eq('business_date',b.day).eq('game_no',b.game).eq('version',b.version).select('version'):await client.from('dream_sheet_game_status').insert(record).select('version');
  if(result.error?.code==='23505')throw Error('이 테이블에 이미 진행 중인 게임이 있거나 다른 직원이 상태를 변경했습니다. 새로고침 후 확인해주세요.');
  if(result.error||result.data?.length!==1)throw Error('상태 저장을 확인하지 못했습니다. 새로고침 후 확인해주세요.');
