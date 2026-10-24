@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "test:accounting": "node tests/run-accounting-offline.cjs",
-    "prebuild": "npm run test:accounting"
+    "prebuild": "npm run test:accounting && npm run test:reservations",
+    "test:reservations": "node tests/reservation-operations.cjs && node tests/reservation-postgres.cjs && node tests/reservation-webhook.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.49.1",
@@ -20,6 +21,7 @@
     "@types/node": "22.7.4",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.1",
-    "typescript": "5.6.2"
+    "typescript": "5.6.2",
+    "@electric-sql/pglite": "0.5.11"
   }
 }
