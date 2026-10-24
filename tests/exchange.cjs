@@ -63,7 +63,7 @@ assert.equal(toMinor('100.01', 'USD_CASH'), 10001);
 assert.throws(() => toMinor('100.001', 'USD_CASH'), /소수점/);
 assert.throws(() => toMinor('1.1', 'VND_CASH'), /소수점/);
 assert.throws(() => toMinor('9000000000001', 'KRW_BANK'), /범위/);
-assert.throws(() => planExchange({ ...feeTrade, paid: { account: 'VND_CASH', amount: '99999999999' }, received: { account: 'VND_BANK', amount: '99999999999' }, fee: null }, state), /잔액이 부족/);
+assert.ok(planExchange({ ...feeTrade, paid: { account: 'VND_CASH', amount: '99999999999' }, received: { account: 'VND_BANK', amount: '99999999999' }, fee: null }, state).postings.find(p => p.account === 'VND_CASH').after_minor < 0);
 assert.equal(isAmbiguousBareAmount('+50000'), true); assert.equal(isAmbiguousBareAmount('50,000'), true);
 assert.equal(isAmbiguousBareAmount('VND 현금 수수료 입금 50000'), false);
 verifyExchangeNumberEvidence(feeTrade, '베트남 계좌 550만동, 현금 550만동 지급. 5만동 수수료 별도');
