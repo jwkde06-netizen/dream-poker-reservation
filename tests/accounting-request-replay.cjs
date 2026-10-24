@@ -78,7 +78,7 @@ module.exports=(async()=>{
  assert.equal(rebuy.job.plan.confirmedRebuy.table,14);
  assert.equal(rebuy.job.plan.confirmedRebuy.paperTable,2);
  assert.equal(rebuy.job.plan.pendingQuestion,null);
- assert.equal(rebuy.job.reply_text,'✅ 구글 시트에 이미 반영되어 있어요.');
+ assert.equal(rebuy.job.reply_text,'✅ 9번 게임 리바인 이미 반영됨');
  const {confirmedRebuyContext}=rebuy.load('./accounting-vision');
  assert.equal(confirmedRebuyContext('2바인',rebuy.job,[{date,gameNumber:9,tableLabel:'14-1',tableNumber:14}]).game,9);
  assert.equal(confirmedRebuyContext('아니 2번 게임',rebuy.job,[{date,gameNumber:9,tableLabel:'14-1',tableNumber:14}]),null);

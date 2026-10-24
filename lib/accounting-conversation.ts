@@ -18,13 +18,22 @@ export function politeAcknowledgement(text:string,replyToBot:boolean){
  if(/^(?:고마워|고맙습니다|감사합니다|수고했어|수고했어요)[.!~\s]*$/.test(text.trim()))return '네, 필요하시면 말씀해주세요.';
  return null;
 }
-export function completionReply(operations:any[],question:any,answeredQuestion:boolean,verified?:{summary:string[];changes:any[]}){
+export function completionReply(operations:any[],question:any,answeredQuestion:boolean,verified?:{summary:string[];changes:any[];rebuyGames?:number[]}){
  // The planner knows which requests were skipped, already present or changed.
  // Do not report the model's proposed operations as completed work.
  if(verified){
   const skipped=verified.summary.some(line=>/건너뛰/.test(line));
   if(question)return [verified.changes.length?'확인된 항목만 구글 시트에 반영했어요.':null,String(question)].filter(Boolean).join('\n');
   if(skipped)return '일부 항목은 기존 기록을 유지했어요. 확인이 필요해요.';
+  const attendance=(operations||[]).filter(o=>['add','total','cancel'].includes(o.kind));
+  const games=Array.from(new Set(attendance.map(o=>o.game).filter(g=>Number.isInteger(g)&&g>0)));
+  if(attendance.length&&games.length&&!operations.some(o=>o.kind==='fnb')){
+   return games.sort((a,b)=>a-b).map(game=>{
+    const entries=attendance.filter(o=>o.game===game);
+    const kind=entries.every(o=>o.kind==='cancel')?'선수 삭제':entries.some(o=>o.kind==='cancel')?'명단 수정':verified.rebuyGames?.includes(game)||entries.some(o=>o.kind==='total'||o.rebuyBinding)?'리바인':'바이인';
+    return '✅ '+game+'번 게임 '+kind+(verified.changes.length?' 반영 완료':' 이미 반영됨');
+   }).join('\n');
+  }
   return verified.changes.length?'✅ 구글 시트 반영 완료':'✅ 구글 시트에 이미 반영되어 있어요.';
  }
  if(question)return `확인된 항목은 기록했어요. ${String(question)}`;
