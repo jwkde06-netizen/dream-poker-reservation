@@ -7,7 +7,7 @@ export function settlementIntake(jobs:any[],daily:any[][],master:any[][],start:s
  const byId=new Map<number,any>();for(const j of ordered)if(!byId.has(j.message_id))byId.set(j.message_id,j);
  const root=(j:any)=>{const seen=new Set<number>();let current=j;while(current&&!seen.has(current.message_id)){seen.add(current.message_id);const parent=byId.get(current.plan?.contextMessageId)||byId.get(current.plan?.photoSourceMessageId);if(!parent||parent.message_id===current.message_id)break;current=parent;}return current?.message_id||j.message_id;};
  const latest=new Map<number,any>();
- for(const j of byId.values()){
+ for(const j of Array.from(byId.values())){
   const p=j.plan||{};
   if(p.referenceOnly||p.casualConversation||p.resolvedBy||p.reconciliation)continue;
   if(j.status==='ignored'&&!p.manual_handoff)continue;
