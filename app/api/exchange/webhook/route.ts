@@ -18,22 +18,17 @@ async function handleSnapshotCommand(update: any, row: any): Promise<boolean> {
   await exchangeTelegram('sendMessage', { chat_id: config.chatId, text: lines.join(String.fromCharCode(10)), reply_parameters: { message_id: m.message_id, allow_sending_without_reply: true } }, config);
   return true;
 }
-/** Register Telegram slash-command menu inside the linked room; only group admins may change it. */
-async function handleCommandMenu(update: any, row: any): Promise<boolean> {
-  const m = update?.message;
-  if (!m || !['/commands','/commands@dream_poker_exchange_bot'].includes(String(m.text || '').trim().toLowerCase())) return false;
-  if (!row.enabled || String(m.chat?.id) !== row.chat_id || !Number.isSafeInteger(m.from?.id) || m.from?.is_bot || m.sender_chat || m.forward_origin) return true;
+let menuRegistered = false;
+async function ensureCommandMenu() {
+  if (menuRegistered) return;
   const config = exchangeConfig();
-  const member = await exchangeTelegram('getChatMember', { chat_id: config.chatId, user_id: m.from.id }, config);
-  if (!['administrator','creator'].includes(member.status)) return true;
   await setupTelegram(config.token, 'setMyCommands', {
     scope: { type: 'chat', chat_id: config.chatId },
-    language_code: 'ko',
     commands: [
       { command: 'status', description: '현재 환전 시제' },
       { command: 'week', description: '이번 주 수익·정산' },
       { command: 'today', description: '오늘 거래 내역' },
-      { command: 'fee', description: '이체수수료 입력 · 뒤에 금액' },
+      { command: 'fee', description: '이체수수료 추가 · 예: /fee 100 = 100만동' },
       { command: 'fee5', description: '이체수수료 5만동 기록' },
       { command: 'fee10', description: '이체수수료 10만동 기록' },
       { command: 'fxsnapshot', description: '최근 수기 시제 현황 게시' },
@@ -42,6 +37,33 @@ async function handleCommandMenu(update: any, row: any): Promise<boolean> {
       { command: 'commands', description: '명령어 메뉴 다시 등록' },
     ],
   });
+  await setupTelegram(config.token, 'setMyCommands', {
+    language_code: 'ko',
+    scope: { type: 'chat', chat_id: config.chatId },
+    commands: [
+      { command: 'status', description: '현재 환전 시제' },
+      { command: 'week', description: '이번 주 수익·정산' },
+      { command: 'today', description: '오늘 거래 내역' },
+      { command: 'fee', description: '이체수수료 추가 · 예: /fee 100 = 100만동' },
+      { command: 'fee5', description: '이체수수료 5만동 기록' },
+      { command: 'fee10', description: '이체수수료 10만동 기록' },
+      { command: 'fxsnapshot', description: '최근 수기 시제 현황 게시' },
+      { command: 'lastweek', description: '지난주 수익·정산' },
+      { command: 'help', description: '사용법 · +5만 간편 입력' },
+      { command: 'commands', description: '명령어 메뉴 다시 등록' },
+    ],
+  });
+  menuRegistered = true;
+}
+/** Register Telegram slash-command menu inside the linked room; only group admins may change it. */
+async function handleCommandMenu(update: any, row: any): Promise<boolean> {
+  const m = update?.message;
+  if (!m || !['/commands','/commands@dream_poker_exchange_bot'].includes(String(m.text || '').trim().toLowerCase())) return false;
+  if (!row.enabled || String(m.chat?.id) !== row.chat_id || !Number.isSafeInteger(m.from?.id) || m.from?.is_bot || m.sender_chat || m.forward_origin) return true;
+  const config = exchangeConfig();
+  const member = await exchangeTelegram('getChatMember', { chat_id: config.chatId, user_id: m.from.id }, config);
+  if (!['administrator','creator'].includes(member.status)) return true;
+  await ensureCommandMenu();
   await exchangeTelegram('sendMessage', {
     chat_id: config.chatId,
     text: '✅ 단축 명령어 메뉴 등록 완료. 메시지 입력창에 / 를 눌러보세요.\n+5만 → 이체수수료 5만동 기록',
@@ -67,6 +89,7 @@ export async function POST(request: Request) {
       if (await pairExchangeRoom(update, row)) return NextResponse.json({ ok: true });
       if (!row.chat_id) return NextResponse.json({ ok: true });
       if (!row.enabled) return NextResponse.json({ error: 'Paused' }, { status: 503 });
+      await ensureCommandMenu().catch(() => {});
       if (await handleCommandMenu(update, row)) return NextResponse.json({ ok: true });
       if (await handleSnapshotCommand(update, row)) return NextResponse.json({ ok: true });
       await handleExchangeUpdate(update);
