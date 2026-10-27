@@ -21,7 +21,7 @@ interface Job {
   reply_id: number | null; reply_state: string; context_update_id: number | null;
 }
 
-export const EXCHANGE_HELP = `Dream Poker Exchange\n\n실제로 받은 돈과 지급한 돈을 이 방에 적으면 시제와 수익 원장에 기록합니다. 은행 이체를 실행하지는 않습니다.\n\n거래 예시\n• 베트남 계좌로 550만동 받고 현금 550만동 지급. 수수료 5만동은 계좌로 별도 받음\n• 원화 계좌 30만원 입금, 18레이트로 동 현금 지급 완료\n• 100USD 현금 받고 동 현금 250만동 지급 완료\n• 베트남 계좌 수수료 수입 5만동, 별도 수수료 정산\n\n조회: 시제 / 오늘 정산 / 이번 주 정산 / 지난주 정산\n기본 환율: 1 KRW = 18 VND, 1 USD = 25,000 VND. 실제 지급액이 있으면 함께 적어주세요.\n환전 원금은 수익에 포함하지 않습니다. 외화 차익은 확인된 취득원가로 처분 시 계산합니다.\n\n최초 설정(관리자): “기초 시제 동 현금 …, 베트남 계좌 …, 원화 계좌 …, 달러 현금 …”을 적고 미리보기의 확정 명령을 보내주세요. 외화의 동 기준 총 취득원가도 알면 함께 적어주세요. 없는 통화는 0입니다.\n\n단축입력: +5만 = 이체수수료 50,000동 수령 / /fee 5만동 또는 /fee 50000 = 동일. /fee5 = 5만동, /fee10 = 10만동. 5만동 취소 또는 수수료 완료 메시지에 답장으로 취소(관리자 전용). /status = 시제 조회. 금액만 있는 음수는 자동 차감하지 않습니다.\n취소(관리자): “FX-봇번호-업데이트번호 취소, 사유 …”. 기존 메시지를 수정해도 원장은 덮어쓰지 않습니다.`;
+export const EXCHANGE_HELP = `Dream Poker Exchange\n\n실제로 받은 돈과 지급한 돈을 이 방에 적으면 시제와 수익 원장에 기록합니다. 은행 이체를 실행하지는 않습니다.\n\n거래 예시\n• 베트남 계좌로 550만동 받고 현금 550만동 지급. 수수료 5만동은 계좌로 별도 받음\n• 원화 계좌 30만원 입금, 18레이트로 동 현금 지급 완료\n• 100USD 현금 받고 동 현금 250만동 지급 완료\n• 베트남 계좌 수수료 수입 5만동, 별도 수수료 정산\n\n조회: 시제 / 오늘 정산 / 이번 주 정산 / 지난주 정산\n기본 환율: 1 KRW = 18 VND, 1 USD = 25,000 VND. 실제 지급액이 있으면 함께 적어주세요.\n환전 원금은 수익에 포함하지 않습니다. 외화 차익은 확인된 취득원가로 처분 시 계산합니다.\n\n최초 설정(관리자): “기초 시제 동 현금 …, 베트남 계좌 …, 원화 계좌 …, 달러 현금 …”을 적고 미리보기의 확정 명령을 보내주세요. 외화의 동 기준 총 취득원가도 알면 함께 적어주세요. 없는 통화는 0입니다.\n\n단축입력: /fee 5 = 수수료 수익 5만동, /fee 10 = 10만동, /fee 100 = 100만동. /fee 뒤 숫자는 만동 단위입니다. 예전처럼 동 단위 숫자를 넣을 때는 /fee 50000 또는 /fee 5만동을 사용하세요. /fee5 = 5만동, /fee10 = 10만동. 수수료 취소는 완료 메시지에 답장하거나 “5만동 취소”라고 적으세요(관리자 전용).\n취소(관리자): “FX-봇번호-업데이트번호 취소, 사유 …”. 기존 메시지를 수정해도 원장은 덮어쓰지 않습니다.`;
 
 export async function getExchangeState(chatId = exchangeChatId()): Promise<ExchangeState> {
   const { data, error } = await exchangeDb().rpc('dream_exchange_state', { p_chat_id: chatId });
@@ -177,7 +177,9 @@ export function exchangeFeeShortcut(text:string):ExchangeIntent|null {
   const m=p.match(/^([0-9][0-9,]*(?:[.][0-9]+)?)[ ]*(백만동|만동|천동|백만|만|천|m|k|동|vnd)?$/i);
   if(!m || (!explicit && !/^(?:[0-9][0-9,]*[ ]*(?:만동|만|천동|천|동))$/.test(p)))return null;
   const scale:Record<string,number>={'':1,동:1,vnd:1,만:10000,만동:10000,천:1000,천동:1000,백만:1000000,백만동:1000000,m:1000000,k:1000};
-  const amount=Number(m[1].replace(/,/g,''))*scale[(m[2]||'').toLowerCase()];
+  const numeric=Number(m[1].replace(/,/g,''));
+  const tenThousandUnit=explicit && t.toLowerCase().startsWith('/fee ') && !m[2] && numeric<=1000;
+  const amount=numeric*(tenThousandUnit?10000:scale[(m[2]||'').toLowerCase()]);
   if(!Number.isSafeInteger(amount)||amount<=0||amount>1000000000)throw new ExchangeReview('수수료 금액을 확인해주세요.');
   return {kind:'movement',account:'VND_CASH',amount:String(amount),direction:'in',category:'fee',basis_vnd:null,note:'이체수수료',external_reference:null};
 }
