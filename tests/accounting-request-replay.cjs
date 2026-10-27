@@ -32,7 +32,7 @@ async function run(text,mode='status',fixture=null){
    then(resolve,reject){try{let rows=(table==='dream_accounting_rules'?rules:jobs).filter(r=>filters.every(f=>f(r)));if(mode==='readback-fail'&&table==='dream_accounting_rules'&&one&&filters.length)rows=[];if(sort)rows.sort((a,b)=>(a[sort[0]]>b[sort[0]]?1:-1)*(sort[1].ascending?1:-1));rows=rows.slice(0,limit);if(patch)rows.forEach(r=>Object.assign(r,patch));return Promise.resolve({data:one?rows[0]:rows,error:null}).then(resolve,reject);}catch(e){return Promise.reject(e).then(resolve,reject);}}
   };return q;
  }
- const tg=async(method,data)=>{events.push({method,...data});if(method==='getFile')return {file_path:'fixture.jpg'};if(method==='getChatMember')return {status:mode==='unauthorized'?'left':'member'};return {message_id:900};};
+ const tg=async(method,data)=>{events.push({method,...data,aiCallsAtSend:ai});if(method==='getFile')return {file_path:'fixture.jpg'};if(method==='getChatMember')return {status:mode==='unauthorized'?'left':'member'};return {message_id:900};};
  const fetch=async(url,init={})=>{
   if(url.startsWith('https://sheets.googleapis.com')){
    const u=new URL(url);
@@ -52,8 +52,10 @@ async function run(text,mode='status',fixture=null){
   if(url.startsWith('https://api.telegram.org/file/'))return {ok:true,arrayBuffer:async()=>new Uint8Array([1,2]).buffer};
   if(url.includes('ai-gateway')){
    ai++;const body=JSON.parse(init.body);const columns=body.max_tokens===2500||body.max_tokens===4000;
+   if(fixture?.classificationFailure)throw Error('Fixture classification unavailable');
+   if(columns&&fixture?.verificationFailure)throw Error('Fixture receipt verification unavailable');
    const teaching=['rules','readback-fail','unauthorized'].includes(mode);
-   const result=teaching?{documentType:'other',operations:[],question:null,memory:{action:'save',kind:'instruction',content:'사진 접수 시 진행 안내를 한 번 보낸다.'}}:columns?{documents:[paper]}:{documentType:'paper_game',operations:fixture?.operations||[op],question:fixture?null:'9번 게임의 용지 번호를 확인해주세요.',memory:null};
+   const result=teaching?{documentType:'other',operations:[],question:null,memory:{action:'save',kind:'instruction',content:'사진 접수 시 진행 안내를 한 번 보낸다.'}}:columns?{documents:[paper]}:fixture?.response||{documentType:'paper_game',operations:fixture?.operations||[op],question:fixture?null:'9번 게임의 용지 번호를 확인해주세요.',memory:null};
    return {ok:true,json:async()=>({model:'fixture',usage:{total_tokens:1},choices:[{finish_reason:'stop',message:{content:JSON.stringify(result)}}]})};
   }
   throw Error('Unexpected external request '+url);
@@ -70,7 +72,7 @@ async function run(text,mode='status',fixture=null){
   new Function('require','exports','process','Buffer','fetch',compile(fs.readFileSync(path.join(__dirname,'../lib',name.replace('./','')+'.ts'),'utf8')))(load,exports,{env:{STAFF_TELEGRAM_CHAT_ID:'-1',AI_GATEWAY_API_KEY:'fixture'}},Buffer,fetch);
   return exports;
  }
- let failure;try{await load('./accounting-agent').handle({update_id:400,message:{message_id:400,date:stamp,chat:{id:-1,type:'supergroup'},from:{id:1},text,...(fixture?.replyTo?{reply_to_message:{message_id:fixture.replyTo}}:fixture?{photo:[{file_id:'new-fixture',file_unique_id:'new-fixture'}]}:{})}});}catch(e){failure=e;}
+ let failure;try{const update={update_id:400,[fixture?.edited?'edited_message':'message']:{message_id:400,date:stamp,chat:{id:-1,type:'supergroup'},from:{id:1},text,...(fixture?.replyTo?{reply_to_message:{message_id:fixture.replyTo}}:fixture?.document?{document:{file_id:'new-fixture',file_unique_id:'new-fixture',mime_type:'image/png'}}:fixture?{photo:[{file_id:'new-fixture',file_unique_id:'new-fixture'}]}:{})}};await load('./accounting-agent').handle(update);if(fixture?.redeliver)await load('./accounting-agent').handle(update);}catch(e){failure=e;}
  return {failure,rules,writes,daily,job:jobs.find(j=>j.message_id===400),events,ai,load};
 }
 module.exports=(async()=>{
@@ -215,5 +217,26 @@ module.exports=(async()=>{
   assert(fixed.load('./accounting-corrections').correctionBlocked(replacement,held.operations,held.question),'unverified replacement must not delete the existing player');
  }
 
- console.log('Actual handler replay passed: tagged status, chain deduplication, rebuy confirmation, rule/status separation, corrected game11 roster, partial unknown-player review, protected manual games and duplicate prevention.');
+ // Staff-only app captures and work schedules must produce NO outgoing message
+ // or emoji, even if the model invents an accounting operation or question.
+ const shared={history:[],rows:[],master:[['NAME','CARD','CODE']],redeliver:true};
+ const outgoing=r=>r.events.filter(e=>['sendMessage','editMessageText','setMessageReaction'].includes(e.method));
+ for(const documentType of ['phone_game','other'])for(const caption of ['', '이번 주 근무표입니다', '어플 캡처 직원 공유용', '답변하지 마']){
+  const r=await run(caption,'photo',{...shared,document:documentType==='other',response:{documentType,operations:[op],question:'몇 번 게임인가요?',referenceSummary:'직원 공유 자료',memory:null}});
+  assert.ifError(r.failure);assert.equal(r.job.status,'ignored');assert.equal(r.job.reply_text,'');assert.deepEqual(outgoing(r),[]);
+  assert.equal(r.writes,0);assert.equal(r.job.plan.operations.length,0);assert.equal(r.job.plan.pendingQuestion,null);assert.equal(r.job.plan.referenceOnly,true);assert.equal(r.ai,1,'redelivery must not reprocess');
+ }
+ const asked=await run('@dream_poker_reservation_bot 이 근무표 확인해줘','photo',{...shared,response:{documentType:'other',operations:[],question:null,referenceSummary:'표에 기재된 근무 시작은 오후 3시예요.',memory:null}});
+ assert.ifError(asked.failure);assert.equal(asked.job.reply_text,'표에 기재된 근무 시작은 오후 3시예요.');assert.equal(outgoing(asked).length,1);assert.equal(asked.writes,0);
+ const edited=await run('','photo',{...shared,edited:true});assert.ifError(edited.failure);assert.equal(edited.job.status,'ignored');assert.deepEqual(outgoing(edited),[]);assert.equal(edited.ai,0);
+ const unread=await run('','photo',{...shared,classificationFailure:true});assert(unread.failure);assert.equal(unread.job.status,'failed');assert.equal(unread.job.reply_text,'');assert.equal(unread.job.plan.silentUnclassifiedPhoto,true);assert.deepEqual(outgoing(unread),[]);assert.equal(unread.writes,0);
+ const askedFailure=await run('@dream_poker_reservation_bot 확인해줘','photo',{...shared,classificationFailure:true});assert(askedFailure.failure);assert(askedFailure.job.reply_text);assert.equal(outgoing(askedFailure).length,1);
+ const fnb=await run('','photo',{...shared,response:{documentType:'fnb',operations:[],question:'영수증 금액이 얼마인가요?',memory:null}});assert.ifError(fnb.failure);assert.equal(fnb.job.status,'review');assert.equal(fnb.events.filter(e=>e.method==='sendMessage').length,1);assert.equal(fnb.job.reply_text,'영수증 금액이 얼마인가요?');assert.equal(fnb.writes,0);
+ const knownFailure=await run('','photo',{...shared,verificationFailure:true});assert(knownFailure.failure);assert.equal(knownFailure.job.status,'failed');assert(knownFailure.job.reply_text);assert.equal(knownFailure.events.filter(e=>e.method==='sendMessage').length,1);assert.equal(knownFailure.writes,0);
+ const request=status.load('./accounting-agent').explicitPhotoRequest;
+ for(const t of ['근무표 요약해줘','@dream_poker_reservation_bot 확인해줘','오늘 3시 출근 맞아?'])assert(request(t));
+ for(const t of ['내일 근무표','어플 캡처 직원 공유용','답변하지 마',''])assert(!request(t));
+ const receipt=await run('','photo',{history:[],rows:[[9,46318,'14-1','5M','PARK SOO MIN','','KOREA',2]],master:[['NAME','CARD','CODE'],['PARK SOO MIN','','KOREA']],paper:{...paper,table:14,printedGame:9},operations:[op]});
+ assert.ifError(receipt.failure);assert.equal(receipt.job.status,'applied');assert.equal(receipt.events.filter(e=>e.method==='sendMessage').length,1);assert(receipt.events.find(e=>e.method==='sendMessage').aiCallsAtSend>0,'classify before any receipt reply');assert.equal(receipt.writes,0);
+ console.log('Actual handler replay passed: shared screenshots/schedules stay silent, explicit questions respond, receipt notification follows classification, unknown-image failures stay silent, duplicate delivery is ignored, and existing ledger protections remain.');
 })();
