@@ -1,3 +1,5 @@
+Total output lines: 810
+
 import { compactExchangeStatus, exchangeSettlementPeriod } from './exchange-receipt';
 import { createClient } from '@supabase/supabase-js';
 import { getVercelOidcToken } from '@vercel/oidc';
@@ -271,6 +273,184 @@ function rpcReview(message: string): string | null {
   if (message.includes('exchange_opening')) return '기초 시제 설정 상태를 확인해주세요. 아직 확정되지 않았거나 이미 다른 관리자가 확정했습니다.';
   if (message.includes('exchange_before_opening')) return '기초 시제 확정 이전의 거래는 자동 소급 반영하지 않습니다. 기존 내역을 대조한 뒤 관리자에게 확인해주세요.';
   if (message.includes('exchange_duplicate_external_reference')) return '같은 외부 거래번호가 이미 원장에 있습니다. 중복 기록하지 않았습니다. 시제/정산 내역에서 원거래를 확인해주세요.';
+  if (message.includes('exchange_insufficient_balance')) return '기록 시점에 시제 잔액이 부족합니다…6971 tokens truncated…산합니다.');
+}
+
+async function patchJob(config: ExchangeConfig, id: number, patch: Record<string, unknown>, owner?: string): Promise<Job> {
+  let query = exchangeDb().from('dream_exchange_jobs').update(patch).eq('bot_id', config.botId).eq('update_id', id).eq('chat_id', config.chatId);
+  if (owner) query = query.eq('owner', owner).eq('status', 'processing');
+  const { data, error } = await query.select('*').single();
+  if (error || !data) throw Error('Exchange job persistence failed');
+  return data as Job;
+}
+async function deliverReply(job: Job, config: ExchangeConfig): Promise<void> {
+  if (job.status === 'applied' && !job.reply_text && job.plan && job.reference) job = await patchJob(config, job.update_id, { reply_text: formatExchangeReceipt(job.reference, job.plan) });
+  if (!job.reply_text || job.reply_state !== 'unsent') return;
+  const { data: claimed, error } = await exchangeDb().rpc('dream_exchange_claim_reply', { p_bot_id: config.botId, p_update_id: job.update_id });
+  if (error) throw Error('Exchange reply claim failed');
+  if (!claimed) return;
+  try {
+    const result = await exchangeTelegram('sendMessage', { chat_id: config.chatId, reply_parameters: { message_id: job.message_id, allow_sending_without_reply: true }, text: job.reply_text.slice(0, 3900) }, config);
+    await patchJob(config, job.update_id, { reply_id: result.message_id, reply_state: 'sent' });
+  } catch (error) {
+    if (error instanceof ExchangeTelegramFailure) {
+      // A network timeout after send is ambiguous. Do not send a duplicate receipt automatically.
+      await patchJob(config, job.update_id, { reply_state: error.deliveryUnknown ? 'uncertain' : 'unsent' });
+      if (error.deliveryUnknown) return;
+    }
+    throw error;
+  }
+}
+async function finish(job: Job, config: ExchangeConfig, owner: string, status: 'review' | 'ignored' | 'failed', text: string, extra: Record<string, unknown> = {}) {
+  const saved = await patchJob(config, job.update_id, { ...extra, status, reply_text: text.slice(0, 3900), lease_until: null }, owner);
+  await deliverReply(saved, config);
+}
+async function authorizeActor(config: ExchangeConfig, sender: string, admin: boolean) {
+  if (admin && !config.adminIds.has(sender)) throw new ExchangeReview(config.adminIds.size ? '기초 시제 확정·취소·시제 보충/회수는 등록된 관리자만 할 수 있습니다.' : '등록된 환전 관리자가 아직 없습니다. EXCHANGE_ADMIN_USER_IDS에 관리자 Telegram ID를 설정한 뒤 진행해주세요.');
+  const member = await exchangeTelegram('getChatMember', { chat_id: config.chatId, user_id: Number(sender) }, config);
+  if (!['creator', 'administrator', 'member'].includes(member.status) && !(member.status === 'restricted' && member.is_member === true)) throw new ExchangeReview('현재 환전방 구성원만 거래를 기록할 수 있습니다.');
+}
+async function previousContext(config: ExchangeConfig, messageId: number | undefined, senderId?: string, messageDate?: number): Promise<{ job: Job | null; unresolved_texts: string[] }> {
+  let result;
+  if (Number.isSafeInteger(messageId) && messageId && messageId > 0) {
+    result = await exchangeDb().from('dream_exchange_jobs').select('*').eq('bot_id', config.botId).eq('chat_id', config.chatId).or(`message_id.eq.${messageId},reply_id.eq.${messageId}`).order('created_at', { ascending: false }).limit(1);
+  } else if (senderId && Number.isSafeInteger(messageDate)) {
+    const cutoff = new Date((messageDate! - 15 * 60) * 1000).toISOString();
+    result = await exchangeDb().from('dream_exchange_jobs').select('*').eq('bot_id', config.botId).eq('chat_id', config.chatId).eq('sender_id', senderId).eq('status', 'review').gte('source_date', cutoff).lt('source_date', new Date(messageDate! * 1000).toISOString()).order('source_date', { ascending: false }).limit(1);
+  } else return { job: null, unresolved_texts: [] };
+  if (result.error) throw Error('Exchange context lookup failed');
+  const previous = result.data?.[0] as Job | undefined;
+  if (!previous) return { job: null, unresolved_texts: [] };
+  const texts: string[] = [], seen = new Set<number>(); let current: Job | undefined = previous;
+  for (let count = 0; count < 8 && current?.status === 'review' && !seen.has(current.update_id); count++) {
+    seen.add(current.update_id); texts.unshift(current.raw_text);
+    if (current.context_update_id == null) break;
+    const parent = await exchangeDb().from('dream_exchange_jobs').select('*').eq('bot_id', config.botId).eq('chat_id', config.chatId).eq('update_id', current.context_update_id).maybeSingle();
+    if (parent.error) throw Error('Exchange pending context lookup failed');
+    if (parent.data && parent.data.status !== 'review') throw new ExchangeReview('답장한 요청은 이미 다른 답장으로 해결되었습니다. 새 거래라면 내용을 새 메시지로 적어주세요.');
+    current = parent.data as Job | undefined;
+  }
+  return { job: previous, unresolved_texts: texts };
+}
+/** Deliberate short-hand convention authorized by the Exchange owner: +5만 = received transfer fee in VND. */
+/** Owner-approved VND transfer-fee shorthand. Internal cash ledger is the unified VND float. */
+export function exchangeFeeShortcut(text:string):ExchangeIntent|null {
+  const t=text.trim().replace(/@dream_poker_exchange_bot$/i,'').trim();
+  const preset=t.match(/^\/fee(5|10)$/i);
+  if(preset) return {kind:'movement',account:'VND_CASH',amount:preset[1]==='5'?'50000':'100000',direction:'in',category:'fee',basis_vnd:null,note:'이체수수료',external_reference:null};
+  let p=t, explicit=false;
+  if(p.startsWith('+')){p=p.slice(1).trim();explicit=true;}
+  else if(p.startsWith('/fee ')){p=p.slice(5).trim();explicit=true;}
+  else if(p.startsWith('이체수수료 ')){p=p.slice(6).trim();explicit=true;}
+  else if(p.startsWith('수수료 ')){p=p.slice(4).trim();explicit=true;}
+  if(['오만','오만동','오만원'].includes(p))p='5만동';
+  if(p.endsWith(' 수익완료'))p=p.slice(0,-5).trim();
+  const m=p.match(/^([0-9][0-9,]*(?:[.][0-9]+)?)[ ]*(백만동|만동|천동|백만|만|천|m|k|동|vnd)?$/i);
+  if(!m || (!explicit && !/^(?:[0-9][0-9,]*[ ]*(?:만동|만|천동|천|동))$/.test(p)))return null;
+  const scale:Record<string,number>={'':1,동:1,vnd:1,만:10000,만동:10000,천:1000,천동:1000,백만:1000000,백만동:1000000,m:1000000,k:1000};
+  const amount=Number(m[1].replace(/,/g,''))*scale[(m[2]||'').toLowerCase()];
+  if(!Number.isSafeInteger(amount)||amount<=0||amount>1000000000)throw new ExchangeReview('수수료 금액을 확인해주세요.');
+  return {kind:'movement',account:'VND_CASH',amount:String(amount),direction:'in',category:'fee',basis_vnd:null,note:'이체수수료',external_reference:null};
+}
+/** A plainly labeled VND exchange profit is a confirmed receipt into the pooled VND float. */
+export function directFxProfit(text:string):ExchangeIntent|null {
+  const t=text.trim().replace(/\s+/g,' ');
+  const m=t.match(/^환전\s*(?:수익|차익|이익)\s*([0-9][0-9,]*(?:\.[0-9]+)?)\s*(백만동|만동|천동|백만|만|천|동|vnd|m|k)$/i);
+  if(!m)return null;
+  const scale:Record<string,number>={백만:1000000,백만동:1000000,만:10000,만동:10000,천:1000,천동:1000,동:1,vnd:1,m:1000000,k:1000};
+  const amount=Number(m[1].replace(/,/g,''))*scale[m[2].toLowerCase()];
+  if(!Number.isSafeInteger(amount)||amount<=0||amount>1000000000)throw new ExchangeReview('환전수익 금액을 확인해주세요.');
+  return {kind:'movement',account:'VND_CASH',amount:String(amount),direction:'in',category:'fx_profit',basis_vnd:null,note:'사용자가 명시한 환전수익',external_reference:null};
+}
+/** Undo a fee transaction by exact receipt or an unambiguous amount. */
+export function cancellationAmount(text: string): number | null {
+  let t=text.trim();
+  const slash=t.toLowerCase().startsWith('/cancel');
+  if (!slash && !t.includes('취소')) return null;
+  if (slash) t=t.slice(t.indexOf(' ')+1).trim();
+  for(const tail of ['취소해줘','취소해','취소']) if(t.endsWith(tail)) {t=t.slice(0,-tail.length).trim(); break;}
+  const m=t.match(/^([0-9][0-9,]*(?:[.][0-9]+)?)[ ]*(백만동|만동|천동|백만|만|천|m|k|동|vnd)?$/i);
+  if (!m) throw new ExchangeReview('취소할 금액을 알려주세요. 또는 완료 메시지에 답장으로 “취소”라고 보내주세요.');
+  const f:Record<string,number>={'':1,만:10000,만동:10000,천:1000,천동:1000,백만:1000000,백만동:1000000,m:1000000,k:1000,동:1,vnd:1};
+  const v=Number(m[1].replace(/,/g,''))*f[(m[2]||'').toLowerCase()];
+  if (!Number.isSafeInteger(v)||v<=0) throw new ExchangeReview('취소 금액을 확인해주세요.');
+  return v;
+}
+async function cancellationIntent(config:ExchangeConfig, text:string, replyMessageId:number|undefined):Promise<ExchangeIntent|null> {
+  const plain=text.trim().toLowerCase();
+  const bare=['취소','/cancel','/cancel@dream_poker_exchange_bot'].includes(plain);
+  let amount=bare?null:cancellationAmount(text);
+  if(!bare && amount===null)return null;
+  const previous=await previousContext(config,replyMessageId);
+  if(previous.job?.status==='applied' && previous.job.reference && previous.job.plan) {
+    const p=previous.job.plan;
+    if(p.kind==='opening'||p.kind==='reversal')throw new ExchangeReview('해당 거래는 이 방식으로 취소할 수 없습니다.');
+    if(amount!==null && (p.kind!=='movement'||p.fee_vnd!==amount))throw new ExchangeReview('답장한 거래 금액과 취소 금액이 다릅니다.');
+    return {kind:'reversal',reference:previous.job.reference,note:'관리자 요청으로 거래 취소'};
+  }
+  // Following the bot's own cancellation review must carry over the amount.
+  if(amount===null && previous.job?.status==='review' && previous.job.raw_text) {
+    try { amount=cancellationAmount(previous.job.raw_text); } catch {}
+  }
+  if(amount===null)throw new ExchangeReview('취소할 거래의 완료 메시지에 답장하거나 “5만동 취소”라고 보내주세요.');
+  const result=await exchangeDb().from('dream_exchange_events').select('id,reference,fee_vnd,kind,reverses_id').eq('chat_id',config.chatId).order('sequence',{ascending:false}).limit(200);
+  if(result.error)throw Error('Exchange cancellation lookup failed');
+  const rows=result.data||[];
+  const reversed=new Set(rows.filter(r=>r.kind==='reversal' && r.reverses_id).map(r=>String(r.reverses_id)));
+  const active=rows.filter(r=>r.kind==='movement' && Number(r.fee_vnd)===amount && !reversed.has(String(r.id)));
+  if(!active.length)throw new ExchangeReview('해당 금액의 미취소 거래가 없습니다. 이미 취소된 내역은 다시 차감하지 않았습니다.');
+  if(active.length>1)throw new ExchangeReview('같은 금액의 미취소 거래가 여러 건입니다. 취소할 완료 메시지에 답장해주세요.');
+  return {kind:'reversal',reference:active[0].reference,note:'관리자 요청으로 이체수수료 취소'};
+}
+/** Exact completed KRW->VND sale, parsed before AI to protect compound Korean numerals. */
+export function directKrwExchange(text:string):ExchangeIntent|null {
+ const compact=text.split(' ').join('');
+ const m=compact.match(/^([0-9]+)만(?:(\d+)천|(\d{3,4}))원(?:원화)?(?:현금으로|현금)?받고([0-9]+)만동(드림|줌|지급|보냄)$/);
+ if(!m)return null;
+ const krw=Number(m[1])*10000+(m[2]?Number(m[2])*1000:Number(m[3])),vnd=Number(m[4])*10000;
+ if(!Number.isSafeInteger(krw)||!Number.isSafeInteger(vnd)||krw<=0||vnd<=0)throw new ExchangeReview('환전 금액을 확인해주세요.');
+ return {kind:'exchange',received:{account:/현금/.test(text)?'KRW_CASH':'KRW_BANK',amount:String(krw)},paid:{account:'VND_CASH',amount:String(vnd)},fee:null,received_includes_fee:false,rate_vnd:null,note:'원화 수령 및 동 지급 완료',external_reference:null};
+}
+/** Only persisted unresolved source messages can authorize a short confirmation. */
+export function confirmedKrwExchange(sources: string[]): ExchangeIntent | null {
+  const intents = sources.map(directKrwExchange).filter((x): x is Extract<ExchangeIntent, { kind: 'exchange' }> => x?.kind === 'exchange');
+  if (!intents.length) return null;
+  const first = intents[0];
+  if (intents.some(x => x.received.amount !== first.received.amount || x.paid.amount !== first.paid.amount)) {
+    throw new ExchangeReview('답장 맥락에 서로 다른 환전 금액이 있습니다. 정확한 원문에 답장해주세요.');
+  }
+  const cash = sources.some(v => /(?:원화.{0,12}현금|현금으로\s*받|현금\s*수령|계좌\s*아니고\s*현금)/.test(v));
+  const bank = sources.some(v => /(?:원화\s*계좌\s*입금|원화\s*계좌로\s*받)/.test(v));
+  if (cash && bank) throw new ExchangeReview('원화 수령이 현금인지 계좌인지 최종 확인해주세요.');
+  if (!cash && !bank) throw new ExchangeReview('원화를 현금으로 받았나요, 계좌로 받았나요?');
+  return {...first, received: {...first.received, account: cash ? 'KRW_CASH' : 'KRW_BANK'}};
+}
+export function directUsdExchange(text:string):ExchangeIntent|null {
+ const x=text.toLowerCase().replace(/,/g,'').replace(/\s+/g,'');
+ const m=x.match(/^\+?(\d+(?:\.\d+)?)(?:usd|달러|불)(?:수령|받음)?[-−](\d+(?:\.\d+)?)(천만|백만|만|m)?(?:동|vnd)?(?:나감|지급|줌|드림)?$/);
+ if(!m)return null;
+ const usd=Number(m[1]), multiplier=({'천만':10000000,'백만':1000000,'만':10000,'m':1000000} as Record<string,number>)[m[3]||'']||1, vnd=Number(m[2])*multiplier;
+ if(!Number.isFinite(usd)||usd<=0||!Number.isSafeInteger(usd*100)||!Number.isSafeInteger(vnd)||vnd<=0)throw new ExchangeReview('환전 금액을 확인해주세요.');
+ return {kind:'exchange',received:{account:'USD_CASH',amount:String(usd)},paid:{account:'VND_CASH',amount:String(vnd)},fee:null,received_includes_fee:false,rate_vnd:null,note:'USD 수령 / VND 지급',external_reference:null};
+}
+function simpleIntent(text: string): ExchangeIntent | null {
+  const t = text.trim().replace(/@\w+(?=\s|$)/, '');
+  if (/^(\/start|\/help|도움말|사용법)$/i.test(t)) return { kind: 'help' };
+  if (/^(\/balance|\/status|시제|잔액|시제\s*조회|잔액\s*조회|현황)$/i.test(t)) return { kind: 'balance' };
+  if (/^(\/today|오늘\s*정산)$/i.test(t)) return { kind: 'report', period: 'today', from: null, to: null };
+  const compact = t.replace(/\s+/g, '');
+  if (/^\/week$/i.test(t) || /^(이번주(정산|수익)?|주간(정산|수익)?)$/i.test(compact)) return { kind: 'report', period: 'week', from: null, to: null };
+  if (/^\/lastweek$/i.test(t) || /^지난주(정산|수익)?$/i.test(compact)) return { kind: 'report', period: 'last_week', from: null, to: null };
+  return null;
+}
+function rpcReview(message: string): string | null {
+  if (message.includes('exchange_stale')) return '다른 거래로 시제가 바뀌었습니다. 다시 계산해 처리해주세요.';
+  if (message.includes('exchange_already_resolved')) return '이 요청은 이미 다른 답장으로 반영되었습니다. 중복 기록하지 않았습니다.';
+  if (message.includes('exchange_already_reversed')) return '이미 취소되었거나 일반 취소 대상이 아닌 거래입니다.';
+  if (message.includes('exchange_foreign_reversal_requires_reconciliation')) return '이 외화 거래 이후에 같은 외화의 거래가 있어 원가가 연결되어 있습니다. 관련 거래를 최신 순서로 확인한 뒤 취소해야 합니다. 원장은 변경하지 않았습니다.';
+  if (message.includes('exchange_opening')) return '기초 시제 설정 상태를 확인해주세요. 아직 확정되지 않았거나 이미 다른 관리자가 확정했습니다.';
+  if (message.includes('exchange_before_opening')) return '기초 시제 확정 이전의 거래는 자동 소급 반영하지 않습니다. 기존 내역을 대조한 뒤 관리자에게 확인해주세요.';
+  if (message.includes('exchange_duplicate_external_reference')) return '같은 외부 거래번호가 이미 원장에 있습니다. 중복 기록하지 않았습니다. 시제/정산 내역에서 원거래를 확인해주세요.';
   if (message.includes('exchange_insufficient_balance')) return '기록 시점에 시제 잔액이 부족합니다. 누락된 보충·거래를 확인해주세요.';
   return null;
 }
@@ -313,7 +493,7 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
       const fast = cancel || simpleIntent(text) || exchangeFeeShortcut(text) || directFxProfit(text) || directUsdExchange(text) || directKrwExchange(text);
       if (fast) intent = fast;
       else {
-        const previous = await previousContext(config, message.reply_to_message?.message_id);
+        const previous = await previousContext(config, message.reply_to_message?.message_id, job.sender_id, message.date);
         if (isAmbiguousBareAmount(text) && !previous.unresolved_texts.length) throw new ExchangeReview('금액만으로는 거래 종류를 알 수 없어요. 수수료라면 +5만으로 적어주세요.');
         if (previous.job?.status === 'review') { resolves = previous.job.update_id; job = await patchJob(config, job.update_id, { context_update_id: resolves }, owner); }
         // A reply that merely reiterates our agreed VND-account convention is not a second transaction.
@@ -325,9 +505,14 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
         const yes=/^(?:네|예|응|맞아|맞습니다|확인|yes|y)$/i.test(text.trim());
         if (yes && previous.job && previous.job.status !== 'review') throw new ExchangeReview('이미 처리된 요청입니다. 중복 기록하지 않았습니다.');
         const modeReply=/^(?:원화\s*)?(?:현금|현금으로\s*받음|현금으로\s*받았어|계좌|계좌이체)$/i.test(text.trim()) || /(?:계좌\s*아니고\s*현금|현금으로\s*받아서|현금으로\s*받았)/.test(text);
+        const profitReply=/^(?:환전|환전\s*수익|환전\s*차익|차익|이익)$/i.test(text.trim());
+        const confirmedFxProfit=profitReply && previous.job?.status==='review' ? previous.unresolved_texts.map(directFxProfit).find((x): x is ExchangeIntent => x !== null) : null;
         const confirmed = (yes || modeReply) ? confirmedKrwExchange([...previous.unresolved_texts, ...(modeReply ? [text] : [])]) : null;
         if (yes && !confirmed) throw new ExchangeReview('확인할 미처리 환전 원문을 찾지 못했습니다. 해당 원문에 답장해주세요.');
-        if (confirmed && previous.job?.status === 'review') {
+        if (confirmedFxProfit && previous.job?.status === 'review') {
+          intent = confirmedFxProfit;
+          job = await patchJob(config, job.update_id, { intent }, owner);
+        } else if (confirmed && previous.job?.status === 'review') {
           intent = confirmed;
           job = await patchJob(config, job.update_id, { intent }, owner);
         } else {
