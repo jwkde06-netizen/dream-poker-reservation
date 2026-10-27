@@ -142,7 +142,7 @@ async function previousContext(config: ExchangeConfig, messageId: number | undef
   if (Number.isSafeInteger(messageId) && messageId && messageId > 0) {
     result = await exchangeDb().from('dream_exchange_jobs').select('*').eq('bot_id', config.botId).eq('chat_id', config.chatId).or(`message_id.eq.${messageId},reply_id.eq.${messageId}`).order('created_at', { ascending: false }).limit(1);
   } else if (senderId && Number.isSafeInteger(messageDate)) {
-    const cutoff = new Date((messageDate! - 15 * 60) * 1000).toISOString();
+    const cutoff = new Date((messageDate! - 60 * 60) * 1000).toISOString();
     result = await exchangeDb().from('dream_exchange_jobs').select('*').eq('bot_id', config.botId).eq('chat_id', config.chatId).eq('sender_id', senderId).eq('status', 'review').gte('source_date', cutoff).lt('source_date', new Date(messageDate! * 1000).toISOString()).order('source_date', { ascending: false }).limit(1);
   } else return { job: null, unresolved_texts: [] };
   if (result.error) throw Error('Exchange context lookup failed');
@@ -320,7 +320,9 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
       const fast = cancel || simpleIntent(text) || exchangeFeeShortcut(text) || directFxProfit(text) || directUsdExchange(text) || directKrwExchange(text);
       if (fast) intent = fast;
       else {
-        const previous = await previousContext(config, message.reply_to_message?.message_id, job.sender_id, message.date);
+        const implicitFollowup=/^(?:네|예|응|맞아|맞습니다|확인|yes|y|환전|환전\s*수익|환전\s*차익|차익|이익|수수료)$/i.test(text.trim());
+        const replyId=message.reply_to_message?.message_id;
+        const previous = await previousContext(config, replyId, replyId || implicitFollowup ? job.sender_id : undefined, message.date);
         if (isAmbiguousBareAmount(text) && !previous.unresolved_texts.length) throw new ExchangeReview('금액만으로는 거래 종류를 알 수 없어요. 수수료라면 +5만으로 적어주세요.');
         if (previous.job?.status === 'review') { resolves = previous.job.update_id; job = await patchJob(config, job.update_id, { context_update_id: resolves }, owner); }
         // A reply that merely reiterates our agreed VND-account convention is not a second transaction.
