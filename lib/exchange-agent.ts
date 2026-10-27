@@ -138,15 +138,17 @@ async function authorizeActor(config: ExchangeConfig, sender: string, admin: boo
   if (!['creator', 'administrator', 'member'].includes(member.status) && !(member.status === 'restricted' && member.is_member === true)) throw new ExchangeReview('현재 환전방 구성원만 거래를 기록할 수 있습니다.');
 }
 async function previousContext(config: ExchangeConfig, messageId: number | undefined, senderId?: string, messageDate?: number): Promise<{ job: Job | null; unresolved_texts: string[] }> {
-  let result;
+  let result, implicit = false;
   if (Number.isSafeInteger(messageId) && messageId && messageId > 0) {
     result = await exchangeDb().from('dream_exchange_jobs').select('*').eq('bot_id', config.botId).eq('chat_id', config.chatId).or(`message_id.eq.${messageId},reply_id.eq.${messageId}`).order('created_at', { ascending: false }).limit(1);
   } else if (senderId && Number.isSafeInteger(messageDate)) {
+    implicit = true;
     const cutoff = new Date((messageDate! - 60 * 60) * 1000).toISOString();
-    result = await exchangeDb().from('dream_exchange_jobs').select('*').eq('bot_id', config.botId).eq('chat_id', config.chatId).eq('sender_id', senderId).eq('status', 'review').gte('source_date', cutoff).lt('source_date', new Date(messageDate! * 1000).toISOString()).order('source_date', { ascending: false }).limit(1);
+    result = await exchangeDb().from('dream_exchange_jobs').select('*').eq('bot_id', config.botId).eq('chat_id', config.chatId).eq('sender_id', senderId).eq('status', 'review').gte('source_date', cutoff).lt('source_date', new Date(messageDate! * 1000).toISOString()).order('source_date', { ascending: false }).limit(20);
   } else return { job: null, unresolved_texts: [] };
   if (result.error) throw Error('Exchange context lookup failed');
-  const previous = result.data?.[0] as Job | undefined;
+  const rows = (result.data || []) as Job[];
+  const previous = implicit ? rows.find(row => directFxProfit(row.raw_text)) || rows[0] : rows[0];
   if (!previous) return { job: null, unresolved_texts: [] };
   const texts: string[] = [], seen = new Set<number>(); let current: Job | undefined = previous;
   for (let count = 0; count < 8 && current?.status === 'review' && !seen.has(current.update_id); count++) {
