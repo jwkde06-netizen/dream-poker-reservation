@@ -13,7 +13,7 @@ global.fetch=async(input,init={})=>{
 };
 require.extensions['.ts']=(m,f)=>m._compile(ts.transpileModule(fs.readFileSync(f,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,f);
 (async()=>{
- const agent=require('./lib/accounting-agent.ts'),{tg}=require('./lib/telegram.ts'),{sheetContext}=require('./lib/accounting-context.ts');
+ const agent=require(path.resolve('lib/accounting-agent.ts')),{tg}=require(path.resolve('lib/telegram.ts')),{sheetContext}=require(path.resolve('lib/accounting-context.ts'));
  stage='read-only connections';
  const hook=await tg('getWebhookInfo',{});
  assert.equal(hook.url,'https://dream-poker-reservation.vercel.app/api/accounting/webhook');
