@@ -68,7 +68,7 @@ Accounts: VND_CASH (동 현금), VND_BANK (베트남 계좌), KRW_BANK (원화 �
 Supported intents:
 {kind:"opening",balances:{VND_CASH:"...",VND_BANK:"...",KRW_BANK:"...",KRW_CASH:"0",USD_CASH:"..."},basis_vnd:{KRW_BANK:string|null,KRW_CASH:string|null,USD_CASH:string|null},note:string}. Require four existing balances; KRW_CASH is optional default zero (0 is valid). basis_vnd is total historical VND acquisition cost, not market value. Never derive it from a default rate. Opening is ALWAYS staged and human-confirmed by server.
 {kind:"exchange",received:{account,amount},paid:{account,amount:string|null},fee:null|{account:"VND_CASH"|"VND_BANK",amount},received_includes_fee:boolean,rate_vnd:string|null,note:string,external_reference:string|null}. received.amount is actual principal receipt, or actual TOTAL receipt only when received_includes_fee:true. fee is separate fee actually received, in specified account. If text says 550만 VND principal plus separate 5만 fee, received.amount="5500000",fee.amount="50000",received_includes_fee:false. If total 555만 includes explicit 5만 fee, received.amount="5550000",fee.amount="50000",received_includes_fee:true. Do not subtract fee yourself. No fee location given -> ask. A completed KRW receipt to KRW_BANK and VND_CASH payout at 18 can use paid.amount:null and rate_vnd:"18". 100USD -> 250만 VND has received USD_CASH "100",paid VND_CASH "2500000". No assumed trade profit. If text only says "입금 예정/입금 확인 대기/송금할게", ask for completion instead of posting.
-{kind:"movement",account,amount,direction:"in"|"out",category:"capital"|"expense"|"fee",basis_vnd:string|null,note:string,external_reference:string|null}. Use capital only for explicit actual float replenishment/withdrawal; never for unexplained balance adjustments or "현재 잔액". Fee must be actual separate received VND income; expenses actual VND outflow. A fee already part of an exchange is not another movement. Reimbursements should reference original for reversal, not negative fee.
+{kind:"movement",account,amount,direction:"in"|"out",category:"capital"|"expense"|"fee"|"fx_profit",basis_vnd:string|null,note:string,external_reference:string|null}. Use capital only for explicit actual float replenishment/withdrawal; never for unexplained balance adjustments or "현재 잔액". Fee must be actual separate received VND income; expenses actual VND outflow. A fee already part of an exchange is not another movement. An explicitly stated received VND exchange profit (for example "환전수익 100만동") is category fx_profit, in pooled VND_CASH. Do not infer profit from a balance, gross receipts, or a distribution amount. Reimbursements should reference original for reversal, not negative fee.
 {kind:"reversal",reference:"FX-<botId>-<updateId>",note:string}. Only explicit cancellation with actual existing reference (may be from replied-to applied event) and stated reason. Never edit a historical event.
 {kind:"report",period:"today"|"week"|"last_week"|"range",from:"YYYY-MM-DD"|null,to:"YYYY-MM-DD"|null}.
 {kind:"balance"}, {kind:"help"}, {kind:"ignore"}.
@@ -171,6 +171,16 @@ export function exchangeFeeShortcut(text:string):ExchangeIntent|null {
   const amount=Number(m[1].replace(/,/g,''))*scale[(m[2]||'').toLowerCase()];
   if(!Number.isSafeInteger(amount)||amount<=0||amount>1000000000)throw new ExchangeReview('수수료 금액을 확인해주세요.');
   return {kind:'movement',account:'VND_CASH',amount:String(amount),direction:'in',category:'fee',basis_vnd:null,note:'이체수수료',external_reference:null};
+}
+/** A plainly labeled VND exchange profit is a confirmed receipt into the pooled VND float. */
+export function directFxProfit(text:string):ExchangeIntent|null {
+  const t=text.trim().replace(/\s+/g,' ');
+  const m=t.match(/^환전\s*(?:수익|차익|이익)\s*([0-9][0-9,]*(?:\.[0-9]+)?)\s*(백만동|만동|천동|백만|만|천|동|vnd|m|k)$/i);
+  if(!m)return null;
+  const scale:Record<string,number>={백만:1000000,백만동:1000000,만:10000,만동:10000,천:1000,천동:1000,동:1,vnd:1,m:1000000,k:1000};
+  const amount=Number(m[1].replace(/,/g,''))*scale[m[2].toLowerCase()];
+  if(!Number.isSafeInteger(amount)||amount<=0||amount>1000000000)throw new ExchangeReview('환전수익 금액을 확인해주세요.');
+  return {kind:'movement',account:'VND_CASH',amount:String(amount),direction:'in',category:'fx_profit',basis_vnd:null,note:'사용자가 명시한 환전수익',external_reference:null};
 }
 /** Undo a fee transaction by exact receipt or an unambiguous amount. */
 export function cancellationAmount(text: string): number | null {
@@ -300,7 +310,7 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
       job = await patchJob(config, job.update_id, { intent, context_update_id: id }, owner);
     } else {
       const cancel = await cancellationIntent(config, text, message.reply_to_message?.message_id);
-      const fast = cancel || simpleIntent(text) || exchangeFeeShortcut(text) || directUsdExchange(text) || directKrwExchange(text);
+      const fast = cancel || simpleIntent(text) || exchangeFeeShortcut(text) || directFxProfit(text) || directUsdExchange(text) || directKrwExchange(text);
       if (fast) intent = fast;
       else {
         const previous = await previousContext(config, message.reply_to_message?.message_id);

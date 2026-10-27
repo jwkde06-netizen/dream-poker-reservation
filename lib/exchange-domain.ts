@@ -25,7 +25,7 @@ export interface ExchangeLeg { account: ExchangeAccount; amount: string }
 export type ExchangeIntent =
   | { kind: 'opening'; balances: Record<ExchangeAccount, string>; basis_vnd: Partial<Record<'KRW_BANK' | 'KRW_CASH' | 'USD_CASH', string | null>>; note: string }
   | { kind: 'exchange'; received: ExchangeLeg; paid: { account: ExchangeAccount; amount: string | null }; fee: { account: 'VND_CASH' | 'VND_BANK'; amount: string } | null; received_includes_fee: boolean; rate_vnd: string | null; note: string; external_reference: string | null }
-  | { kind: 'movement'; account: ExchangeAccount; amount: string; direction: 'in' | 'out'; category: 'capital' | 'expense' | 'fee'; basis_vnd: string | null; note: string; external_reference: string | null }
+  | { kind: 'movement'; account: ExchangeAccount; amount: string; direction: 'in' | 'out'; category: 'capital' | 'expense' | 'fee' | 'fx_profit'; basis_vnd: string | null; note: string; external_reference: string | null }
   | { kind: 'reversal'; reference: string; note: string }
   | { kind: 'report'; period: 'today' | 'week' | 'last_week' | 'range'; from: string | null; to: string | null }
   | { kind: 'balance' }
@@ -110,10 +110,10 @@ export function validateExchangeIntent(value: unknown): ExchangeIntent {
       return { kind: 'exchange', received: leg(x.received), paid: { account: account(p.account), amount: p.amount == null ? null : amountText(p.amount) }, fee, received_includes_fee: x.received_includes_fee === true, rate_vnd: x.rate_vnd == null ? null : amountText(x.rate_vnd), note: short(x.note), external_reference: reference(x.external_reference) };
     }
     case 'movement': {
-      if (!['in', 'out'].includes(String(x.direction)) || !['capital', 'expense', 'fee'].includes(String(x.category))) throw new ExchangeReview('입금/출금 방향과 분류(시제 보충·회수 / 비용 / 수수료)를 알려주세요.');
+      if (!['in', 'out'].includes(String(x.direction)) || !['capital', 'expense', 'fee', 'fx_profit'].includes(String(x.category))) throw new ExchangeReview('입금/출금 방향과 분류(시제 보충·회수 / 비용 / 수수료 / 환전수익)를 알려주세요.');
       const note = short(x.note);
       if (!note) throw new ExchangeReview('이 입출금의 목적을 알려주세요.');
-      return { kind: 'movement', account: account(x.account), amount: amountText(x.amount), direction: x.direction as 'in' | 'out', category: x.category as 'capital' | 'expense' | 'fee', basis_vnd: x.basis_vnd == null ? null : amountText(x.basis_vnd), note, external_reference: reference(x.external_reference) };
+      return { kind: 'movement', account: account(x.account), amount: amountText(x.amount), direction: x.direction as 'in' | 'out', category: x.category as 'capital' | 'expense' | 'fee' | 'fx_profit', basis_vnd: x.basis_vnd == null ? null : amountText(x.basis_vnd), note, external_reference: reference(x.external_reference) };
     }
     case 'reversal': {
       const ref = reference(x.reference), note = short(x.note);
@@ -220,6 +220,7 @@ export function planExchange(intent: Exclude<ExchangeIntent, { kind: 'reversal' 
     const plan = newPlan('movement', state, intent.note), amount = toMinor(intent.amount, intent.account), sign = intent.direction === 'in' ? 1 : -1;
     plan.external_reference = intent.external_reference;
     if (intent.category === 'fee' && intent.direction !== 'in') throw new ExchangeReview('지급 수수료는 비용으로 기록해주세요. 받은 수수료만 수수료 수입입니다.');
+    if (intent.category === 'fx_profit' && intent.direction !== 'in') throw new ExchangeReview('환전수익은 실제 받은 동 금액으로 알려주세요.');
     if (intent.category === 'expense' && intent.direction !== 'out') throw new ExchangeReview('비용은 실제 지급액입니다. 환불이라면 원거래 번호로 취소해주세요.');
     if (intent.category !== 'capital' && !isVnd(intent.account)) throw new ExchangeReview('외화 수수료/비용은 동 환산원가 확인이 필요합니다. 동 수수료/비용과 환전 거래를 분리해 알려주세요.');
     let book: number | null;
@@ -229,8 +230,9 @@ export function planExchange(intent: Exclude<ExchangeIntent, { kind: 'reversal' 
     addPosting(plan, state, intent.account, sign * amount, book);
     if (intent.category === 'capital') plan.capital_vnd = book;
     if (intent.category === 'fee') plan.fee_vnd = amount;
+    if (intent.category === 'fx_profit') plan.fx_profit_vnd = amount;
     if (intent.category === 'expense') plan.expense_vnd = amount;
-    plan.summary.push(`${EXCHANGE_ACCOUNTS[intent.account].label} ${sign > 0 ? '입금' : '출금'} ${formatMoney(amount, intent.account)}`, `분류: ${intent.category === 'capital' ? '시제 보충·회수 (수익 제외)' : intent.category === 'fee' ? '수수료 수입' : '비용'}`, intent.note);
+    plan.summary.push(`${EXCHANGE_ACCOUNTS[intent.account].label} ${sign > 0 ? '입금' : '출금'} ${formatMoney(amount, intent.account)}`, `분류: ${intent.category === 'capital' ? '시제 보충·회수 (수익 제외)' : intent.category === 'fee' ? '수수료 수입' : intent.category === 'fx_profit' ? '환전수익' : '비용'}`, intent.note);
     return finishPlan(plan);
   }
   const plan = newPlan('exchange', state, intent.note);
