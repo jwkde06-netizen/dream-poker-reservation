@@ -248,8 +248,9 @@ function simpleIntent(text: string): ExchangeIntent | null {
   if (/^(\/start|\/help|도움말|사용법)$/i.test(t)) return { kind: 'help' };
   if (/^(\/balance|\/status|시제|잔액|시제\s*조회|잔액\s*조회|현황)$/i.test(t)) return { kind: 'balance' };
   if (/^(\/today|오늘\s*정산)$/i.test(t)) return { kind: 'report', period: 'today', from: null, to: null };
-  if (/^(\/week|이번\s*주\s*정산|주간\s*정산)$/i.test(t)) return { kind: 'report', period: 'week', from: null, to: null };
-  if (/^(\/lastweek|지난\s*주\s*정산)$/i.test(t)) return { kind: 'report', period: 'last_week', from: null, to: null };
+  const compact = t.replace(/\s+/g, '');
+  if (/^\/week$/i.test(t) || /^(이번주(정산|수익)?|주간(정산|수익)?)$/i.test(compact)) return { kind: 'report', period: 'week', from: null, to: null };
+  if (/^\/lastweek$/i.test(t) || /^지난주(정산|수익)?$/i.test(compact)) return { kind: 'report', period: 'last_week', from: null, to: null };
   return null;
 }
 function rpcReview(message: string): string | null {
@@ -380,6 +381,9 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
     if (current.status === 'applied') { await deliverReply(current, config); return; }
     if (current.status !== 'processing' || current.owner !== owner) { if (['review', 'ignored', 'failed', 'resolved'].includes(current.status)) { await deliverReply(current, config); return; } throw error; }
     if (error instanceof ExchangeReview) { await finish(current, config, owner, 'review', error.message); return; }
+    if (current.intent?.kind === 'report' || current.intent?.kind === 'balance') {
+      await finish(current, config, owner, 'failed', '정산 조회 중 오류가 발생했습니다. 이번 요청은 조회만 실행되어 거래 원장에는 반영되지 않았습니다. 잠시 후 /week 또는 /status로 다시 조회해주세요.', { failure_reason: 'Exchange report lookup failed; no ledger write was attempted' }); return;
+    }
     await finish(current, config, owner, 'failed', '처리 결과를 확인해야 합니다. 이 요청을 자동으로 다시 기록하지 않습니다. 시제·정산 내역을 조회한 뒤 관리자에게 확인해주세요.', { failure_reason: 'Processing or delivery failed; inspect this job before replay' });
   }
 }

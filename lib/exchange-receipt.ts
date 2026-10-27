@@ -16,7 +16,7 @@ function integer(value: unknown, nonnegative = false): number {
 export function compactExchangeStatus(report:any, tradeProfit?:number):string {
   if(report?.initialized!==true || !validDate(report.from) || !validDate(report.to)) throw Error('Exchange status unavailable');
   const b=report.balances;
-  const vnd=integer(b.VND_CASH.closing_minor,true)+integer(b.VND_BANK.closing_minor,true);
+  const vnd=integer(b.VND_CASH.closing_minor)+integer(b.VND_BANK.closing_minor);
   const usd=integer(b.USD_CASH.closing_minor,true)/100;
   const krw=integer(b.KRW_BANK.closing_minor,true)+integer(b.KRW_CASH?.closing_minor ?? 0,true);
   const fee=integer(report.fee_vnd),fx=integer(report.realized_fx_vnd),cost=integer(report.expense_vnd),profit=integer(report.net_known_vnd);
@@ -39,13 +39,13 @@ export function formatExchangeBalanceReceipt(reference: string, plan: ExchangePl
   const period = exchangeSettlementPeriod(Math.floor(Date.parse(report.to + 'T00:00:00+07:00') / 1000));
   if (period.from !== report.from) throw Error('Exchange receipt period mismatch');
   const balances = {} as Record<ExchangeAccount, number>;
-  for (const account of ACCOUNT_CODES) balances[account] = integer(report.balances?.[account]?.closing_minor ?? (account === 'KRW_CASH' ? 0 : undefined), true);
+  for (const account of ACCOUNT_CODES) balances[account] = integer(report.balances?.[account]?.closing_minor ?? (account === 'KRW_CASH' ? 0 : undefined), account !== 'VND_CASH' && account !== 'VND_BANK');
   const fee = integer(report.fee_vnd), fx = integer(report.realized_fx_vnd), expense = integer(report.expense_vnd);
   const profit = integer(report.net_known_vnd);
   if (integer(fee + fx - expense) !== profit) throw Error('Exchange receipt profit mismatch');
   const unknown = integer(report.unvalued_fx_count, true), unresolved = integer(report.unresolved_count, true);
   const unknownHoldings = integer(report.unvalued_holdings, true);
-  const vnd = integer(balances.VND_CASH + balances.VND_BANK, true);
+  const vnd = integer(balances.VND_CASH + balances.VND_BANK);
   const earned=plan.kind==='opening'?undefined:integer(plan.fee_vnd)+(plan.fx_profit_vnd===null?0:integer(plan.fx_profit_vnd))-integer(plan.expense_vnd);
   return compactExchangeStatus(report,earned);
 
