@@ -266,13 +266,15 @@ export function planExchange(intent: Exclude<ExchangeIntent, { kind: 'reversal' 
     // Acquisition of foreign inventory, measured at the actual VND paid. Principal is not income.
     addPosting(plan, state, incoming, received, paid);
     addPosting(plan, state, outgoing, -paid, -paid);
-    plan.summary.push('받은 외화의 취득원가를 기록했습니다. 외화 매각 차익은 처분 시 계산합니다.');
+    plan.summary.push('받은 외화의 취득원가를 기록했습니다. 수익은 별도로 알려주신 금액만 집계합니다.');
   } else if (isVnd(incoming) && !isVnd(outgoing)) {
     const balance = state.accounts[outgoing];
     const cost = balance.book_vnd === null ? null : prorata(balance.book_vnd, paid, balance.balance_minor);
     addPosting(plan, state, incoming, received, received);
     addPosting(plan, state, outgoing, -paid, cost === null ? null : -cost);
-    plan.fx_profit_vnd = cost === null ? null : safeMoney(received - cost);
+    plan.fx_profit_vnd = 0;
+    plan.capital_vnd = cost === null ? null : safeMoney(received - cost);
+    plan.summary.push('환전 원금 이동 · 수익은 별도 입력 시에만 집계합니다.');
     if (cost === null) plan.summary.push('지급 외화의 취득원가가 없어 환전 차익은 미확정입니다.');
   } else throw new ExchangeReview('외화 간 직접 교환은 동 기준 취득원가를 확인한 뒤 기록해야 합니다. 두 거래로 나눠 실제 동 수령·지급 내역을 알려주세요.');
   if (fee) addPosting(plan, state, intent.fee!.account, fee, fee);
