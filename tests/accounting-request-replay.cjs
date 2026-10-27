@@ -16,7 +16,7 @@ async function run(text,mode='status',fixture=null){
  {update_id:349,message_id:349,sender_id:'1',status:'review',plan:{pendingQuestion:'몇 번 게임인가요?'},created_at:date+'T12:37:00Z',source_message:{date:stamp-780,photo:[{file_id:'fixture',file_unique_id:'fixture'}]}},
  {update_id:357,message_id:357,sender_id:'1',status:'review',plan:{contextMessageId:349,photoSourceMessageId:349,pendingQuestion:question},created_at:date+'T12:47:00Z',source_message:{date:stamp-180,photo:[{file_id:'fixture',file_unique_id:'fixture'}]}}
  ];
- if(fixture)jobs.splice(0,jobs.length,...fixture.history);
+ if(fixture)jobs.splice(0,jobs.length,...JSON.parse(JSON.stringify(fixture.history)));
  if(mode==='status')jobs.push({update_id:360,message_id:360,status:'applied',plan:{contextMessageId:357,operations:[op]},created_at:date+'T12:48:00Z'});
  const master=fixture?.master||[['NAME','CARD','CODE'],['PARK SOO MIN','','KOREA']];
  const formula=Array(15).fill('');for(const i of [5,6,8,9,10,11,12,13,14])formula[i]='=ARRAYFORMULA(test)';
@@ -72,8 +72,8 @@ async function run(text,mode='status',fixture=null){
   new Function('require','exports','process','Buffer','fetch',compile(fs.readFileSync(path.join(__dirname,'../lib',name.replace('./','')+'.ts'),'utf8')))(load,exports,{env:{STAFF_TELEGRAM_CHAT_ID:'-1',AI_GATEWAY_API_KEY:'fixture'}},Buffer,fetch);
   return exports;
  }
- let failure;try{const update={update_id:400,[fixture?.edited?'edited_message':'message']:{message_id:400,date:stamp,chat:{id:-1,type:'supergroup'},from:{id:1},text,...(fixture?.replyTo?{reply_to_message:{message_id:fixture.replyTo}}:fixture?.document?{document:{file_id:'new-fixture',file_unique_id:'new-fixture',mime_type:'image/png'}}:fixture?{photo:[{file_id:'new-fixture',file_unique_id:'new-fixture'}]}:{})}};await load('./accounting-agent').handle(update);if(fixture?.redeliver)await load('./accounting-agent').handle(update);}catch(e){failure=e;}
- return {failure,rules,writes,daily,job:jobs.find(j=>j.message_id===400),events,ai,load};
+ let failure;try{const update={update_id:400,[fixture?.edited?'edited_message':'message']:{message_id:400,date:stamp,chat:{id:-1,type:'supergroup'},from:{id:1,is_bot:!!fixture?.fromBot},text,...(fixture?.replyTo?{reply_to_message:{message_id:fixture.replyTo}}:fixture?.document?{document:{file_id:'new-fixture',file_unique_id:'new-fixture',mime_type:'image/png'}}:fixture?{photo:[{file_id:'new-fixture',file_unique_id:'new-fixture'}]}:{})}};await load('./accounting-agent').handle(update);if(fixture?.redeliver)await load('./accounting-agent').handle(update);}catch(e){failure=e;}
+ return {failure,rules,writes,daily,jobs,job:jobs.find(j=>j.message_id===400),events,ai,load};
 }
 module.exports=(async()=>{
  const status=await run('@dream_poker_reservation_bot 시트에 다 입력된거야?');
@@ -238,5 +238,36 @@ module.exports=(async()=>{
  for(const t of ['내일 근무표','어플 캡처 직원 공유용','답변하지 마',''])assert(!request(t));
  const receipt=await run('','photo',{history:[],rows:[[9,46318,'14-1','5M','PARK SOO MIN','','KOREA',2]],master:[['NAME','CARD','CODE'],['PARK SOO MIN','','KOREA']],paper:{...paper,table:14,printedGame:9},operations:[op]});
  assert.ifError(receipt.failure);assert.equal(receipt.job.status,'applied');assert.equal(receipt.events.filter(e=>e.method==='sendMessage').length,1);assert(receipt.events.find(e=>e.method==='sendMessage').aiCallsAtSend>0,'classify before any receipt reply');assert.equal(receipt.writes,0);
+
+ const absentOp={...op,possibleBustOut:true,chips:null};
+ const missing={update_id:370,message_id:370,reply_id:870,sender_id:'1',text:'리바인 사진',status:'applied',created_at:date+'T12:49:00Z',source_message:{date:stamp-60,photo:[{file_id:'fixture'}]},plan:{pendingQuestion:'PARK SOO MIN님이 리바인 명단에서 보이지 않아 버스트아웃했을 가능성이 있어요. TD에게 최종 누적 바이인 수를 확인해주시겠어요?',unverifiedOperations:[absentOp]}};
+ const bustFixture={history:[missing],replyTo:870,rows:[[9,46318,'14-1','5M','PARK SOO MIN','','KOREA',2]],master:[['NAME','CARD','CODE'],['PARK SOO MIN','','KOREA']]};
+ const busted=await run('버스트아웃한거야','bust', {...bustFixture,redeliver:true});
+ assert.ifError(busted.failure);assert.equal(busted.ai,0);assert.equal(busted.writes,0);assert.equal(busted.job.plan.bustFollowup.busted,true);assert.match(busted.job.reply_text,/누적 바이인 수만/);assert(!busted.job.reply_text.includes('가능성'));assert.equal(busted.events.filter(e=>e.method==='sendMessage').length,1);
+ const vi=await run('đã bị loại rồi','bust',bustFixture);assert.ifError(vi.failure);assert.equal(vi.job.plan.bustFollowup.busted,true);assert.equal(vi.writes,0);
+ const follow={...busted.job,update_id:380,message_id:380,reply_id:880};
+ const number=await run('2바인','bust',{...bustFixture,history:[follow,missing],replyTo:870,redeliver:true});
+ assert.ifError(number.failure);assert.equal(number.ai,0);assert.equal(number.job.plan.bustFollowup.phase,'resolved');assert.equal(number.writes,0);assert.equal(number.events.filter(e=>e.method==='sendMessage').length,1);
+ for(const answer of ['버스트아웃한거야','da bi loai roi']){
+  const repeated=await run(answer,'bust',{...bustFixture,history:[follow,missing],replyTo:870});assert.ifError(repeated.failure);assert.equal(repeated.ai,0);assert.equal(repeated.events.length,0);assert.equal(repeated.writes,0);
+ }
+ const corrected=await run('아직 게임 중','bust',{...bustFixture,history:[follow,missing],replyTo:880});assert.ifError(corrected.failure);assert.equal(corrected.job.plan.bustFollowup.busted,false);assert.equal(corrected.writes,0);
+ for(const answer of ['KIM DEOK WOO는 3바인','오늘 저녁 뭐 먹어?']){
+  const unrelated=await run(answer,'bust',bustFixture);assert.ifError(unrelated.failure);assert.equal(unrelated.ai,0);assert.equal(unrelated.writes,0);assert.equal(unrelated.events.length,0);
+ }
+ const raised=await run('tổng 3 buy-in','bust',{...bustFixture,history:[follow,missing],replyTo:880,allowWrites:true,redeliver:true});assert.ifError(raised.failure);assert.equal(raised.job.plan.bustFollowup.phase,'resolved');assert.equal(raised.writes,1);assert.equal(raised.daily[2][7],3);assert.equal(raised.ai,0);
+ const durable=number.jobs.find(j=>j.message_id===370);assert.equal(durable.plan.bustFollowup.phase,'resolved');
+ const oldReply=await run('2바인','bust',{...bustFixture,history:[durable],replyTo:870});assert.ifError(oldReply.failure);assert.equal(oldReply.events.length,0);assert.equal(oldReply.ai,0);
+ const resolved={...number.job,update_id:390,message_id:390,reply_id:890};
+ const late=await run('2바인','bust',{...bustFixture,history:[resolved,follow,missing],replyTo:870});assert.ifError(late.failure);assert.equal(late.ai,0);assert.equal(late.events.length,0);assert.equal(late.writes,0);
+ const bot=await run('버스트아웃한거야','bust',{...bustFixture,fromBot:true});assert.ifError(bot.failure);assert.equal(bot.events.length,0);assert.equal(bot.ai,0);assert.equal(bot.writes,0);
+ const {bustAnswer,finalBuyins}=late.load('./accounting-bust-followup');
+ assert.equal(bustAnswer('chưa bust'),'playing');assert.equal(finalBuyins('tổng 3 buy-in'),3);assert.equal(finalBuyins('아마 3바인'),null);
+ const {followupContext}=late.load('./accounting-followup');
+ const plain={text:'버스트아웃한거야',from:{id:1},date:stamp};assert.equal(followupContext([missing],plain,[]).message_id,370);
+ assert.equal(followupContext([missing,{...missing,message_id:371,plan:{...missing.plan,pendingQuestion:missing.plan.pendingQuestion.replace('PARK SOO MIN','OTHER'),unverifiedOperations:[{...absentOp,player:'OTHER'}]}}],plain,[]),null);
+ const another={...resolved,plan:{...resolved.plan,pendingQuestion:'OTHER님은 총 몇 바인인가요?',unverifiedOperations:[{...absentOp,player:'OTHER'}]}};
+ assert.equal(followupContext([another,durable],{...plain,reply_to_message:{message_id:870}},[]).message_id,370,'old reply must not jump to another player');
+ console.log('Bust follow-up actual-handler replay passed: acknowledgement without writes/AI, count completion, duplicate webhook, repeated answers, scoped player, unrelated text, corrections, resolved reply chain, Korean/Vietnamese fallback.');
  console.log('Actual handler replay passed: shared screenshots/schedules stay silent, explicit questions respond, receipt notification follows classification, unknown-image failures stay silent, duplicate delivery is ignored, and existing ledger protections remain.');
 })();

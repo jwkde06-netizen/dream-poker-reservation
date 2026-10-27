@@ -1,3 +1,4 @@
+import {transitionBustFollowup} from './accounting-bust-followup';
 import {requestSheetStatus} from './accounting-request-status';
 import {prepareDateFormats,verifyDateDisplays} from './accounting-format';
 import {headerBindingInstruction,correctionBlocked} from './accounting-corrections';
@@ -121,8 +122,14 @@ export async function handle(update:any){
   await save(job.update_id,{status:'processing'});
   let processingPlan:any=null;
   let learnedRuleNotice='';
+  const persistBustRoot=async(plan:any,pendingQuestion:string|null)=>{
+   const state=plan?.bustFollowup;if(!state||state.root===m.message_id)return;
+   const root=await db().from('dream_accounting_jobs').select('update_id,plan').eq('message_id',state.root).lt('update_id',job.update_id).order('update_id',{ascending:true}).limit(1).maybeSingle();
+   if(root.error)throw Error('Follow-up root lookup failed');
+   if(root.data)await save(root.data.update_id,{plan:{...root.data.plan,bustFollowup:state,pendingQuestion,...(state.phase==='resolved'?{resolvedBy:m.message_id}:{})}});
+  };
   const metrics=()=>({durationMs:Date.now()-started,aiCalls,totalTokens,responseModels:Array.from(responseModels)});
-  const finish=async(status:string,text:string,buttons?:any)=>{const pendingText=text;if(learnedRuleNotice)text=[text,learnedRuleNotice].filter(Boolean).join('\n\n');processingPlan={...(processingPlan||{}),metrics:metrics()};await save(job.update_id,{status,reply_text:text,plan:processingPlan,...(status==='review'&&processingPlan?{plan:{...processingPlan,pendingQuestion:pendingText}}:{})});if(text){const id=await deliver(text,buttons||(status==='review'?pendingButtons(m.message_id):undefined));await save(job.update_id,{reply_id:id});}};
+  const finish=async(status:string,text:string,buttons?:any)=>{const pendingText=text;if(learnedRuleNotice)text=[text,learnedRuleNotice].filter(Boolean).join('\n\n');processingPlan={...(processingPlan||{}),metrics:metrics()};await save(job.update_id,{status,reply_text:text,plan:processingPlan,...(status==='review'&&processingPlan?{plan:{...processingPlan,pendingQuestion:pendingText}}:{})});if(status==='review')await persistBustRoot(processingPlan,pendingText);if(text){const id=await deliver(text,buttons||(status==='review'?pendingButtons(m.message_id):undefined));await save(job.update_id,{reply_id:id});}};
   if(update.edited_message){
    if(silentPhoto){processingPlan={sharedPhotoEdit:true};await finish('ignored','');return;}
    const original=await db().from('dream_accounting_jobs').select('text,plan,status').eq('message_id',m.message_id).lt('update_id',job.update_id).order('update_id',{ascending:true}).limit(1).maybeSingle();
@@ -180,7 +187,12 @@ export async function handle(update:any){
   // Formula rendering leaves dates as serials while exposing formula anchors.
   if(![5,6,8,9,10,11,12,13,14].every(i=>String(formula[1]?.[i]||'').startsWith('=ARRAYFORMULA(')))throw Error('Sheet formula layout changed');
   let previous:any=followupContext(recent,m,master.slice(1).map((r:any[])=>String(r[2]||'')).filter(Boolean));
-  if(!previous&&m.reply_to_message?.message_id&&!recent.some(r=>r.message_id===m.reply_to_message.message_id||r.reply_id===m.reply_to_message.message_id)){const q=await db().from('dream_accounting_jobs').select('message_id,sender_id,text,plan,status,source_message,reply_text').or(`message_id.eq.${Number(m.reply_to_message.message_id)},reply_id.eq.${Number(m.reply_to_message.message_id)}`).order('created_at',{ascending:false}).limit(1);if(q.error)throw Error('Context lookup failed');const found=q.data?.[0];if(found)previous=followupContext([found],m,master.slice(1).map((r:any[])=>String(r[2]||'')));}
+  if(!previous&&m.reply_to_message?.message_id&&!recent.some(r=>r.message_id===m.reply_to_message.message_id||r.reply_id===m.reply_to_message.message_id)){const q=await db().from('dream_accounting_jobs').select('message_id,sender_id,text,plan,status,source_message,reply_text,reply_id,created_at').or(`message_id.eq.${Number(m.reply_to_message.message_id)},reply_id.eq.${Number(m.reply_to_message.message_id)}`).order('created_at',{ascending:false}).limit(1);if(q.error)throw Error('Context lookup failed');const found=q.data?.[0];if(found)previous=followupContext([found],m,master.slice(1).map((r:any[])=>String(r[2]||'')));}
+  const bustReply=!ownPhoto?transitionBustFollowup(job.text,previous):null;
+  if(bustReply&&bustReply.kind!=='count'){
+   processingPlan={contextMessageId:previous.message_id,bustFollowup:bustReply.state,unverifiedOperations:previous.plan.unverifiedOperations,operations:[]};
+   await finish(bustReply.kind==='ask'?'review':'ignored',bustReply.kind==='ask'?bustReply.question||'':'');return;
+  }
   let businessDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(m.date*1000));
   const taskText=continuationText(job.text,previous);
   const auditHistory=await reconciliationHistory(businessDate);
@@ -188,7 +200,7 @@ export async function handle(update:any){
   processingPlan={sheetState,photoRetryCount:job.plan?.photoRetryCount||0};await save(job.update_id,{plan:processingPlan});
   const previousDate=new Date(Date.parse(businessDate+'T00:00:00Z')-86400000).toISOString().slice(0,10);
   const context={fnbMenu,...sheetContext(daily,master,businessDate),games:[...sheetContext(daily,master,businessDate).games,...sheetContext(daily,master,previousDate).games],businessRules,defaultRegistrationAgency:defaultAgency(businessRules,master),sheetReconciliation:{overrides:sheetState.overrides,aliases:sheetState.aliases},previous,pendingRequest:previous?.plan?.pendingQuestion?{...previous,continuationText:taskText}:null,recentMessages:recent.map(r=>({message_id:r.message_id,text:r.text,status:r.status,reply:r.reply_text,operations:closed(r)?null:r.plan?.operations,referenceOnly:!!r.plan?.referenceOnly,referenceSummary:r.plan?.referenceSummary||null,manualHandoff:r.plan?.manual_handoff||null,correction:r.plan?.reconciliation||null,hasPhoto:!closed(r)&&!!(r.source_message?.photo||r.source_message?.document)}))};
-  const confirmedResult=continueChipConfirmation(job.text,previous);
+  const confirmedResult=continueChipConfirmation(bustReply?.kind==='count'?String(bustReply.count):job.text,previous);
   const confirmedChips=confirmedResult?.operations[0];
   let photoSource:any=ownPhoto?job:confirmedResult?previous:null;
   if(!confirmedResult&&!image&&previous?.source_message){await readPhoto(previous.source_message);if(image)photoSource=previous;}
@@ -208,7 +220,7 @@ export async function handle(update:any){
   }
   const confirmedRebuy=confirmedRebuyContext(job.text,previous,context.games);
   if(confirmedRebuy&&!confirmedRebuy.confirmedByMessageId)confirmedRebuy.confirmedByMessageId=m.message_id;
-  const taskPlan={deferredRegistrations:[] as {player:string;reason:string}[],confirmedRebuy,sheetState,photoRetryCount:job.plan?.photoRetryCount||0,photoSourceDate:photoSource?.plan?.photoSourceDate||photoSource?.source_message?.date||null,contextMessageId:previous?.message_id||null,photoSourceMessageId:photoSource?.message_id||null,continuationText:taskText};
+  const taskPlan={...(bustReply?.kind==='count'?{bustFollowup:bustReply.state}:{}),deferredRegistrations:[] as {player:string;reason:string}[],confirmedRebuy,sheetState,photoRetryCount:job.plan?.photoRetryCount||0,photoSourceDate:photoSource?.plan?.photoSourceDate||photoSource?.source_message?.date||null,contextMessageId:previous?.message_id||null,photoSourceMessageId:photoSource?.message_id||null,continuationText:taskText};
   if(photoSource&&photoSource.message_id!==m.message_id){await save(job.update_id,{source_message:{...photoSource.source_message,message_id:m.message_id,date:m.date,reply_to_message_id:m.reply_to_message?.message_id}});}
   if(image&&!['paper_game','fnb'].includes(result.documentType)){
    // App screenshots, staff schedules and other shared images are not ledger
@@ -351,9 +363,10 @@ export async function handle(update:any){
    await verifyDateDisplays(plan.changes,sheet);
   }
   sheetState=afterVerifiedWrite(sheetState,daily,plan.changes);
-  processingPlan={...processingPlan,sheetState,metrics:metrics()};
+  processingPlan={...processingPlan,sheetState,...(bustReply?.kind==='count'?{bustFollowup:{...bustReply.state,phase:'resolved'}}:{}),metrics:metrics()};
   const completion=[completionReply(result.operations,result.question,!!previous?.plan?.pendingQuestion&&!ownPhoto,{...plan,rebuyGames:result.operations.filter((op:any)=>['add','total'].includes(op.kind)&&context.games.some((g:any)=>g.date===op.date&&g.gameNumber===op.game&&g.tableNumber===op.table&&(rebuyCaption(taskText)||g.players.some((p:any)=>norm(p.name)===norm(op.player)&&op.buyins>p.buyins)))).map((op:any)=>op.game)}),learnedRuleNotice].filter(Boolean).join('\n\n');
   await save(job.update_id,{status:'applied',reply_text:completion,plan:processingPlan});writeStarted=false;
+  await persistBustRoot(processingPlan,null);
   const id=await deliver(completion,result.question?pendingButtons(m.message_id):undefined);await save(job.update_id,{reply_id:id});
  }catch(e){
   if(writeStarted){await progress('⚠️ 시트 반영 결과를 확인하지 못했어요. 중복 입력을 막기 위해 처리를 멈췄어요. 관리자 확인이 필요해요.');await save(job.update_id,{status:'uncertain',failure_reason:'Write outcome requires reconciliation'});throw e;}
