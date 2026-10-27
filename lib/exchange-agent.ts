@@ -244,6 +244,16 @@ async function cancellationIntent(config:ExchangeConfig, text:string, replyMessa
   if(active.length>1)throw new ExchangeReview('같은 금액의 미취소 거래가 여러 건입니다. 취소할 완료 메시지에 답장해주세요.');
   return {kind:'reversal',reference:active[0].reference,note:'관리자 요청으로 이체수수료 취소'};
 }
+/** KRW outgoing transfer and completed VND receipt; 원화 출금 defaults to the bank. */
+export function directKrwPayout(text: string): ExchangeIntent | null {
+ const t=text.replace(/,/g,'').replace(/\s+/g,'');
+ const m=t.match(/^(\d+(?:\.\d+)?)(만|천)?원(?:계좌이체|이체|송금|출금|지급)(?:완료|함)?(\d+(?:\.\d+)?)(천만|백만|만|천)?동(?:받음|받았어|수령|받고)(?:완료)?$/);
+ if(!m)return null;
+ const scales:Record<string,number>={'':1,천:1000,만:10000,백만:1000000,천만:10000000};
+ const krw=Number(m[1])*scales[m[2]||''],vnd=Number(m[3])*scales[m[4]||''];
+ if(!Number.isSafeInteger(krw)||!Number.isSafeInteger(vnd)||krw<=0||vnd<=0)throw new ExchangeReview('환전 금액을 확인해주세요.');
+ return {kind:'exchange',received:{account:'VND_CASH',amount:String(vnd)},paid:{account:'KRW_BANK',amount:String(krw)},fee:null,received_includes_fee:false,rate_vnd:null,note:'원화 계좌 지급 및 동 수령 완료',external_reference:null};
+}
 /** Exact completed KRW->VND sale, parsed before AI to protect compound Korean numerals. */
 export function directKrwExchange(text:string):ExchangeIntent|null {
  const compact=text.split(' ').join('');
@@ -333,7 +343,7 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
     } else {
       const cancel = await cancellationIntent(config, text, message.reply_to_message?.message_id);
       const balanceTarget = directKrwBalance(text);
-      const fast = cancel || simpleIntent(text) || exchangeFeeShortcut(text) || directFxProfit(text) || directUsdExchange(text) || directKrwExchange(text) || (balanceTarget !== null ? { kind: 'balance' } as ExchangeIntent : null);
+      const fast = cancel || simpleIntent(text) || exchangeFeeShortcut(text) || directFxProfit(text) || directUsdExchange(text) || directKrwPayout(text) || directKrwExchange(text) || (balanceTarget !== null ? { kind: 'balance' } as ExchangeIntent : null);
       if (fast) intent = fast;
       else {
         const implicitFollowup=/^(?:네|예|응|맞아|맞습니다|확인|yes|y|환전|환전\s*수익|환전\s*차익|차익|이익|수수료)$/i.test(text.trim());
