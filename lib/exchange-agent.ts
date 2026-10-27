@@ -6,7 +6,7 @@ import { projectUrl } from './telegram';
 import {
   ACCOUNT_CODES, DEFAULT_EXCHANGE_RATES, EXCHANGE_ACCOUNTS, ExchangeEvent, ExchangeIntent,
   ExchangePlan, ExchangeReview, ExchangeState, formatMoney, isAmbiguousBareAmount,
-  planExchange, reportDates, reverseExchange, safeMoney, validateExchangeIntent, vietnamDate,
+  planExchange, reportDates, reverseExchange, safeMoney, toMinor, validateExchangeIntent, vietnamDate,
 } from './exchange-domain';
 import { ExchangeConfig, exchangeChatId, exchangeConfig, exchangeTelegram, ExchangeTelegramFailure } from './exchange-telegram';
 
@@ -21,7 +21,7 @@ interface Job {
   reply_id: number | null; reply_state: string; context_update_id: number | null;
 }
 
-export const EXCHANGE_HELP = `Dream Poker Exchange\n\n실제로 받은 돈과 지급한 돈을 이 방에 적으면 시제와 수익 원장에 기록합니다. 은행 이체를 실행하지는 않습니다.\n\n거래 예시\n• 베트남 계좌로 550만동 받고 현금 550만동 지급. 수수료 5만동은 계좌로 별도 받음\n• 원화 계좌 30만원 입금, 18레이트로 동 현금 지급 완료\n• 100USD 현금 받고 동 현금 250만동 지급 완료\n• 베트남 계좌 수수료 수입 5만동, 별도 수수료 정산\n\n조회: 시제 / 오늘 정산 / 이번 주 정산 / 지난주 정산\n기본 환율: 1 KRW = 18 VND, 1 USD = 25,000 VND. 실제 지급액이 있으면 함께 적어주세요.\n환전 원금은 수익에 포함하지 않습니다. 외화 차익은 확인된 취득원가로 처분 시 계산합니다.\n\n최초 설정(관리자): “기초 시제 동 현금 …, 베트남 계좌 …, 원화 계좌 …, 달러 현금 …”을 적고 미리보기의 확정 명령을 보내주세요. 외화의 동 기준 총 취득원가도 알면 함께 적어주세요. 없는 통화는 0입니다.\n\n단축입력: /fee 5 = 수수료 수익 5만동, /fee 10 = 10만동, /fee 100 = 100만동. /fee 뒤 숫자는 만동 단위입니다. 예전처럼 동 단위 숫자를 넣을 때는 /fee 50000 또는 /fee 5만동을 사용하세요. /fee5 = 5만동, /fee10 = 10만동. 수수료 취소는 완료 메시지에 답장하거나 “5만동 취소”라고 적으세요(관리자 전용).\n취소(관리자): “FX-봇번호-업데이트번호 취소, 사유 …”. 기존 메시지를 수정해도 원장은 덮어쓰지 않습니다.`;
+export const EXCHANGE_HELP = `Dream Poker Exchange\n\n실제로 받은 돈과 지급한 돈을 이 방에 적으면 시제와 수익 원장에 기록합니다. 은행 이체를 실행하지는 않습니다.\n\n거래 예시\n• 베트남 계좌로 550만동 받고 현금 550만동 지급. 수수료 5만동은 계좌로 별도 받음\n• 원화 계좌 30만원 입금, 18레이트로 동 현금 지급 완료\n• 100USD 현금 받고 동 현금 250만동 지급 완료\n• 베트남 계좌 수수료 수입 5만동, 별도 수수료 정산\n\n조회: 시제 / 오늘 정산 / 이번 주 정산 / 지난주 정산\n기본 환율: 1 KRW = 18 VND, 1 USD = 25,000 VND. 실제 지급액이 있으면 함께 적어주세요.\n환전 원금은 수익에 포함하지 않습니다. 외화 차익은 확인된 취득원가로 처분 시 계산합니다.\n\n최초 설정(관리자): “기초 시제 동 현금 …, 베트남 계좌 …, 원화 계좌 …, 달러 현금 …”을 적고 미리보기의 확정 명령을 보내주세요. 외화의 동 기준 총 취득원가도 알면 함께 적어주세요. 없는 통화는 0입니다. 이후 “원화 잔액 2,598,000원”처럼 보내면 원화 계좌를 해당 잔액으로 바로 대조 조정합니다(관리자 전용, 수익에는 포함하지 않음).\n\n단축입력: /fee 5 = 수수료 수익 5만동, /fee 10 = 10만동, /fee 100 = 100만동. /fee 뒤 숫자는 만동 단위입니다. 예전처럼 동 단위 숫자를 넣을 때는 /fee 50000 또는 /fee 5만동을 사용하세요. /fee5 = 5만동, /fee10 = 10만동. 수수료 취소는 완료 메시지에 답장하거나 “5만동 취소”라고 적으세요(관리자 전용).\n취소(관리자): “FX-봇번호-업데이트번호 취소, 사유 …”. 기존 메시지를 수정해도 원장은 덮어쓰지 않습니다.`;
 
 export async function getExchangeState(chatId = exchangeChatId()): Promise<ExchangeState> {
   const { data, error } = await exchangeDb().rpc('dream_exchange_state', { p_chat_id: chatId });
@@ -183,6 +183,17 @@ export function exchangeFeeShortcut(text:string):ExchangeIntent|null {
   if(!Number.isSafeInteger(amount)||amount<=0||amount>1000000000)throw new ExchangeReview('수수료 금액을 확인해주세요.');
   return {kind:'movement',account:'VND_CASH',amount:String(amount),direction:'in',category:'fee',basis_vnd:null,note:'이체수수료',external_reference:null};
 }
+
+/** An explicitly stated current KRW balance is a reconciliation target, not a new exchange. */
+export function directKrwBalance(text: string): string | null {
+  const t = text.trim().replace(/,/g, '');
+  const match = t.match(/(?:원화|한화|krw)[^\d]{0,15}(?:잔액|시제)[^\d]{0,15}(\d+(?:\.\d+)?)[ ]*(만원|만\s*원|원|krw)?/i)
+    || t.match(/(?:잔액|시제)[^\d]{0,15}(?:원화|한화|krw)[^\d]{0,10}(\d+(?:\.\d+)?)[ ]*(만원|만\s*원|원|krw)?/i);
+  if (!match) return null;
+  const amount = Number(match[1]) * (/^(?:만원|만\s*원)$/i.test(match[2] || '') ? 10_000 : 1);
+  if (!Number.isSafeInteger(amount) || amount < 0 || amount > 9_000_000_000_000) throw new ExchangeReview('원화 잔액 금액을 확인해주세요.');
+  return String(amount);
+}
 /** A plainly labeled VND exchange profit is a confirmed receipt into the pooled VND float. */
 export function directFxProfit(text:string):ExchangeIntent|null {
   const t=text.trim().replace(/\s+/g,' ');
@@ -321,7 +332,8 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
       job = await patchJob(config, job.update_id, { intent, context_update_id: id }, owner);
     } else {
       const cancel = await cancellationIntent(config, text, message.reply_to_message?.message_id);
-      const fast = cancel || simpleIntent(text) || exchangeFeeShortcut(text) || directFxProfit(text) || directUsdExchange(text) || directKrwExchange(text);
+      const balanceTarget = directKrwBalance(text);
+      const fast = cancel || simpleIntent(text) || exchangeFeeShortcut(text) || directFxProfit(text) || directUsdExchange(text) || directKrwExchange(text) || (balanceTarget !== null ? { kind: 'balance' } as ExchangeIntent : null);
       if (fast) intent = fast;
       else {
         const implicitFollowup=/^(?:네|예|응|맞아|맞습니다|확인|yes|y|환전|환전\s*수익|환전\s*차익|차익|이익|수수료)$/i.test(text.trim());
@@ -367,6 +379,18 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
       await finish(job, config, owner, 'ignored', formatExchangeReport(report)); return;
     }
     const state = await getExchangeState(config.chatId);
+    const balanceTarget = directKrwBalance(text);
+    if (balanceTarget !== null) {
+      if (!state.initialized) throw new ExchangeReview('현재 시제를 먼저 확정해주세요.');
+      const current = state.accounts.KRW_BANK.balance_minor;
+      const target = toMinor(balanceTarget, 'KRW_BANK', true);
+      const delta = target - current;
+      if (delta === 0) {
+        await finish(job, config, owner, 'ignored', `원화 계좌 잔액이 이미 ${formatMoney(target, 'KRW_BANK')}입니다. 추가 조정은 기록하지 않았습니다.`); return;
+      }
+      intent = { kind: 'movement', account: 'KRW_BANK', amount: String(Math.abs(delta)), direction: delta > 0 ? 'in' : 'out', category: 'capital', basis_vnd: null, note: `원화 계좌 잔액 대조 조정 (${formatMoney(current, 'KRW_BANK')} → ${formatMoney(target, 'KRW_BANK')})`, external_reference: null };
+      job = await patchJob(config, job.update_id, { intent }, owner);
+    }
     if (intent.kind === 'balance') {
       const period=exchangeSettlementPeriod(message.date); const report=await getExchangeReport(config.chatId,period.from,period.to); await finish(job,config,owner,'ignored',formatExchangeReport(report)); return;
     }
