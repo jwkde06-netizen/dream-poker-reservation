@@ -72,7 +72,7 @@ async function run(text,mode='status',fixture=null){
   new Function('require','exports','process','Buffer','fetch',compile(fs.readFileSync(path.join(__dirname,'../lib',name.replace('./','')+'.ts'),'utf8')))(load,exports,{env:{STAFF_TELEGRAM_CHAT_ID:'-1',AI_GATEWAY_API_KEY:'fixture'}},Buffer,fetch);
   return exports;
  }
- let failure;try{const update={update_id:400,[fixture?.edited?'edited_message':'message']:{message_id:400,date:stamp,chat:{id:-1,type:'supergroup'},from:{id:1,is_bot:!!fixture?.fromBot},text,...(fixture?.replyTo?{reply_to_message:{message_id:fixture.replyTo}}:fixture?.document?{document:{file_id:'new-fixture',file_unique_id:'new-fixture',mime_type:'image/png'}}:fixture?{photo:[{file_id:'new-fixture',file_unique_id:'new-fixture'}]}:{})}};await load('./accounting-agent').handle(update);if(fixture?.redeliver)await load('./accounting-agent').handle(update);}catch(e){failure=e;}
+ let failure;try{const update={update_id:400,[fixture?.edited?'edited_message':'message']:{message_id:400,date:stamp,chat:{id:-1,type:'supergroup'},from:{id:1,is_bot:!!fixture?.fromBot},text,...(fixture?.replyTo?{reply_to_message:{message_id:fixture.replyTo}}:fixture?.textOnly?{}:fixture?.document?{document:{file_id:'new-fixture',file_unique_id:'new-fixture',mime_type:'image/png'}}:fixture?{photo:[{file_id:'new-fixture',file_unique_id:'new-fixture'}]}:{})}};await load('./accounting-agent').handle(update);if(fixture?.redeliver)await load('./accounting-agent').handle(update);}catch(e){failure=e;}
  return {failure,rules,writes,daily,jobs,job:jobs.find(j=>j.message_id===400),events,ai,load};
 }
 module.exports=(async()=>{
@@ -94,6 +94,38 @@ module.exports=(async()=>{
  const {confirmedRebuyContext}=rebuy.load('./accounting-vision');
  assert.equal(confirmedRebuyContext('2바인',rebuy.job,[{date,gameNumber:9,tableLabel:'14-1',tableNumber:14}]).game,9);
  assert.equal(confirmedRebuyContext('아니 2번 게임',rebuy.job,[{date,gameNumber:9,tableLabel:'14-1',tableNumber:14}]),null);
+ // Screenshot regression: model wording uses Korean table labels, not "Table".
+ const screenDate='2026-10-28',screenStamp=Date.parse(screenDate+'T15:20:00Z')/1000;
+ const screenOp={kind:'total',date:screenDate,game:8,table:18,blind:'5M',player:'TEST PLAYER',buyins:2,chips:200000};
+ const screenQuestion='종이에는 13번 테이블로 나오는데, 기존 8번 게임(18번 테이블)의 리바인 명단이 맞나요?';
+ const screenPending={update_id:390,message_id:390,sender_id:'1',status:'review',created_at:screenDate+'T15:19:00Z',plan:{pendingQuestion:screenQuestion},source_message:{date:screenStamp-60,photo:[{file_id:'fixture',file_unique_id:'fixture'}]}};
+ const screenFixture={textOnly:true,redeliver:true,stamp:screenStamp,history:[screenPending],rows:[[8,46323,'18-1','5M','TEST PLAYER','','KOREA',2]],master:[['NAME','CARD','CODE'],['TEST PLAYER','','KOREA']],op:screenOp,paper:{date:screenDate,printedGame:9,table:13,names:['TEST PLAYER'],chipAmounts:[200000],selected:[true],hasSelectionMarkers:false},response:{documentType:'paper_game',operations:[screenOp],question:'8번 게임의 용지 번호를 확인해주세요.'}};
+ const screen=await run('응','rebuy',screenFixture);
+ assert.ifError(screen.failure);
+ assert.equal(screen.job.status,'applied',screen.job.reply_text);
+ assert.equal(screen.job.plan.confirmedRebuy.game,8);
+ assert.equal(screen.job.plan.confirmedRebuy.table,18);
+ assert.equal(screen.job.plan.confirmedRebuy.paperTable,13);
+ assert.equal(screen.job.plan.pendingQuestion,null);
+ assert.equal(screen.job.plan.operations[0].printedGame,9);
+ assert.equal(screen.writes,0,'already recorded receipt must not write again');
+ assert.equal(screen.job.reply_text,'✅ 8번 게임 리바인 이미 반영됨');
+ const screenGames=[{date:screenDate,gameNumber:8,tableNumber:18,tableLabel:'18-1',players:[{name:'TEST PLAYER'}]}];
+ assert.equal(confirmedRebuyContext('응',screenPending,[...screenGames,{...screenGames[0],tableLabel:'18-2'}]),null,'ambiguous session stays blocked');
+ assert.equal(confirmedRebuyContext('응',screenPending,[...screenGames,{...screenGames[0],date:'2026-10-27'}]),null,'ambiguous date stays blocked');
+ assert.equal(confirmedRebuyContext('응',{plan:{pendingQuestion:'5번 테이블 인쇄 No.12 리바인 명단은 정산지 몇 번 게임인가요?'}},screenGames),null,'printed number is not a ledger game mapping');
+ const confirmFollowup=screen.load('./accounting-followup').followupContext;
+ const yes={text:'응',from:{id:1},date:screenStamp};
+ assert.equal(confirmFollowup([screenPending],yes,[]).message_id,390);
+ for(const text of ['맞습니다','ㅇㅇ'])assert.equal(confirmFollowup([screenPending],{...yes,text},[]).message_id,390);
+ assert.equal(confirmedRebuyContext('응',{...screenPending,plan:{pendingQuestion:'네, 확인했습니다. '+screenQuestion}},screenGames).game,8);
+ assert.equal(confirmedRebuyContext('네',{plan:{pendingQuestion:'네, 확인했습니다. '+question}},[{date,gameNumber:9,tableLabel:'14-1',tableNumber:14}]).game,9);
+ assert.equal(confirmFollowup([screenPending],{...yes,from:{id:2},reply_to_message:{message_id:390}},[]),null,'another sender cannot confirm');
+ assert.equal(confirmFollowup([screenPending],{...yes,date:screenStamp+3600,reply_to_message:{message_id:390}},[]),null,'expired yes cannot confirm');
+ assert.equal(confirmFollowup([{...screenPending,plan:{...screenPending.plan,manual_handoff:{by:'1'}}}],{...yes,reply_to_message:{message_id:390}},[]),null,'manual entry closes pending confirmation');
+ assert.equal(confirmFollowup([screenPending,{...screenPending,message_id:389}],yes,[]),null,'two pending questions require an explicit reply');
+ assert.equal(confirmFollowup([screenPending,{...screenPending,message_id:389}],{...yes,reply_to_message:{message_id:390}},[]).message_id,390);
+ console.log('Screenshot Korean confirmation wording, separate receipt/ledger identifiers, duplicate delivery, ambiguous sessions/dates and unknown mapping passed');
  const {requestSheetStatus}=status.load('./accounting-request-status');
  const games=[{date,gameNumber:9,tableNumber:14,blind:'5M',players:[{name:op.player,buyins:1}]}];
  assert.match(requestSheetStatus([{message_id:1,status:'applied',plan:{operations:[op]}}],games,[],[]),/대조·확인 필요 1건/);
@@ -271,3 +303,4 @@ module.exports=(async()=>{
  console.log('Bust follow-up actual-handler replay passed: acknowledgement without writes/AI, count completion, duplicate webhook, repeated answers, scoped player, unrelated text, corrections, resolved reply chain, Korean/Vietnamese fallback.');
  console.log('Actual handler replay passed: shared screenshots/schedules stay silent, explicit questions respond, receipt notification follows classification, unknown-image failures stay silent, duplicate delivery is ignored, and existing ledger protections remain.');
 })();
+

@@ -120,14 +120,24 @@ export function continueChipConfirmation(text:string,previous:any){
 /** Bind an affirmative reply only to the exact pending rebuy/table question.
  * Preserve the ledger game/table; the printed paper has its own identifiers.
  */
+function rebuyQuestionTarget(question:string,games:any[]){
+ // The question is generated prose. Support the observed Korean wording as
+ // well as the original template, but never infer a mapping from No.X alone.
+ const text=String(question||'').trim().replace(/^네, 확인했습니다\.\s*/, '');
+ const legacy=text.match(/^사진의 Table (\d+) 명단은 기존 (\d+)번 게임\((\d+(?:-\d+)?)\)의 리바인 명단이 맞나요\?$/);
+ const korean=text.match(/^종이에는 (\d+)번 테이블로 나오는데, 기존 (\d+)번 게임\((\d+(?:-\d+)?)번 테이블\)의 리바인 명단이 맞나요\?$/);
+ const match=legacy||korean;if(!match)return null;
+ const paperTable=Number(match[1]),game=Number(match[2]),label=match[3];
+ if(!Number.isSafeInteger(paperTable)||paperTable<1||!Number.isSafeInteger(game)||game<1)return null;
+ const targets=games.filter(g=>g.gameNumber===game&&(korean&&!label.includes('-')?g.tableNumber===Number(label):String(g.tableLabel)===label));
+ // A physical table may have multiple sessions or days: confirmation does
+ // not authorize choosing between them.
+ return targets.length===1?{target:targets[0],paperTable}:null;
+}
 export function bindConfirmedRebuy(ops:any[],evidence:any,text:string,question:string,games:any[]){
  if(!/^(네|예|넵|맞아|맞아요|맞습니다|응|ㅇㅇ)[.!\s]*$/.test(text.trim()))return ops;
- const match=String(question||'').match(/사진의 Table (\d+) 명단은 기존 (\d+)번 게임\((\d+(?:-\d+)?)\)의 리바인 명단이 맞나요\?/);
- if(!match)return ops;
- const paperTable=Number(match[1]),game=Number(match[2]),label=match[3];
- const targets=games.filter(g=>g.gameNumber===game&&String(g.tableLabel)===label);
- if(targets.length!==1)return ops;
- const target=targets[0];
+ const mapping=rebuyQuestionTarget(question,games);if(!mapping)return ops;
+ const {target,paperTable}=mapping,game=target.gameNumber;
  const papers=(evidence?.documents||[]).filter((p:any)=>!p.headerAmbiguous&&p.date===target.date&&p.table===paperTable);
  if(papers.length!==1)return ops;
  const paper=papers[0];
@@ -145,11 +155,10 @@ export function confirmedRebuyContext(text:string,previous:any,games:any[]){
  if(!saved&&!/^(네|예|넵|맞아|맞아요|맞습니다|응|ㅇㅇ)[.!\s]*$/.test(text.trim()))return null;
  // A new explicit game/table correction must be interpreted afresh.
  if(saved&&/\d+\s*번|테이블|아니|취소/.test(text))return null;
- const match=String(question).match(/사진의 Table (\d+) 명단은 기존 (\d+)번 게임\((\d+(?:-\d+)?)\)의 리바인 명단이 맞나요\?/);
- if(!match)return null;
- const targets=games.filter(g=>g.gameNumber===Number(match[2])&&String(g.tableLabel)===match[3]);
- if(targets.length!==1||saved&&(saved.date!==targets[0].date||saved.table!==targets[0].tableNumber))return null;
- return {question,date:targets[0].date,game:Number(match[2]),table:targets[0].tableNumber,paperTable:Number(match[1]),confirmedByMessageId:saved?.confirmedByMessageId||null};
+ const mapping=rebuyQuestionTarget(question,games);if(!mapping)return null;
+ const {target,paperTable}=mapping;
+ if(saved&&(saved.date!==target.date||saved.table!==target.tableNumber))return null;
+ return {question,date:target.date,game:target.gameNumber,table:target.tableNumber,paperTable,confirmedByMessageId:saved?.confirmedByMessageId||null};
 }
 
 
@@ -217,3 +226,4 @@ export function missingRebuyPlayers(ops:any[],evidence:any,games:any[],rules:any
 export function missingRebuyQuestion(op:any){
  return op.player+'님이 리바인 명단에서 보이지 않아 버스트아웃했을 가능성이 있어요. 현재 '+op.buyins+'바인으로 기록돼 있는데, TD에게 최종 누적 바이인 수를 확인해주시겠어요?';
 }
+
