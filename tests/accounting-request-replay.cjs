@@ -305,6 +305,9 @@ module.exports=(async()=>{
  const late=await run('2바인','bust',{...bustFixture,history:[resolved,follow,missing],replyTo:870});assert.ifError(late.failure);assert.equal(late.ai,0);assert.equal(late.events.length,0);assert.equal(late.writes,0);
  const bot=await run('버스트아웃한거야','bust',{...bustFixture,fromBot:true});assert.ifError(bot.failure);assert.equal(bot.events.length,0);assert.equal(bot.ai,0);assert.equal(bot.writes,0);
  const {bustAnswer,finalBuyins}=late.load('./accounting-bust-followup');
+ for(const text of ['버스트아웃한 듯','버스크아웃한 듯','버스트 아웃한 것 같아요'])assert.equal(bustAnswer(text),'possibly_busted');
+ const tentative=await run('버스크아웃한 듯','bust',bustFixture);assert.ifError(tentative.failure);assert.equal(tentative.writes,0);assert.equal(tentative.ai,0);assert.match(tentative.job.reply_text,/가능성으로 이해/);assert(!tentative.job.reply_text.includes('버스트아웃 확인'));
+
  assert.equal(bustAnswer('chưa bust'),'playing');assert.equal(finalBuyins('tổng 3 buy-in'),3);assert.equal(finalBuyins('아마 3바인'),null);
  const {followupContext}=late.load('./accounting-followup');
  const plain={text:'버스트아웃한거야',from:{id:1},date:stamp};assert.equal(followupContext([missing],plain,[]).message_id,370);

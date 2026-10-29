@@ -1,7 +1,8 @@
 // A missing roster entry is evidence for a question, never for a ledger write.
 const normalized=(s:string)=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').normalize('NFC').toLowerCase().replace(/đ/g,'d').trim().replace(/[.!?]+$/,'').trim();
 export function bustAnswer(text:string){
- const t=normalized(text);
+ const t=normalized(text).replace(/버스크\s*아웃/g,'버스트아웃');
+ if(/^(?:버스트\s*아웃(?:한|된|인)?\s*(?:듯(?:해|해요)?|것\s*같(?:아|아요)|거\s*같(?:아|아요))|아마\s*버스트\s*아웃(?:한\s*듯)?)$/.test(t))return 'possibly_busted';
  if(/^(?:버스트\s*아웃(?:한\s*거야|했어|했어요|입니다|이야)?|버스트(?:났어|났어요)?|탈락(?:했어|했어요)|bust(?:ed)?(?: out)?|(?:da )?(?:bi loai|het chip|bust)(?: roi)?)$/.test(t))return 'busted';
  if(/^(?:아니[ ,]*)?(?:버스트\s*아웃(?:이)?\s*아니야|아직\s*(?:게임\s*중|치고\s*있어)|아웃\s*아니야|chua (?:bust|bi loai|het chip)|van dang choi|not busted|not out)$/.test(t))return 'playing';
  return null;
@@ -24,7 +25,7 @@ export function transitionBustFollowup(text:string,job:any){
  if(count!==null)return {kind:'count',state:{...state,phase:'confirmed',count},count};
  const answer=bustAnswer(text);
  if(!answer)return {kind:'ignore',state}; // A different person or unrelated reply cannot resolve this target.
- const busted=answer==='busted';
- if(state.phase==='awaiting_count'&&state.busted===busted)return {kind:'ignore',state};
- return {kind:'ask',state:{...state,phase:'awaiting_count',busted},question:`${state.target.player}님 ${busted?'버스트아웃 확인했어요.':'아직 진행 중인 것으로 정정했어요.'} 최종 누적 바이인 수만 숫자로 알려주세요. 기록은 그대로 유지합니다.`};
+ const busted=answer!=='playing',tentative=answer==='possibly_busted';
+ if(state.phase==='awaiting_count'&&state.busted===busted&&!!state.tentative===tentative)return {kind:'ignore',state};
+ return {kind:'ask',state:{...state,phase:'awaiting_count',busted,tentative},question:`${state.target.player}님 ${tentative?'버스트아웃 가능성으로 이해했어요.':busted?'버스트아웃 확인했어요.':'아직 진행 중인 것으로 정정했어요.'} 최종 누적 바이인 수만 숫자로 알려주세요. 기록은 그대로 유지합니다.`};
 }
