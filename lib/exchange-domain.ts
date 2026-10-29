@@ -220,7 +220,6 @@ export function planExchange(intent: Exclude<ExchangeIntent, { kind: 'reversal' 
     const plan = newPlan('movement', state, intent.note), amount = toMinor(intent.amount, intent.account), sign = intent.direction === 'in' ? 1 : -1;
     plan.external_reference = intent.external_reference;
     if (intent.category === 'fee' && intent.direction !== 'in') throw new ExchangeReview('지급 수수료는 비용으로 기록해주세요. 받은 수수료만 수수료 수입입니다.');
-    if (intent.category === 'fx_profit' && intent.direction !== 'in') throw new ExchangeReview('환전수익은 실제 받은 동 금액으로 알려주세요.');
     if (intent.category === 'expense' && intent.direction !== 'out') throw new ExchangeReview('비용은 실제 지급액입니다. 환불이라면 원거래 번호로 취소해주세요.');
     if (intent.category !== 'capital' && !isVnd(intent.account)) throw new ExchangeReview('외화 수수료/비용은 동 환산원가 확인이 필요합니다. 동 수수료/비용과 환전 거래를 분리해 알려주세요.');
     let book: number | null;
@@ -230,9 +229,9 @@ export function planExchange(intent: Exclude<ExchangeIntent, { kind: 'reversal' 
     addPosting(plan, state, intent.account, sign * amount, book);
     if (intent.category === 'capital') plan.capital_vnd = book;
     if (intent.category === 'fee') plan.fee_vnd = amount;
-    if (intent.category === 'fx_profit') plan.fx_profit_vnd = amount;
+    if (intent.category === 'fx_profit') plan.fx_profit_vnd = sign * amount;
     if (intent.category === 'expense') plan.expense_vnd = amount;
-    plan.summary.push(`${EXCHANGE_ACCOUNTS[intent.account].label} ${sign > 0 ? '입금' : '출금'} ${formatMoney(amount, intent.account)}`, `분류: ${intent.category === 'capital' ? '시제 보충·회수 (수익 제외)' : intent.category === 'fee' ? '수수료 수입' : intent.category === 'fx_profit' ? '환전수익' : '비용'}`, intent.note);
+    plan.summary.push(`${EXCHANGE_ACCOUNTS[intent.account].label} ${sign > 0 ? '입금' : '출금'} ${formatMoney(amount, intent.account)}`, `분류: ${intent.category === 'capital' ? '시제 보충·회수 (수익 제외)' : intent.category === 'fee' ? '수수료 수입' : intent.category === 'fx_profit' ? (sign > 0 ? '환전수익' : '환전손실') : '비용'}`, intent.note);
     return finishPlan(plan);
   }
   const plan = newPlan('exchange', state, intent.note);
