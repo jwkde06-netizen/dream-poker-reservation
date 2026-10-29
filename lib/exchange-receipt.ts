@@ -26,10 +26,7 @@ export function compactExchangeStatus(report:any, tradeProfit?:number):string {
   const [ty,tm,td]=sunday.toISOString().slice(0,10).split('-').map(Number);
   const money=(n:number)=>n.toLocaleString('en-US');
   const lines=['📊 DREAM EXCHANGE','',`${fm}월 ${fd}일 ~ ${tm}월 ${td}일`,'','💵 현재 시제',
-    `🇻🇳 VND ${money(vnd)}`,`🇺🇸 USD ${money(usd)}`,`🇰🇷 KRW ${money(krw)}`,'','💰 이번 주 수익',
-    `이체수수료 ${money(fee)}동`,`환전 차익 ${money(fx)}동`];
-  if(cost)lines.push(`비용 ${money(cost)}동`);
-  lines.push('',`누적 수익 ${money(profit)}동`);
+    `🇻🇳 VND ${money(vnd)}`,`🇺🇸 USD ${money(usd)}`,`🇰🇷 KRW ${money(krw)}`,'',`💰 이번 주 수익 ${money(profit)}동`];
   if(tradeProfit!==undefined)lines.unshift(`✅ 기록 완료 · 이번 거래 ${money(tradeProfit)}동`,'');
   return lines.join(String.fromCharCode(10));
 }
