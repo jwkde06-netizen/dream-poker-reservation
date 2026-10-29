@@ -116,6 +116,17 @@ module.exports=(async()=>{
  assert.equal(confirmedRebuyContext('응',{plan:{pendingQuestion:'5번 테이블 인쇄 No.12 리바인 명단은 정산지 몇 번 게임인가요?'}},screenGames),null,'printed number is not a ledger game mapping');
  const confirmFollowup=screen.load('./accounting-followup').followupContext;
  const yes={text:'응',from:{id:1},date:screenStamp};
+ const registrationPending={...screenPending,plan:{pendingQuestion:'HWANG YEONG WOO님은 등록 확인이 필요해요. 정산 대상이면 소속 코드를 알려주세요.'}};
+ for(const text of ['황영우 KOREA','HWANG YEONG WOO KOREA','황영우 코드 KOREA']){
+  const answer={text,from:{id:1},date:screenStamp};
+  assert.equal(confirmFollowup([registrationPending],answer,['KOREA']).message_id,390);
+  assert.equal(confirmFollowup([registrationPending,{...registrationPending,message_id:389}],answer,['KOREA']),null);
+  assert.equal(confirmFollowup([registrationPending],{...answer,from:{id:2}},['KOREA']),null);
+  assert.equal(confirmFollowup([registrationPending],{...answer,date:screenStamp+3600},['KOREA']),null);
+  assert.equal(confirmFollowup([registrationPending],{...answer,reply_to_message:{message_id:390}},['KOREA']).message_id,390);
+ }
+ assert.equal(confirmFollowup([registrationPending],{text:'황영우 UNKNOWN',from:{id:1},date:screenStamp},['KOREA']),null);
+
  assert.equal(confirmFollowup([screenPending],yes,[]).message_id,390);
  for(const text of ['맞습니다','ㅇㅇ'])assert.equal(confirmFollowup([screenPending],{...yes,text},[]).message_id,390);
  assert.equal(confirmedRebuyContext('응',{...screenPending,plan:{pendingQuestion:'네, 확인했습니다. '+screenQuestion}},screenGames).game,8);

@@ -17,14 +17,20 @@ export function followupContext(recent:HistoryJob[],message:any,agencyCodes:stri
   return direct&&!closed(direct)?direct:null;}
  if(message.photo||message.document)return null;
  const text=String(message.text||'').trim();
- const answer=text.length<=160&&(affirmative||!!bustAnswer(text)||finalBuyins(text)!==null||/^(?:(?:총|누적)\s*)?\d{1,2}\s*바인(?:이에요|입니다|이야)?[.!]?$/.test(text)||/^(?:네|넵|응|예|맞아|맞아요|그래|추가해|등록해|그렇게)(?:[.!]|요|주세요| 해줘| 추가해| 등록해)*$/.test(text)||/^(?:국가|소속|코드|카드)(?:가|는|은|번호| 번호|\s)/.test(text)||/^\d+(?:[.,]\d+)?\s*(?:만|천)?\s*동[.!]?$/.test(text)||/^\d{1,8}$/.test(text)||/^[234]\s*(?:층|F)$/i.test(text)||/별다른.*없으면.*(코드|KOREA)|기본값|기본\s*코드/.test(text)||agencyCodes.some(c=>norm(text)===norm(c))||/^[가-힣 A-Za-z]{2,30}\s+\d{3,8}$/.test(text));
+ const namedAgency=agencyCodes.some(c=>{
+  const suffix=String(c).trim().toUpperCase(),value=text.replace(/[.!]$/,'').toUpperCase();
+  if(!suffix||!value.endsWith(' '+suffix))return false;
+  const name=value.slice(0,-suffix.length).trim().replace(/\s*코드$/,'').trim();
+  return /^[가-힣A-Z][가-힣A-Z .'-]{1,60}$/.test(name);
+ });
+ const answer=text.length<=160&&(namedAgency||affirmative||!!bustAnswer(text)||finalBuyins(text)!==null||/^(?:(?:총|누적)\s*)?\d{1,2}\s*바인(?:이에요|입니다|이야)?[.!]?$/.test(text)||/^(?:네|넵|응|예|맞아|맞아요|그래|추가해|등록해|그렇게)(?:[.!]|요|주세요| 해줘| 추가해| 등록해)*$/.test(text)||/^(?:국가|소속|코드|카드)(?:가|는|은|번호| 번호|\s)/.test(text)||/^\d+(?:[.,]\d+)?\s*(?:만|천)?\s*동[.!]?$/.test(text)||/^\d{1,8}$/.test(text)||/^[234]\s*(?:층|F)$/i.test(text)||/별다른.*없으면.*(코드|KOREA)|기본값|기본\s*코드/.test(text)||agencyCodes.some(c=>norm(text)===norm(c))||/^[가-힣 A-Za-z]{2,30}\s+\d{3,8}$/.test(text));
  if(!answer)return null;
  const candidates=recent.filter(r=>!closed(r)&&!recent.some(n=>n.status!=='ignored'&&n.plan?.contextMessageId===r.message_id)&&String(r.sender_id)===String(message.from?.id)&&r.plan?.pendingQuestion&&['review','applied'].includes(r.status)&&Number(message.date)*1000-Date.parse(r.created_at||'')>=0&&Number(message.date)*1000-Date.parse(r.created_at||'')<=45*60000);
  // Follow the latest unresolved question only, never a task already superseded
  // by another photo or explicit handoff from the same staff member.
  if(bustAnswer(text)&&(!bustFollowupState(candidates[0])||candidates.length!==1))return null;
  if(finalBuyins(text)!==null&&candidates.length>1&&candidates.some(r=>bustFollowupState(r)))return null;
- if(affirmative&&candidates.length!==1)return null;
+ if((affirmative||namedAgency)&&candidates.length!==1)return null;
  const pending=candidates[0];if(!pending)return null;
  const newer=recent.slice(0,recent.indexOf(pending));
  if(newer.some(r=>String(r.sender_id)===String(message.from?.id)&&(r.source_message?.photo||r.source_message?.document||r.plan?.manual_handoff)))return null;

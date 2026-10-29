@@ -4,7 +4,7 @@ export function parseDeskAction(data:string){
  if(/^desk:(buyin|fnb|status|rules)$/.test(data))return {kind:data.slice(5)};
  const m=data.match(/^desk:(manual|retry):(\d{1,15})$/);return m?{kind:m[1],messageId:Number(m[2])}:null;
 }
-export function pendingButtons(messageId:number){return {inline_keyboard:[[{text:'✍️ 직접 입력했어요',callback_data:'desk:manual:'+messageId}],[{text:'📖 사용 방법',callback_data:'desk:buyin'}]]};}
+export function pendingButtons(messageId:number){return {inline_keyboard:[[{text:'✍️ 직접 입력했어요',callback_data:'desk:manual:'+messageId}]]};}
 export function canMarkManual(job:any,actor:string,isAdmin:boolean){
  return !!job&&['review','failed','applied'].includes(job.status)&&(job.status!=='applied'||!!job.plan?.pendingQuestion)&&!job.plan?.resolvedBy&&!job.plan?.manual_handoff&&(String(job.sender_id)===actor||isAdmin);
 }
