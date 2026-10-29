@@ -194,6 +194,18 @@ export function directKrwBalance(text: string): string | null {
   if (!Number.isSafeInteger(amount) || amount < 0 || amount > 9_000_000_000_000) throw new ExchangeReview('원화 잔액 금액을 확인해주세요.');
   return String(amount);
 }
+/** Explicit negative income and loss statements never need AI clarification. */
+export function directFxLoss(text:string):ExchangeIntent|null {
+ const t=text.trim().replace(/\s+/g,'');
+ const m=t.match(/^(?:환전)?(?:수익|차익|이익)[-−](\d[\d,]*(?:\.\d+)?)(백만동|만동|천동|동|vnd)$/i)
+  ||t.match(/^(?:환전)?손실[-−]?(\d[\d,]*(?:\.\d+)?)(백만동|만동|천동|동|vnd)$/i)
+  ||t.match(/^[-−]?(\d[\d,]*(?:\.\d+)?)(백만동|만동|천동|동|vnd)(?:환전)?손실$/i);
+ if(!m)return null;
+ const scale:Record<string,number>={백만동:1000000,만동:10000,천동:1000,동:1,vnd:1};
+ const amount=Number(m[1].replace(/,/g,''))*scale[m[2].toLowerCase()];
+ if(!Number.isSafeInteger(amount)||amount<=0||amount>1000000000)throw new ExchangeReview('환전손실 금액을 확인해주세요.');
+ return {kind:'movement',account:'VND_CASH',amount:String(amount),direction:'out',category:'fx_profit',basis_vnd:null,note:'사용자가 명시한 환전손실',external_reference:null};
+}
 /** A plainly labeled VND exchange profit is a confirmed receipt into the pooled VND float. */
 export function directFxProfit(text:string):ExchangeIntent|null {
   const t=text.trim().replace(/\s+/g,' ');
@@ -343,7 +355,7 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
     } else {
       const cancel = await cancellationIntent(config, text, message.reply_to_message?.message_id);
       const balanceTarget = directKrwBalance(text);
-      const fast = cancel || simpleIntent(text) || exchangeFeeShortcut(text) || directFxProfit(text) || directUsdExchange(text) || directKrwPayout(text) || directKrwExchange(text) || (balanceTarget !== null ? { kind: 'balance' } as ExchangeIntent : null);
+      const fast = cancel || simpleIntent(text) || exchangeFeeShortcut(text) || directFxLoss(text) || directFxProfit(text) || directUsdExchange(text) || directKrwPayout(text) || directKrwExchange(text) || (balanceTarget !== null ? { kind: 'balance' } as ExchangeIntent : null);
       if (fast) intent = fast;
       else {
         const implicitFollowup=/^(?:네|예|응|맞아|맞습니다|확인|yes|y|환전|환전\s*수익|환전\s*차익|차익|이익|수수료)$/i.test(text.trim());
