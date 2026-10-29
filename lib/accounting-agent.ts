@@ -301,6 +301,9 @@ export async function handle(update:any){
    const member=await tg('getChatMember',{chat_id:process.env.STAFF_TELEGRAM_CHAT_ID,user_id:m.from.id});
    let rule;try{rule=validateMemory(result.memory)}catch(e){await finish('review',e instanceof Error?e.message:'규칙 확인이 필요합니다.');return;}
    if(rule.action==='list'){await finish('ignored',rulesLinkText);return;}
+   const management=await db().from('dream_accounting_management_room').select('chat_id').eq('id',true).maybeSingle();
+   if(management.error)throw Error('Management room lookup failed');
+   if(management.data){await finish('review','규칙 저장·삭제는 Dream Bot 관리실에서 보내주세요. 이 요청으로 시트 입력은 하지 않았어요.');return;}
    if(!canTeachBusinessRule(member.status,rule.action)){await finish('review',rule.action==='delete'?'저장된 규칙 삭제는 관리자분이 할 수 있어요.':'직원방에 참여한 직원만 업무 규칙을 저장할 수 있어요.');return;}
    if(rule.action==='delete'){
     const r=await db().from('dream_accounting_rules').update({active:false}).eq('id',rule.id).eq('active',true).select('id');if(r.error)throw Error('Rule removal failed');

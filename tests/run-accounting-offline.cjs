@@ -10,7 +10,7 @@ function compile(source){
 fs.mkdirSync(root+'/.test-build',{recursive:true});
 for(const n of ['accounting-memory','accounting-easy','accounting-conversation','accounting-format','accounting-corrections','accounting-plan','accounting-context','accounting-vision'])fs.writeFileSync(root+'/.test-build/'+n+'.js',compile(fs.readFileSync(root+'/lib/'+n+'.ts','utf8')));
 module.exports=(async()=>{
- for(const file of ['accounting-staff-learning','accounting-vision','accounting-roster-upgrade','accounting-prewrite-conflict','accounting-cancel-compact','accounting-format','accounting-upgrade-guards','accounting-request-replay','desk-ledger','desk-ledger-inline','desk-ledger-integration','desk-scan-settings','sheet-game-status','settlement-flow'])await require('./'+file+'.cjs');
+ for(const file of ['accounting-management-room','accounting-staff-learning','accounting-vision','accounting-roster-upgrade','accounting-prewrite-conflict','accounting-cancel-compact','accounting-format','accounting-upgrade-guards','accounting-request-replay','desk-ledger','desk-ledger-inline','desk-ledger-integration','desk-scan-settings','sheet-game-status','settlement-flow'])await require('./'+file+'.cjs');
  console.log('All offline accounting checks passed');
 })();
 if(require.main===module)module.exports.catch(error=>{console.error(error);process.exitCode=1;});
