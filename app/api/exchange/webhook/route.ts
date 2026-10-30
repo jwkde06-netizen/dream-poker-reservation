@@ -26,7 +26,7 @@ async function ensureCommandMenu() {
     scope: { type: 'chat', chat_id: config.chatId },
     commands: [
       { command: 'status', description: '현재 환전 시제' },
-      { command: 'sentbe', description: '센트비 전액 이동 완료 · 원화 계좌 시제 0원' },
+      { command: 'sentbe', description: '센트비 이동 · Google 환율로 동 시제 추가' },
       { command: 'week', description: '이번 주 수익·정산' },
       { command: 'today', description: '오늘 거래 내역' },
       { command: 'fee', description: '이체수수료 추가 · 예: /fee 100 = 100만동' },
@@ -43,7 +43,7 @@ async function ensureCommandMenu() {
     scope: { type: 'chat', chat_id: config.chatId },
     commands: [
       { command: 'status', description: '현재 환전 시제' },
-      { command: 'sentbe', description: '센트비 전액 이동 완료 · 원화 계좌 시제 0원' },
+      { command: 'sentbe', description: '센트비 이동 · Google 환율로 동 시제 추가' },
       { command: 'week', description: '이번 주 수익·정산' },
       { command: 'today', description: '오늘 거래 내역' },
       { command: 'fee', description: '이체수수료 추가 · 예: /fee 100 = 100만동' },
