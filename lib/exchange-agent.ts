@@ -45,7 +45,7 @@ async function googleKrwVnd():Promise<{rate:string;checkedAt:string}> {
 }
 export function sentbeVndAmount(krw:number,rate:string):number {
   const [whole,fraction='']=rate.split('.');
-  const denominator=BigInt(10)**BigInt(fraction.length);
+  const denominator=BigInt('1'+'0'.repeat(fraction.length));
   const numerator=BigInt(krw)*BigInt(whole+fraction);
   return safeMoney(Number((numerator+denominator/BigInt(2))/denominator));
 }
