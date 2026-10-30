@@ -3,7 +3,7 @@ const {completePhotoRoster,verifyChipEvidence}=require('../.test-build/accountin
 const {completionReply}=require('../.test-build/accounting-conversation');
 const {correctionBlocked}=require('../.test-build/accounting-corrections');
 const op={kind:'add',date:'2026-10-23',game:8,printedGame:9,table:12,blind:'5M',player:'CHANG YOON HO',buyins:1,chips:100000};
-const rules=[{content:'CHANG CALEB YOON-HO = CHANG YOON HO'}];
+const rules=[{content:'CHANG CALEB YOON-HO = CHANG YOON HO. CHANG YOON HO는 동그라미가 없어도 포함한다.'}];
 const master=[['name','card','agency'],['CHANG YOON HO','','KOREA2'],['OLIVER CHARLES','','UK'],['YE GUI CAI','1402','CHINA']];
 const paper={date:op.date,printedGame:9,handwrittenGame:8,table:12,names:['CHANG YOON HO','OLIVER CHARLES'],chipAmounts:[100000,100000],selected:[false,true],hasSelectionMarkers:true};
 for(const mutation of [{selected:[]},{selected:['false',true]},{chipAmounts:[100000]},{crossedOut:[false]},{crossedOut:[false,'false']},{hasSelectionMarkers:null}]){

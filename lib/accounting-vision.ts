@@ -45,6 +45,18 @@ export function photoPlayerExcluded(player:string,rules:any[]=[]){
  });
 }
 
+// A master agency establishes identity, not selection on a circled roster.
+// Only a named, explicit standing inclusion may override an absent circle.
+export function photoPlayerUncircledIncluded(player:string,rules:any[]=[]){
+ return rules.some(r=>{
+  const content=String(r.content||'');
+  const clauses=content.split(/[.。\n]/).filter(s=>/동그라미.{0,100}(?:없어도|누락).{0,100}(?:포함한다|포함해(?:줘|주세요)|포함하도록|제외하지)/.test(s));
+  if(clauses.some(s=>norm(s).includes(norm(player))))return true;
+  const subject=content.match(/^([A-Z][A-Z .'-]*?)(?=[가-힣]|=|:|$)/)?.[1]?.trim();
+  return !!subject&&playerIdentity(subject,rules)===playerIdentity(player,rules)&&clauses.some(s=>/^\s*이 선수(?:는|를)/.test(s));
+ });
+}
+
 // Reconcile every independently transcribed seat against the master, rather
 // than trusting the first model to have included every eligible player.
 export function completePhotoRoster(ops:any[],evidence:any,master:any[][],rules:any[]=[]){
@@ -65,6 +77,7 @@ export function completePhotoRoster(ops:any[],evidence:any,master:any[][],rules:
   if(matches.length!==1||!String(matches[0][2]||'').trim()){if(!evidence.hasSelectionMarkers||!selected[i])continue;questions.push(`${names[i]}님 명단의 이름과 소속을 확인해주세요.`);continue;}
   candidate.player=matches[0][0];
   if(photoPlayerExcluded(candidate.player,rules))continue;
+  if(evidence.hasSelectionMarkers&&selected[i]!==true&&!photoPlayerUncircledIncluded(candidate.player,rules))continue;
   if(duplicated.has(playerIdentity(candidate.player,rules))){if(!withheldOperations.some(o=>norm(o.player)===norm(candidate.player)))withheldOperations.push(candidate);questions.push(`${candidate.player}님 이름이 사진에서 중복으로 읽혔어요. 누적 바이인 수를 확인해주세요.`);continue;}
   if(!Number.isSafeInteger(amounts[i])||amounts[i]<100000||amounts[i]>5000000||amounts[i]%100000!==0){withheldOperations.push(candidate);questions.push(`${candidate.player}님 누적 바이인 수만 확인해주세요.`);continue;}
   if(!operations.some(o=>['add','total'].includes(o.kind)&&norm(o.player)===norm(candidate.player)))operations.push({...candidate,...attendance.find(o=>norm(o.player)===norm(candidate.player)),masterVerified:true});
@@ -101,7 +114,7 @@ export function verifyChipEvidence(ops:any[],evidence:any,rules:any[]=[]){
   const matched=names.map((name:any,i:number)=>({name,i})).filter((r:any)=>typeof r.name==='string'&&canonical(r.name)===canonical(op.player));
   // Explicit seat selection from independent transcription excludes unselected rows.
   // Keep the stricter count comparison for every selected player.
-  if(op.masterVerified!==true&&matched.length===1&&evidence.hasSelectionMarkers===true&&Array.isArray(evidence.selected)&&evidence.selected.length===names.length&&evidence.selected.every((v:any)=>typeof v==='boolean')&&evidence.selected[matched[0].i]===false)continue;
+  if(matched.length===1&&evidence.hasSelectionMarkers===true&&Array.isArray(evidence.selected)&&evidence.selected.length===names.length&&evidence.selected.every((v:any)=>typeof v==='boolean')&&evidence.selected[matched[0].i]===false&&!photoPlayerUncircledIncluded(op.player,rules))continue;
   const chips=matched.length===1?amounts[matched[0].i]:null;
   if(!Number.isSafeInteger(chips)||chips<100000||chips>5000000||chips%100000!==0||chips/100000!==op.buyins){questions.push(`${op.player}님 사진의 누적 바이인 수만 확인해주세요.`);continue;}
   operations.push({...op,chips});
