@@ -27,6 +27,8 @@ async function ensureCommandMenu() {
     commands: [
       { command: 'status', description: '현재 환전 시제' },
       { command: 'sentbe', description: '센트비 이동 · Google 환율로 동 시제 추가' },
+      { command: 'memo', description: '비고 추가·목록 · /memo 시제 3900만동 대니형님께 인계' },
+      { command: 'memodel', description: '비고 삭제 · /memodel 1' },
       { command: 'week', description: '이번 주 수익·정산' },
       { command: 'today', description: '오늘 거래 내역' },
       { command: 'fee', description: '이체수수료 추가 · 예: /fee 100 = 100만동' },
@@ -44,6 +46,8 @@ async function ensureCommandMenu() {
     commands: [
       { command: 'status', description: '현재 환전 시제' },
       { command: 'sentbe', description: '센트비 이동 · Google 환율로 동 시제 추가' },
+      { command: 'memo', description: '비고 추가·목록 · /memo 시제 3900만동 대니형님께 인계' },
+      { command: 'memodel', description: '비고 삭제 · /memodel 1' },
       { command: 'week', description: '이번 주 수익·정산' },
       { command: 'today', description: '오늘 거래 내역' },
       { command: 'fee', description: '이체수수료 추가 · 예: /fee 100 = 100만동' },

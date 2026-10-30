@@ -21,8 +21,22 @@ interface Job {
   reply_id: number | null; reply_state: string; context_update_id: number | null;
 }
 
-export const EXCHANGE_HELP = `Dream Poker Exchange\n\n실제로 받은 돈과 지급한 돈을 이 방에 적으면 시제와 수익 원장에 기록합니다. 은행 이체를 실행하지는 않습니다.\n\n거래 예시\n• 베트남 계좌로 550만동 받고 현금 550만동 지급. 수수료 5만동은 계좌로 별도 받음\n• 원화 계좌 30만원 입금, 18레이트로 동 현금 지급 완료\n• 100USD 현금 받고 동 현금 250만동 지급 완료\n• 베트남 계좌 수수료 수입 5만동, 별도 수수료 정산\n\n조회: 시제 / 오늘 정산 / 이번 주 정산 / 지난주 정산\n기본 환율: 1 KRW = 18 VND, 1 USD = 25,000 VND. 실제 지급액이 있으면 함께 적어주세요.\n환전 원금은 수익에 포함하지 않습니다. 외화 차익은 확인된 취득원가로 처분 시 계산합니다.\n\n최초 설정(관리자): “기초 시제 동 현금 …, 베트남 계좌 …, 원화 계좌 …, 달러 현금 …”을 적고 미리보기의 확정 명령을 보내주세요. 외화의 동 기준 총 취득원가도 알면 함께 적어주세요. 없는 통화는 0입니다. 이후 “원화 잔액 2,598,000원”처럼 보내면 원화 계좌를 해당 잔액으로 바로 대조 조정합니다(관리자 전용, 수익에는 포함하지 않음).\n\n센트비 이동(관리자): /sentbe = 원화 계좌 전액을 현재 Google KRW/VND 환율로 환산해 동 시제에 더하고 원화 계좌 시제를 0원으로 기록합니다. Google 환산액은 실제 센트비 입금액과 다를 수 있습니다. 수익 제외. 실제 송금은 실행하지 않습니다.\n\n단축입력: /fee 5 = 수수료 수익 5만동, /fee 10 = 10만동, /fee 100 = 100만동. /fee -31 = 환전손실 31만동 차감. /fee 뒤 숫자는 만동 단위입니다. 예전처럼 동 단위 숫자를 넣을 때는 /fee 50000 또는 /fee 5만동을 사용하세요. /fee5 = 5만동, /fee10 = 10만동. 수수료 취소는 완료 메시지에 답장하거나 “5만동 취소”라고 적으세요(관리자 전용).\n취소(관리자): “FX-봇번호-업데이트번호 취소, 사유 …”. 기존 메시지를 수정해도 원장은 덮어쓰지 않습니다.`;
+export const EXCHANGE_HELP = `Dream Poker Exchange\n\n실제로 받은 돈과 지급한 돈을 이 방에 적으면 시제와 수익 원장에 기록합니다. 은행 이체를 실행하지는 않습니다.\n\n거래 예시\n• 베트남 계좌로 550만동 받고 현금 550만동 지급. 수수료 5만동은 계좌로 별도 받음\n• 원화 계좌 30만원 입금, 18레이트로 동 현금 지급 완료\n• 100USD 현금 받고 동 현금 250만동 지급 완료\n• 베트남 계좌 수수료 수입 5만동, 별도 수수료 정산\n\n비고: /memo 내용 = 추가, /memo = 목록, /memodel 번호 = 삭제. 인계 메모는 시제·수익에 반영하지 않습니다.\n\n조회: 시제 / 오늘 정산 / 이번 주 정산 / 지난주 정산\n기본 환율: 1 KRW = 18 VND, 1 USD = 25,000 VND. 실제 지급액이 있으면 함께 적어주세요.\n환전 원금은 수익에 포함하지 않습니다. 외화 차익은 확인된 취득원가로 처분 시 계산합니다.\n\n최초 설정(관리자): “기초 시제 동 현금 …, 베트남 계좌 …, 원화 계좌 …, 달러 현금 …”을 적고 미리보기의 확정 명령을 보내주세요. 외화의 동 기준 총 취득원가도 알면 함께 적어주세요. 없는 통화는 0입니다. 이후 “원화 잔액 2,598,000원”처럼 보내면 원화 계좌를 해당 잔액으로 바로 대조 조정합니다(관리자 전용, 수익에는 포함하지 않음).\n\n센트비 이동(관리자): /sentbe = 원화 계좌 전액을 현재 Google KRW/VND 환율로 환산해 동 시제에 더하고 원화 계좌 시제를 0원으로 기록합니다. Google 환산액은 실제 센트비 입금액과 다를 수 있습니다. 수익 제외. 실제 송금은 실행하지 않습니다.\n\n단축입력: /fee 5 = 수수료 수익 5만동, /fee 10 = 10만동, /fee 100 = 100만동. /fee -31 = 환전손실 31만동 차감. /fee 뒤 숫자는 만동 단위입니다. 예전처럼 동 단위 숫자를 넣을 때는 /fee 50000 또는 /fee 5만동을 사용하세요. /fee5 = 5만동, /fee10 = 10만동. 수수료 취소는 완료 메시지에 답장하거나 “5만동 취소”라고 적으세요(관리자 전용).\n취소(관리자): “FX-봇번호-업데이트번호 취소, 사유 …”. 기존 메시지를 수정해도 원장은 덮어쓰지 않습니다.`;
 
+
+
+export function exchangeMemoCommand(text:string):{action:'add'|'list'|'delete';body:string|null;number:number|null}|null {
+ const match=text.trim().match(/^\/(memo|memodel)(?:@\w+)?(?:\s+([\s\S]*))?$/i);
+ if(!match)return null;
+ const value=(match[2]||'').trim();
+ if(match[1].toLowerCase()==='memodel'){
+  if(!/^[1-9]\d{0,8}$/.test(value))throw new ExchangeReview('/memodel 번호로 삭제해주세요. 예: /memodel 1');
+  return {action:'delete',body:null,number:Number(value)};
+ }
+ if(!value)return {action:'list',body:null,number:null};
+ if(value.length>200)throw new ExchangeReview('비고는 200자 이내로 적어주세요.');
+ return {action:'add',body:value,number:null};
+}
 
 /** Fixed Google Finance KRW/VND quote; never fall back to a default rate. */
 export function parseGoogleKrwVnd(html:string):string {
@@ -372,6 +386,13 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
     if (update.edited_message) { await finish(job, config, owner, 'review', '수정된 메시지는 원장에 재반영하지 않았습니다. 원거래 FX 번호로 취소한 뒤 올바른 거래를 새 메시지로 적어주세요.'); return; }
     if (message.forward_origin || message.forward_date || message.external_reply) { await finish(job, config, owner, 'review', '전달된 과거 내역은 자동 반영하지 않습니다. 실제 신규 거래의 받은 금액·지급 금액·수수료를 직접 적어주세요.'); return; }
     if (message.photo || message.document) { await finish(job, config, owner, 'review', '사진만으로 실제 수령·지급 여부를 확정하지 않습니다. 받은 통화·금액·계좌, 지급 통화·금액·계좌, 수수료를 글로 적어주세요.'); return; }
+    const memo=exchangeMemoCommand(text);
+    if(memo){
+      await authorizeActor(config,job.sender_id,false);
+      const result=await exchangeDb().rpc('dream_exchange_memo_command',{p_bot_id:config.botId,p_update_id:job.update_id,p_owner:owner,p_action:memo.action,p_body:memo.body,p_number:memo.number});
+      if(result.error||!result.data)throw Error('Exchange memo persistence failed');
+      await deliverReply(result.data as Job,config); return;
+    }
     const sentbe = /^\/sentbe(?:@dream_poker_exchange_bot)?$/i.test(text.trim());
     const today = vietnamDate(message.date);
     let intent: ExchangeIntent, resolves: number | null = null;
