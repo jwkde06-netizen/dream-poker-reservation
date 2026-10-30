@@ -43,9 +43,9 @@ export function continuationText(current:string,previous:HistoryJob|null){
 // A circled, unregistered photo player is not authorization to create a master
 // identity or infer an agency. Hold only that player; known attendance can pass
 // the usual photo, correction, conflict and readback guards independently.
-export function isolateUnapprovedRegistrations(ops:any[],evidence:string,master:any[][],pendingQuestion='',rules:any[]=[]){
+export function isolateUnapprovedRegistrations(ops:any[],evidence:string,master:any[][],pendingQuestion='',rules:any[]=[],photoApprovals:Record<string,{agency:string}>={}){
  const named=norm([evidence,pendingQuestion,...rules.map(r=>r.content)].join(' '));
- const unapproved=ops.filter(op=>op.kind==='register'&&(!norm(op.player)||!named.includes(norm(op.player))));
+ const unapproved=ops.filter(op=>op.kind==='register'&&(!norm(op.player)||!named.includes(norm(op.player))&&!photoApprovals[norm(op.player)]));
  const blocked=new Set(unapproved.map(op=>norm(op.player)));
  const known=new Set(master.slice(1).filter(r=>r[0]&&String(r[2]||'').trim()).map(r=>norm(r[0])));
  const deferred=Array.from(new Set(unapproved.map(op=>String(op.player||'').trim()).filter(player=>norm(player)&&!known.has(norm(player)))));
@@ -55,14 +55,15 @@ export function isolateUnapprovedRegistrations(ops:any[],evidence:string,master:
   question:deferred.length?`${deferred[0]}님은 등록 확인이 필요해요. 정산 대상이면 소속 코드를 알려주세요.`:null
  };
 }
-export function registrationApprovals(ops:any[],evidence:string,master:any[][],pendingQuestion='',rules:any[]=[]){
+export function registrationApprovals(ops:any[],evidence:string,master:any[][],pendingQuestion='',rules:any[]=[],photoApprovals:Record<string,{agency:string}>={}){
  const codes=new Set(master.slice(1).map(r=>String(r[2]||'').trim()).filter(Boolean));
  const result:Record<string,{agency:string;card?:string}>={};
  for(const op of ops||[]){
   if(op.kind!=='register'||!op.agency)continue;
   const agency=String(op.agency).trim();
   const tokens:string[]=evidence.toUpperCase().match(/[A-Z]+[0-9]*(?:\([A-Z]+\))?/g)||[];
-  if(!norm(evidence+' '+pendingQuestion).includes(norm(op.player))||!codes.has(agency)||(!tokens.includes(agency.toUpperCase())&&defaultAgency(rules,master)!==agency&&!master.slice(1).some(r=>norm(r[0])===norm(op.player)&&r[2]===agency)))throw Error(`${op.player} 소속 코드를 알려주세요.`);
+  const photoApproved=photoApprovals[norm(op.player)]?.agency===agency&&defaultAgency(rules,master)===agency;
+  if((!norm(evidence+' '+pendingQuestion).includes(norm(op.player))&&!photoApproved)||!codes.has(agency)||(!tokens.includes(agency.toUpperCase())&&defaultAgency(rules,master)!==agency&&!master.slice(1).some(r=>norm(r[0])===norm(op.player)&&r[2]===agency)))throw Error(`${op.player} 소속 코드를 알려주세요.`);
   const card=op.card==null?'':String(op.card).trim();
   if(card&&(!/^\d{1,12}$/.test(card)||!new RegExp(`(?:^|\\D)${card}(?:$|\\D)`).test(evidence)))throw Error(`${op.player} 카드 번호를 확인해주세요.`);
   result[norm(op.player)]={agency,...(card?{card}:{})};

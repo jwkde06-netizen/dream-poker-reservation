@@ -8,9 +8,9 @@ function compile(source){
  return js.replace(/export\s*\{\s*(\w+)\s+as\s+(\w+)\s*\}\s*from\s*['"]([^'"]+)['"];?/g,(_,n,a,f)=>"exports."+a+"=require('"+f+"')."+n+";").replace(/import\s*\{([^}]+)\}\s*from\s*['"]([^'"]+)['"];?/g,(_,n,f)=>"const {"+n+"}=require('"+f+"');").replace(/export\s+(?=(?:async\s+)?(?:function|const|let|class)\b)/g,'')+'\nObject.assign(exports,{'+names.join(',')+'});';
 }
 fs.mkdirSync(root+'/.test-build',{recursive:true});
-for(const n of ['accounting-memory','accounting-easy','accounting-conversation','accounting-format','accounting-corrections','accounting-plan','accounting-context','accounting-vision'])fs.writeFileSync(root+'/.test-build/'+n+'.js',compile(fs.readFileSync(root+'/lib/'+n+'.ts','utf8')));
+for(const n of ['accounting-memory','accounting-easy','accounting-conversation','accounting-format','accounting-corrections','accounting-plan','accounting-context','accounting-vision','accounting-workflow','accounting-bust-followup','accounting-followup','accounting-reconcile'])fs.writeFileSync(root+'/.test-build/'+n+'.js',compile(fs.readFileSync(root+'/lib/'+n+'.ts','utf8')));
 module.exports=(async()=>{
- for(const file of ['accounting-management-room','accounting-staff-learning','accounting-vision','accounting-roster-upgrade','accounting-prewrite-conflict','accounting-cancel-compact','accounting-format','accounting-upgrade-guards','accounting-request-replay','desk-ledger','desk-ledger-inline','desk-ledger-integration','desk-scan-settings','sheet-game-status','settlement-flow'])await require('./'+file+'.cjs');
+ for(const file of ['accounting-photo-registration','accounting-management-room','accounting-staff-learning','accounting-vision','accounting-roster-upgrade','accounting-prewrite-conflict','accounting-cancel-compact','accounting-format','accounting-upgrade-guards','accounting-request-replay','desk-ledger','desk-ledger-inline','desk-ledger-integration','desk-scan-settings','sheet-game-status','settlement-flow'])await require('./'+file+'.cjs');
  console.log('All offline accounting checks passed');
 })();
 if(require.main===module)module.exports.catch(error=>{console.error(error);process.exitCode=1;});

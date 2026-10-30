@@ -11,7 +11,7 @@ import {easyHelp,easyMenu,parseDeskAction,pendingButtons,canMarkManual,buyinGuid
 import {rulesLinkText,rulesButton} from './accounting-rules-link';
 import {addressedToDesk,sheetStatusQuestion,deskCommand,deskHelp,politeAcknowledgement,completionReply} from './accounting-conversation';
 import {shouldProcessStaffMessage,resolveFnb} from './accounting-intake';
-import {missingRebuyPlayers,missingRebuyQuestion,bindRebuyHistory,confirmedRebuyContext,bindConfirmedRebuy,completePhotoRoster,needsChipVerification,verifyChipEvidence,confirmChipCount,continueChipConfirmation,withheldChipOperations} from './accounting-vision';
+import {prepareSelectedPhotoRegistrations,missingRebuyPlayers,missingRebuyQuestion,bindRebuyHistory,confirmedRebuyContext,bindConfirmedRebuy,completePhotoRoster,needsChipVerification,verifyChipEvidence,confirmChipCount,continueChipConfirmation,withheldChipOperations} from './accounting-vision';
 import {defaultAgency,completeNamedArrival,cosmeticNameEdit,jobReport,compactExtractionContext} from './accounting-workflow';
 import {reconcileSheet,reconcileOperation,afterVerifiedWrite} from './accounting-reconcile';
 import {sheetContext,correctedOperations,focusedQuestion,certainOperations,clearResolvedIdentityQuestion} from './accounting-context';
@@ -262,6 +262,7 @@ export async function handle(update:any){
    const attendance=result.operations.filter((o:any)=>['add','total'].includes(o.kind));
    if(attendance.length&&attendance.every((o:any)=>o.confirmedPaperTable===confirmedRebuy.paperTable)&&/용지.{0,8}번호|게임.{0,12}번호|테이블.{0,6}번호/.test(result.question||''))result.question=null;
   }
+  let photoRegistrationApprovals:Record<string,{agency:string}>={};
   const correctionOriginal=result.operations.map((o:any)=>({...o}));
   result.operations=certainOperations(result.operations,result.question);
   if(image&&result.documentType==='paper_game'&&result.operations.some((o:any)=>['add','total'].includes(o.kind))){
@@ -271,14 +272,17 @@ export async function handle(update:any){
     const evidence=confirmedEvidence||reconsidered.evidence||await readChipColumns(image);if(!confirmedEvidence&&!reconsidered.evidence){recordAI(evidence);}
     result.operations=bindConfirmedRebuy(result.operations,evidence,job.text,previous?.plan?.pendingQuestion,context.games);
     result.operations=bindRebuyHistory(result.operations,evidence,context.games,recent,businessRules);
-    const coverage=completePhotoRoster(result.operations,evidence,master,businessRules);
+    const enrollment=prepareSelectedPhotoRegistrations(result.operations,evidence,master,businessRules);
+    photoRegistrationApprovals=enrollment.approvals;
+    result.operations=enrollment.operations;
+    const coverage=completePhotoRoster(result.operations,evidence,enrollment.master,businessRules);
     result.operations=coverage.operations;
     const absent=missingRebuyPlayers(result.operations,evidence,context.games,businessRules);
     const verified=verifyChipEvidence(result.operations,evidence,businessRules);
     verified.questions.unshift(...coverage.questions);
     result.unverifiedOperations=[...coverage.withheldOperations,...withheldChipOperations(result.operations,verified.operations),...absent];
     if(absent.length)verified.questions.push(missingRebuyQuestion(absent[0]));
-    result.operations=verified.operations;result.question=verified.questions[0]||clearResolvedIdentityQuestion(result.question,verified.operations,master,businessRules);
+    result.operations=verified.operations;result.question=verified.questions[0]||clearResolvedIdentityQuestion(result.question,verified.operations,enrollment.master,businessRules);
     result.chipVerification={extractedOperations:correctionOriginal,documents:evidence.documents,names:evidence.names,chipAmounts:evidence.chipAmounts,selected:evidence.selected,questions:verified.questions};
    }catch(e){
     // Infrastructure/format failure is NOT uncertainty about a player's chips.
@@ -288,7 +292,7 @@ export async function handle(update:any){
     throw new InvalidAIResponse('verification_unavailable');
    }
   }
-  const registrationReview=isolateUnapprovedRegistrations(result.operations,taskText,master,previous?.plan?.pendingQuestion||'',businessRules);
+  const registrationReview=isolateUnapprovedRegistrations(result.operations,taskText,master,previous?.plan?.pendingQuestion||'',businessRules,photoRegistrationApprovals);
   result.operations=registrationReview.operations;
   taskPlan.deferredRegistrations=registrationReview.deferredRegistrations;
   if(registrationReview.question&&(!result.question||registrationReview.deferredRegistrations.some(r=>norm(result.question).includes(norm(r.player)))))result.question=registrationReview.question;
@@ -328,7 +332,7 @@ export async function handle(update:any){
   if(!result.operations?.length){if(image&&result.documentType==='phone_game'){await finish('ignored','');return;}if(image&&result.documentType==='paper_game')await finish('review','사진에서 표시된 선수가 잘 안 보여요. 이름만 알려주시겠어요?');else await finish('ignored',addressedToDesk(job.text)?'질문을 받았지만 어떤 내용을 확인할지 파악하지 못했어요. 확인할 게임이나 선수, 또는 처리 상태를 말씀해주세요.':'');return;}
   // A linked applied F&B receipt is context, never a second expense.
   if(photoSource?.status==='applied'&&result.operations.some((op:any)=>op.kind==='fnb')){await finish('review','이미 기록한 영수증이에요. 어느 부분을 바꿀까요?');return;}
-  const makePlan=()=>planOperations(result.operations,daily,fnb,master,{tableRoundLabels:businessRules.some(r=>r.kind==='table_round_labels'),rebuySnapshot:rebuyCaption(taskText),photoSnapshot:!!image||!!confirmedResult,partialAttendance:true,registrationApprovals:registrationApprovals(result.operations,taskText,master,previous?.plan?.pendingQuestion||'',businessRules),reconcile:op=>reconcileOperation(op,{state:sheetState,sourceMessageId:photoSource?.plan?.photoSourceMessageId||photoSource?.message_id,sourceTime:photoSource?.plan?.photoSourceDate||photoSource?.source_message?.date||m.date,photo:!!image||!!confirmedResult,text:job.text,pendingQuestion:previous?.plan?.pendingQuestion||''})});
+  const makePlan=()=>planOperations(result.operations,daily,fnb,master,{tableRoundLabels:businessRules.some(r=>r.kind==='table_round_labels'),rebuySnapshot:rebuyCaption(taskText),photoSnapshot:!!image||!!confirmedResult,partialAttendance:true,registrationApprovals:registrationApprovals(result.operations,taskText,master,previous?.plan?.pendingQuestion||'',businessRules,photoRegistrationApprovals),reconcile:op=>reconcileOperation(op,{state:sheetState,sourceMessageId:photoSource?.plan?.photoSourceMessageId||photoSource?.message_id,sourceTime:photoSource?.plan?.photoSourceDate||photoSource?.source_message?.date||m.date,photo:!!image||!!confirmedResult,text:job.text,pendingQuestion:previous?.plan?.pendingQuestion||''})});
   let plan;try{plan=makePlan()}catch(e){await finish('review',e instanceof Error?e.message:'항목 확인이 필요합니다.');return;}
   // Re-read ALL daily inputs before committing, not only target cells. A human
   // can insert the same player elsewhere while OCR is running. Re-plan once

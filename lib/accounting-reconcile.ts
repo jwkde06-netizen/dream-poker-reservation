@@ -98,6 +98,16 @@ export function reconcileOperation(original:any,options:ReconcileOptions):{op:an
  const override=state.overrides.find(o=>sameGame(o.entry,op)&&norm(o.entry.player)===norm(op.player));
  if(override?.kind==='removed'&&!live.length){
   if(op.kind==='cancel')return {op,skip:true};
+  // A manual spelling replacement may leave an old name tombstone. For an
+  // unchanged photo count, keep the current row without asking about rejoining.
+  // This never merges names, restores a removed player or transfers a buyin.
+  const source=norm(op.player);
+  const corrected=state.entries.filter(e=>sameGame(e,op)&&e.buyins===override.entry.buyins).filter(e=>{
+   const target=norm(e.player);if(source.length!==target.length)return false;
+   const diff=Array.from(source).map((c,i)=>c!==target[i]?i:-1).filter(i=>i>=0);
+   return diff.length===2&&diff[1]===diff[0]+1&&source[diff[0]]===target[diff[1]]&&source[diff[1]]===target[diff[0]];
+  });
+  if(options.photo&&override.reason==='sheet_edit'&&op.buyins<=override.entry.buyins&&corrected.length===1&&!explicitAttendance(op,options.text||'',options.pendingQuestion))return {op,skip:true};
   if(!explicitAttendance(op,options.text||'',options.pendingQuestion))return {op,skip:true,question:`${op.game}번 게임에서 빠진 ${op.player}님, 다시 참가한 게 맞나요?`};
   op.kind='add';
  }

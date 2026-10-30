@@ -1,6 +1,7 @@
+import {defaultAgency} from './accounting-workflow';
 import {bindPaperHeaders} from './accounting-corrections';
 import {norm,serial,tableLabel} from './accounting-plan';
-import {correctedOperations,playerIdentity,canonicalPlayers} from './accounting-context';
+import {correctedOperations,playerIdentity,canonicalPlayers,attendancePlayers} from './accounting-context';
 
 // Bind each independent paper to exactly one extraction group. Never borrow
 // a name/chip row from another game, even when the same player appears twice.
@@ -60,8 +61,9 @@ export function completePhotoRoster(ops:any[],evidence:any,master:any[][],rules:
   if(Array.isArray(evidence.crossedOut)&&evidence.crossedOut[i]===true)continue;
   if(typeof names[i]!=='string'||!names[i].trim()){if(selected[i])questions.push(question);continue;}
   const candidate=correctedOperations([{...attendance[0],player:names[i],chips:amounts[i],buyins:amounts[i]/100000}],'',master,rules)[0];
-  const matches=canonicalPlayers(master).filter(r=>norm(r[0])===norm(candidate.player));
+  const matches=attendancePlayers(master).filter(r=>norm(r[0])===norm(candidate.player));
   if(matches.length!==1||!String(matches[0][2]||'').trim()){if(!evidence.hasSelectionMarkers||!selected[i])continue;questions.push(`${names[i]}님 명단의 이름과 소속을 확인해주세요.`);continue;}
+  candidate.player=matches[0][0];
   if(photoPlayerExcluded(candidate.player,rules))continue;
   if(duplicated.has(playerIdentity(candidate.player,rules))){if(!withheldOperations.some(o=>norm(o.player)===norm(candidate.player)))withheldOperations.push(candidate);questions.push(`${candidate.player}님 이름이 사진에서 중복으로 읽혔어요. 누적 바이인 수를 확인해주세요.`);continue;}
   if(!Number.isSafeInteger(amounts[i])||amounts[i]<100000||amounts[i]>5000000||amounts[i]%100000!==0){withheldOperations.push(candidate);questions.push(`${candidate.player}님 누적 바이인 수만 확인해주세요.`);continue;}
@@ -227,3 +229,35 @@ export function missingRebuyQuestion(op:any){
  return op.player+'님이 리바인 명단에서 보이지 않아 버스트아웃했을 가능성이 있어요. 현재 '+op.buyins+'바인으로 기록돼 있는데, TD에게 최종 누적 바이인 수를 확인해주시겠어요?';
 }
 
+
+// Saved staff policy, not nationality, authorizes circled newcomers. Bind a
+// first-read operation to exactly one independent paper and matching chip row.
+// The approval map is created here, never accepted from model operation fields.
+export function prepareSelectedPhotoRegistrations(ops:any[],evidence:any,master:any[][],rules:any[]=[]){
+ const approvals:Record<string,{agency:string}>={};
+ const registrations:any[]=[];
+ const allowed=rules.some(r=>/동그라미|선택/.test(String(r.content||''))&&/명단에.*없/.test(String(r.content||''))&&/신규.*등록/.test(String(r.content||'')));
+ const agency=defaultAgency(rules,master);
+ const documents=Array.isArray(evidence?.documents)?evidence.documents.map(bindPaperHeaders):[];
+ if(!allowed||!agency||documents.length<1||documents.length>6)return {operations:ops,master,approvals};
+ for(const op of ops.filter(o=>['add','total'].includes(o.kind))){
+  const name=String(op.player||'').trim().toUpperCase(),id=norm(name);
+  if(!/^[A-Z][A-Z .'-]{2,79}$/.test(name)||!id||canonicalPlayers(master).some(r=>norm(r[0])===playerIdentity(name,rules))||photoPlayerExcluded(name,rules))continue;
+  const paper=paperFor(op,documents);
+  if(!paper||paper.hasSelectionMarkers!==true||!Array.isArray(paper.names)||!Array.isArray(paper.chipAmounts)||!Array.isArray(paper.selected)||
+   paper.names.length<1||paper.names.length>10||paper.names.length!==paper.chipAmounts.length||paper.names.length!==paper.selected.length||
+   paper.selected.some((s:any)=>typeof s!=='boolean')||
+   paper.crossedOut!==undefined&&(!Array.isArray(paper.crossedOut)||paper.crossedOut.length!==paper.names.length||paper.crossedOut.some((s:any)=>typeof s!=='boolean')))continue;
+  const rows=paper.names.map((n:any,i:number)=>({n,i})).filter((r:any)=>norm(r.n)===id);
+  if(rows.length!==1)continue;
+  const i=rows[0].i,chips=paper.chipAmounts[i];
+  if(paper.selected[i]!==true||paper.crossedOut?.[i]===true||!Number.isSafeInteger(chips)||chips<100000||chips>5000000||chips%100000!==0||op.chips!==chips||op.buyins!==chips/100000)continue;
+  // An explicitly extracted alternative agency stays on the named staff path.
+  if(ops.some(o=>o.kind==='register'&&norm(o.player)===id&&o.agency&&o.agency!==agency))continue;
+  approvals[id]={agency};
+  if(!registrations.some(r=>norm(r.player)===id))registrations.push({kind:'register',player:name,agency});
+ }
+ const operations=[...ops.filter(o=>o.kind!=='register'||!approvals[norm(o.player)]),...registrations].map(o=>
+  ['add','total'].includes(o.kind)&&approvals[norm(o.player)]?{...o,kind:'add'}:o);
+ return {operations,master:[...master,...registrations.map(r=>[r.player,'',r.agency])],approvals};
+}

@@ -20,6 +20,19 @@ export function canonicalPlayers(master:any[][]){
   return [[best[0],best[1]||'',best[2]||'']];
  });
 }
+// Attendance uses the name and agency already supported by the ledger. Multiple
+// card records with the same normalized name and agency must not make that
+// agency unknown. Do not pick a card or merge master identities.
+export function attendancePlayers(master:any[][]){
+ const groups=new Map<string,any[][]>();
+ for(const row of canonicalPlayers(master)){const key=norm(row[0]);groups.set(key,[...(groups.get(key)||[]),row]);}
+ return Array.from(groups.values()).flatMap(rows=>{
+  const codes=Array.from(new Set(rows.map(r=>String(r[2]||'').trim()).filter(Boolean)));
+  if(codes.length!==1)return rows;
+  const cards=new Set(rows.map(r=>String(r[1]||'').trim()).filter(Boolean));
+  return [[rows[0][0],cards.size===1?Array.from(cards)[0]:'',codes[0]]];
+ });
+}
 export function sheetContext(daily:any[][],master:any[][],businessDate:string){
  let game:any=null;
  const rows=daily.slice(1).map(r=>{
@@ -46,7 +59,7 @@ export function correctedOperations(ops:any[],text:string,master:any[][],rules:a
  const mentionedTables=Array.from(new Set(Array.from(text.matchAll(/(\d{1,2})\s*번\s*테이블/g)).map(m=>Number(m[1]))));
  const label=text.match(/(?:시트에|테이블(?:은|는)?)\s*(\d{1,2})\s*-\s*\d{1,2}/);
  const scopedTable=mentionedTables.length===1?mentionedTables[0]:label?Number(label[1]):null;
- const players=canonicalPlayers(master);
+ const players=attendancePlayers(master);
  const floors=Array.from(text.matchAll(/([2-5])\s*층/g)).map(m=>m[1]+'F');
  const amounts=Array.from(text.matchAll(/(\d[\d,]*(?:\.\d+)?)\s*(만|천)?\s*(?:(\d+)\s*천)?\s*동/g)).map(m=>Number(m[1].replace(/,/g,''))*(m[2]==='만'?10000:m[2]==='천'?1000:1)+Number(m[3]||0)*1000);
  const onlyFnb=(ops||[]).filter(o=>o.kind==='fnb').length===1;
@@ -111,7 +124,7 @@ export function clearResolvedIdentityQuestion(question:unknown,ops:any[],master:
  const match=String(question||'').match(/^(.+?)님 명단의 이름과 소속을 확인해주세요\.$/);
  if(!match)return question;
  const identity=playerIdentity(match[1],rules);
- const found=canonicalPlayers(master).filter(r=>norm(r[0])===identity);
+ const found=attendancePlayers(master).filter(r=>norm(r[0])===identity);
  if(found.length!==1||!String(found[0][2]||'').trim())return question;
  return ops.some(o=>['add','total'].includes(o.kind)&&norm(o.player)===identity)?null:question;
 }
