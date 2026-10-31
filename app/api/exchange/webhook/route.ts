@@ -26,6 +26,7 @@ async function ensureCommandMenu() {
     scope: { type: 'chat', chat_id: config.chatId },
     commands: [
       { command: 'status', description: '현재 환전 시제' },
+      { command: 'float', description: '총 유통 시제 설정 · /float 1억 · 잔액·수익 변경 없음' },
       { command: 'sentbe', description: '센트비 이동 · Google 환율로 동 시제 추가' },
       { command: 'memo', description: '비고 추가·목록 · /memo 시제 3900만동 대니형님께 인계' },
       { command: 'memodel', description: '비고 삭제 · /memodel 1' },
@@ -45,6 +46,7 @@ async function ensureCommandMenu() {
     scope: { type: 'chat', chat_id: config.chatId },
     commands: [
       { command: 'status', description: '현재 환전 시제' },
+      { command: 'float', description: '총 유통 시제 설정 · /float 1억 · 잔액·수익 변경 없음' },
       { command: 'sentbe', description: '센트비 이동 · Google 환율로 동 시제 추가' },
       { command: 'memo', description: '비고 추가·목록 · /memo 시제 3900만동 대니형님께 인계' },
       { command: 'memodel', description: '비고 삭제 · /memodel 1' },
