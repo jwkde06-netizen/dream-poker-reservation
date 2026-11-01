@@ -16,8 +16,8 @@ export function printedDateCandidates(raw:unknown):string[]{
 }
 export function staffReceiptDate(text:string,businessDate:string):string|undefined{
  const dates:string[]=[];
- for(const m of text.matchAll(/\b(20\d{2})-(\d{1,2})-(\d{1,2})\b/g)){const value=isoDate(Number(m[1]),Number(m[2]),Number(m[3]));if(value)dates.push(value);}
- for(const m of text.matchAll(/(?:(20\d{2})\s*년\s*)?(\d{1,2})\s*월\s*(\d{1,2})\s*일/g)){const value=isoDate(Number(m[1]||businessDate.slice(0,4)),Number(m[2]),Number(m[3]));if(value)dates.push(value);}
+ for(const m of Array.from(text.matchAll(/\b(20\d{2})-(\d{1,2})-(\d{1,2})\b/g))){const value=isoDate(Number(m[1]),Number(m[2]),Number(m[3]));if(value)dates.push(value);}
+ for(const m of Array.from(text.matchAll(/(?:(20\d{2})\s*년\s*)?(\d{1,2})\s*월\s*(\d{1,2})\s*일/g))){const value=isoDate(Number(m[1]||businessDate.slice(0,4)),Number(m[2]),Number(m[3]));if(value)dates.push(value);}
  const unique=Array.from(new Set(dates));return unique.length===1?unique[0]:undefined;
 }
 export function normalizePaperDates(evidence:any,businessDate?:string,confirmedDate?:string){
