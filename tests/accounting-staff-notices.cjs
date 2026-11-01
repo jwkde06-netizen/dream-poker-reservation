@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict');
+const {ignoreStaffNotice:quiet}=require('../.test-build/accounting-staff-notice');
+const staff='-10011';
+const msg=(text,extras={})=>({message:{chat:{id:-10011,type:'supergroup'},text,...extras}});
+const checklist='오후 1시 출근자 오픈 체크리스트\n- 1·2·3번째 게임 한국인 선수 예약 확인\n- 2시부터 타임어택 시작, 예약은 1:1 채팅\n- 데스크 정리 및 TD에게 첫 게임 시간 확인';
+const silent=[msg(checklist),{edited_message:msg(checklist).message},msg('[직원 공지] 예약 확인 부탁해요'),msg('게임 준비 완료! 예약은 1:1 채팅 주세요.'),msg('Checklist mở ca\nKiểm tra bàn.'),msg('굿굿',{reply_to_message:{photo:[{}]}}),msg('📢 [공지]\n앞으로 영수증 취급 시 매장 규칙을 확인하세요.')];
+const pass=[msg('/rules'),msg('@dream_poker_reservation_bot '+checklist),msg('네'),msg('2바인'),msg('선수A 대신 선수B'),msg('7번 게임 리바인 반영해'),msg(checklist+'\n7번 게임 리바인 1회 추가해줘'),msg(checklist+'\n이 영수증은 시트에 반영해줘'),msg('시트에 반영해',{reply_to_message:msg(checklist).message}),msg(checklist+'\n7번 게임 A선수 리바인 1회 추가해줘'),msg('오픈 체크리스트랑 관계없이 시트 반영해'),msg(undefined,{photo:[{}],caption:checklist}),msg(undefined,{document:{file_id:'sample'}}),msg(checklist,{chat:{id:-22,type:'supergroup'}}),{callback_query:{data:'manual'}},msg('준비 완료\n콜라 2잔 F&B 기록해')];
+for(const u of silent)assert.equal(quiet(u,staff),true);
+for(const u of pass)assert.equal(quiet(u,staff),false);
+assert.equal(quiet(msg(checklist),undefined),false);
+console.log(`Staff notices: ${silent.length+pass.length+1} routing checks passed`);

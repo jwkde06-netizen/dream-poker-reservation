@@ -1,3 +1,4 @@
+import {ignoreStaffNotice} from '../../../../lib/accounting-staff-notice';
 import {handleManagementRoom} from '../../../../lib/accounting-management-room';
 import {handleReportRoom} from '../../../../lib/accounting-report';
 import {NextResponse} from 'next/server';
@@ -13,6 +14,7 @@ export async function POST(request:Request){
   if(await handlePublicReservationCallback(update))return NextResponse.json({ok:true});
   if(await handleReservationCallback(update))return NextResponse.json({ok:true});
   if(process.env.ACCOUNTING_ENABLED!=='true')return NextResponse.json({error:'Not activated'},{status:503});
+  if(ignoreStaffNotice(update,process.env.STAFF_TELEGRAM_CHAT_ID))return NextResponse.json({ok:true});
   if(await handleManagementRoom(update))return NextResponse.json({ok:true});
   if(await handleReportRoom(update))return NextResponse.json({ok:true});
   await handle(update);return NextResponse.json({ok:true});
