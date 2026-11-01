@@ -204,11 +204,11 @@ async function previousContext(config: ExchangeConfig, messageId: number | undef
   } else if (senderId && Number.isSafeInteger(messageDate)) {
     implicit = true;
     const cutoff = new Date((messageDate! - 60 * 60) * 1000).toISOString();
-    result = await exchangeDb().from('dream_exchange_jobs').select('*').eq('bot_id', config.botId).eq('chat_id', config.chatId).eq('sender_id', senderId).eq('status', 'review').gte('source_date', cutoff).lt('source_date', new Date(messageDate! * 1000).toISOString()).order('source_date', { ascending: false }).limit(20);
+    result = await exchangeDb().from('dream_exchange_jobs').select('*').eq('bot_id', config.botId).eq('chat_id', config.chatId).eq('sender_id', senderId).eq('status', 'review').gte('source_date', cutoff).lte('source_date', new Date(messageDate! * 1000).toISOString()).order('source_date', { ascending: false }).order('update_id', { ascending: false }).limit(20);
   } else return { job: null, unresolved_texts: [] };
   if (result.error) throw Error('Exchange context lookup failed');
   const rows = (result.data || []) as Job[];
-  const previous = implicit ? rows.find(row => directFxProfit(row.raw_text)) || rows[0] : rows[0];
+  const previous = rows[0];
   if (!previous) return { job: null, unresolved_texts: [] };
   const texts: string[] = [], seen = new Set<number>(); let current: Job | undefined = previous;
   for (let count = 0; count < 8 && current?.status === 'review' && !seen.has(current.update_id); count++) {
@@ -341,6 +341,32 @@ export function directKrwExchange(text:string):ExchangeIntent|null {
  if(!Number.isSafeInteger(krw)||!Number.isSafeInteger(vnd)||krw<=0||vnd<=0)throw new ExchangeReview('환전 금액을 확인해주세요.');
  return {kind:'exchange',received:{account:/현금/.test(text)?'KRW_CASH':'KRW_BANK',amount:String(krw)},paid:{account:'VND_CASH',amount:String(vnd)},fee:null,received_includes_fee:false,rate_vnd:null,note:'원화 수령 및 동 지급 완료',external_reference:null};
 }
+
+/** Short staff answers belong to the latest unresolved request by that sender. */
+export function isExchangeFollowup(text:string):boolean {
+ return /^(?:네|예|응|맞아|맞습니다|확인|yes|y|환전|환전\s*대금|시[제재]\s*보충|환전\s*수익|환전\s*차익|차익|이익|수수료|(?:원화\s*)?(?:현금|계좌|계좌이체)|현금으로\s*받(?:음|았어))$/i.test(text.trim())
+  ||/^[\d,]+(?:\.\d+)?\s*(?:천만|백만|만|천)?\s*동\s*(?:드림|지급|보냄|줌|나감)(?:\s*완료)?$/.test(text.trim());
+}
+/** Preserve an explicit bank receipt and ask ONLY for the missing VND payout. */
+export function pendingKrwDepositExchange(sources:string[]):ExchangeIntent|null {
+ const scale:Record<string,number>={'':1,천:1000,만:10000,백만:1000000,천만:10000000};
+ const deposits=sources.map(s=>s.replace(/,/g,'').replace(/\s+/g,'').match(/^(?:원화|한화|krw)?(\d+(?:\.\d+)?)(만|천)?(?:원화|원|krw)(?:원화)?(?:계좌)?입금(?:완료|됨)?$/i)).filter((m):m is RegExpMatchArray=>m!==null);
+ if(!deposits.length)return null;
+ const krws=deposits.map(m=>Number(m[1])*scale[m[2]||'']);
+ if(krws.some(n=>!Number.isSafeInteger(n)||n<=0||n>9000000000000))throw new ExchangeReview('입금된 원화 금액을 확인해주세요.');
+ if(new Set(krws).size!==1)throw new ExchangeReview('서로 다른 원화 입금 금액이 있습니다. 처리할 원문에 답장해주세요.');
+ const payouts=sources.map(s=>s.replace(/,/g,'').replace(/\s+/g,'').match(/^(\d+(?:\.\d+)?)(천만|백만|만|천)?동(?:드림|지급|보냄|줌|나감)(?:완료)?$/)).filter((m):m is RegExpMatchArray=>m!==null);
+ const exchange=sources.some(s=>/^환전\s*(?:대금|완료)$/.test(s.trim()));
+ if(!payouts.length){
+  if(exchange)throw new ExchangeReview(`원화 ${krws[0].toLocaleString('en-US')}원 입금의 환전 건으로 확인했습니다. 지급한 동 금액만 알려주세요. 예: 550만동 드림`);
+  return null;
+ }
+ const vnds=payouts.map(m=>Number(m[1])*scale[m[2]||'']);
+ if(vnds.some(n=>!Number.isSafeInteger(n)||n<=0||n>9000000000000))throw new ExchangeReview('지급한 동 금액을 확인해주세요.');
+ if(new Set(vnds).size!==1)throw new ExchangeReview('서로 다른 동 지급액이 있습니다. 처리할 원문에 답장해주세요.');
+ return {kind:'exchange',received:{account:'KRW_BANK',amount:String(krws[0])},paid:{account:'VND_CASH',amount:String(vnds[0])},fee:null,received_includes_fee:false,rate_vnd:null,note:'원화 계좌 입금 및 동 지급 · 후속 답변 연결',external_reference:null};
+}
+
 /** Only persisted unresolved source messages can authorize a short confirmation. */
 export function confirmedKrwExchange(sources: string[]): ExchangeIntent | null {
   const intents = sources.map(directKrwExchange).filter((x): x is Extract<ExchangeIntent, { kind: 'exchange' }> => x?.kind === 'exchange');
@@ -442,7 +468,7 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
       const fast = cancel || simpleIntent(text) || exchangeFeeShortcut(text) || directFxLoss(text) || directFxProfit(text) || directUsdExchange(text) || directKrwPayout(text) || directKrwExchange(text) || (balanceTarget !== null ? { kind: 'balance' } as ExchangeIntent : null);
       if (fast) intent = fast;
       else {
-        const implicitFollowup=/^(?:네|예|응|맞아|맞습니다|확인|yes|y|환전|환전\s*수익|환전\s*차익|차익|이익|수수료)$/i.test(text.trim());
+        const implicitFollowup=isExchangeFollowup(text);
         const replyId=message.reply_to_message?.message_id;
         const previous = await previousContext(config, replyId, replyId || implicitFollowup ? job.sender_id : undefined, message.date);
         if (isAmbiguousBareAmount(text) && !previous.unresolved_texts.length) throw new ExchangeReview('금액만으로는 거래 종류를 알 수 없어요. 수수료라면 +5만으로 적어주세요.');
@@ -458,8 +484,9 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
         const modeReply=/^(?:원화\s*)?(?:현금|현금으로\s*받음|현금으로\s*받았어|계좌|계좌이체)$/i.test(text.trim()) || /(?:계좌\s*아니고\s*현금|현금으로\s*받아서|현금으로\s*받았)/.test(text);
         const profitReply=/^(?:환전|환전\s*수익|환전\s*차익|차익|이익)$/i.test(text.trim());
         const confirmedFxProfit=profitReply && previous.job?.status==='review' ? previous.unresolved_texts.map(directFxProfit).find((x): x is ExchangeIntent => x !== null) : null;
-        const confirmed = (yes || modeReply) ? confirmedKrwExchange([...previous.unresolved_texts, ...(modeReply ? [text] : [])]) : null;
-        if (yes && !confirmed) throw new ExchangeReview('확인할 미처리 환전 원문을 찾지 못했습니다. 해당 원문에 답장해주세요.');
+        const depositConfirmed = previous.job?.status === 'review' ? pendingKrwDepositExchange([...previous.unresolved_texts,text]) : null;
+        const confirmed = depositConfirmed || ((yes || modeReply) ? confirmedKrwExchange([...previous.unresolved_texts, ...(modeReply ? [text] : [])]) : null);
+        if (yes && !confirmed && !previous.unresolved_texts.length) throw new ExchangeReview('확인할 미처리 환전 원문을 찾지 못했습니다. 해당 원문에 답장해주세요.');
         if (confirmedFxProfit && previous.job?.status === 'review') {
           intent = confirmedFxProfit;
           job = await patchJob(config, job.update_id, { intent }, owner);
