@@ -11,10 +11,7 @@ async function handleSnapshotCommand(update: any, row: any): Promise<boolean> {
   const config = exchangeConfig();
   const member = await exchangeTelegram('getChatMember', { chat_id: config.chatId, user_id: m.from.id }, config);
   if (!['creator', 'administrator'].includes(member.status)) return true;
-  const lines = ['📊 DREAM EXCHANGE · 10/21 수기 확인 기준',
-    '', '💵 현재 시제 (잠정)', '🇻🇳 VND 44,450,000', '🇺🇸 USD 100', '🇰🇷 KRW 1,380,000',
-    '', '총 시제 평가액 73,880,000동', '', '💰 이번 주 수익 (잠정)',
-    '수수료 등 1,050,000동', '환전 차익 930,000동', '누적 1,980,000동'];
+  const lines = ['/fxsnapshot은 과거 수기 시제입니다. 현재 시제 조회 기능을 이용해주세요.'];
   await exchangeTelegram('sendMessage', { chat_id: config.chatId, text: lines.join(String.fromCharCode(10)), reply_parameters: { message_id: m.message_id, allow_sending_without_reply: true } }, config);
   return true;
 }
@@ -32,10 +29,10 @@ async function ensureCommandMenu() {
       { command: 'memodel', description: '비고 삭제 · /memodel 1' },
       { command: 'week', description: '이번 주 수익·정산' },
       { command: 'today', description: '오늘 거래 내역' },
-      { command: 'fee', description: '이체수수료 추가 · 예: /fee 100 = 100만동' },
+      { command: 'fee', description: '이체수수료 추가 · 예: /fee 100만동' },
       { command: 'fee5', description: '이체수수료 5만동 기록' },
       { command: 'fee10', description: '이체수수료 10만동 기록' },
-      { command: 'fxsnapshot', description: '최근 수기 시제 현황 게시' },
+      { command: 'fxsnapshot', description: '과거 수기 시제 안내' },
       { command: 'lastweek', description: '지난주 수익·정산' },
       { command: 'help', description: '사용법 · +5만 간편 입력' },
       { command: 'commands', description: '명령어 메뉴 다시 등록' },
@@ -52,10 +49,10 @@ async function ensureCommandMenu() {
       { command: 'memodel', description: '비고 삭제 · /memodel 1' },
       { command: 'week', description: '이번 주 수익·정산' },
       { command: 'today', description: '오늘 거래 내역' },
-      { command: 'fee', description: '이체수수료 추가 · 예: /fee 100 = 100만동' },
+      { command: 'fee', description: '이체수수료 추가 · 예: /fee 100만동' },
       { command: 'fee5', description: '이체수수료 5만동 기록' },
       { command: 'fee10', description: '이체수수료 10만동 기록' },
-      { command: 'fxsnapshot', description: '최근 수기 시제 현황 게시' },
+      { command: 'fxsnapshot', description: '과거 수기 시제 안내' },
       { command: 'lastweek', description: '지난주 수익·정산' },
       { command: 'help', description: '사용법 · +5만 간편 입력' },
       { command: 'commands', description: '명령어 메뉴 다시 등록' },

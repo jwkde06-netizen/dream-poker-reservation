@@ -32,7 +32,7 @@ async function run(text,mode='status',fixture=null){
    then(resolve,reject){try{let rows=(table==='dream_accounting_rules'?rules:jobs).filter(r=>filters.every(f=>f(r)));if(mode==='readback-fail'&&table==='dream_accounting_rules'&&one&&filters.length)rows=[];if(sort)rows.sort((a,b)=>(a[sort[0]]>b[sort[0]]?1:-1)*(sort[1].ascending?1:-1));rows=rows.slice(0,limit);if(patch)rows.forEach(r=>Object.assign(r,patch));return Promise.resolve({data:one?rows[0]:rows,error:null}).then(resolve,reject);}catch(e){return Promise.reject(e).then(resolve,reject);}}
   };return q;
  }
- const tg=async(method,data)=>{events.push({method,...data,aiCallsAtSend:ai});if(method==='getFile')return {file_path:'fixture.jpg'};if(method==='getChatMember')return {status:mode==='unauthorized'?'left':'member'};return {message_id:900};};
+ const tg=async(method,data)=>{events.push({method,...data,aiCallsAtSend:ai});if(method==='getFile')return {file_path:'fixture.jpg'};if(method==='getChatMember')return {status:mode==='unauthorized'?'left':(mode==='rules'||mode==='readback-fail'?'administrator':'member')};return {message_id:900};};
  const fetch=async(url,init={})=>{
   if(url.startsWith('https://sheets.googleapis.com')){
    const u=new URL(url);

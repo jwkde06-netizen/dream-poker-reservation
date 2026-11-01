@@ -37,21 +37,29 @@ assert.equal(acquire.postings.find(x => x.account === 'USD_CASH').book_delta_vnd
 assert.equal(acquire.postings.find(x => x.account === 'USD_CASH').amount_minor, 10000); balanced(acquire);
 state = apply(state, acquire);
 const dispose = planExchange({ ...feeTrade, received: { account: 'VND_BANK', amount: '1100000' }, paid: { account: 'USD_CASH', amount: '40' }, fee: null }, state);
-assert.equal(dispose.fx_profit_vnd, 100000);
+assert.equal(dispose.fx_profit_vnd, 0);
+assert.equal(dispose.capital_vnd, 100000);
+assert.equal(dispose.fee_vnd, 0);
+assert.ok(!dispose.journal.some(x => x.account === 'FX_REVENUE'));
+assert.equal(dispose.journal.find(x => x.account === 'CAPITAL_EQUITY').debit_vnd, -100000);
 assert.equal(dispose.postings.find(x => x.account === 'USD_CASH').book_delta_vnd, -1000000); balanced(dispose);
 const afterDisposal = apply(state, dispose);
 assert.equal(afterDisposal.accounts.USD_CASH.balance_minor, 6000);
 assert.equal(afterDisposal.accounts.USD_CASH.book_vnd, 1500000);
+assert.equal(afterDisposal.accounts.VND_BANK.balance_minor, state.accounts.VND_BANK.balance_minor + 1100000);
+assert.deepEqual(afterDisposal.accounts.VND_CASH, state.accounts.VND_CASH);
 const reversal = reverseExchange({ reference: 'FX-100001-4', plan: dispose }, afterDisposal, 'Synthetic correction');
-assert.equal(reversal.fx_profit_vnd, -100000); balanced(reversal);
+assert.equal(Math.abs(reversal.fx_profit_vnd), 0);
+assert.equal(reversal.capital_vnd, -100000); balanced(reversal);
 assert.deepEqual(apply(afterDisposal, reversal).accounts, state.accounts);
 
 const unknownState = apply(emptyExchangeState(), planExchange({ ...opening, balances: { ...opening.balances, USD_CASH: '100' } }, emptyExchangeState()));
 assert.equal(unknownState.accounts.USD_CASH.book_vnd, null);
 const unpriced = planExchange({ ...feeTrade, received: { account: 'VND_BANK', amount: '2500000' }, paid: { account: 'USD_CASH', amount: '100' }, fee: null }, unknownState);
-assert.equal(unpriced.fx_profit_vnd, null); assert.equal(unpriced.valuation_incomplete, true);
+assert.equal(unpriced.fx_profit_vnd, 0); assert.equal(unpriced.capital_vnd, null); assert.equal(unpriced.valuation_incomplete, true);
 assert.equal(unpriced.postings.find(x => x.account === 'USD_CASH').after_book_vnd, 0);
-assert.equal(unpriced.journal.find(x => x.account === 'FX_REVENUE').debit_vnd, null);
+assert.equal(unpriced.journal.find(x => x.account === 'CAPITAL_EQUITY').debit_vnd, null);
+assert.ok(!unpriced.journal.some(x => x.account === 'FX_REVENUE'));
 
 const krw = planExchange({ ...feeTrade, received: { account: 'KRW_BANK', amount: '300000' }, paid: { account: 'VND_CASH', amount: null }, fee: null }, state);
 assert.equal(krw.postings.find(x => x.account === 'VND_CASH').amount_minor, -5400000); balanced(krw);

@@ -1,6 +1,8 @@
 const assert=require('node:assert/strict');
 const {canTeachBusinessRule,memoryReceipt,validateMemory}=require('../.test-build/accounting-memory');
-assert.equal(canTeachBusinessRule('member','save'),true);
+assert.equal(canTeachBusinessRule('member','save'),false);
+assert.equal(canTeachBusinessRule('administrator','save'),true);
+assert.equal(canTeachBusinessRule('member','list'),true);
 assert.equal(canTeachBusinessRule('member','delete'),false);
 for(const status of ['left','kicked','restricted'])assert.equal(canTeachBusinessRule(status,'save'),false);
 for(const status of ['administrator','creator'])assert.equal(canTeachBusinessRule(status,'delete'),true);

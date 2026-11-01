@@ -311,7 +311,7 @@ export async function handle(update:any){
    const management=await db().from('dream_accounting_management_room').select('chat_id').eq('id',true).maybeSingle();
    if(management.error)throw Error('Management room lookup failed');
    if(management.data){await finish('review','규칙 저장·삭제는 Dream Bot 관리실에서 보내주세요. 이 요청으로 시트 입력은 하지 않았어요.');return;}
-   if(!canTeachBusinessRule(member.status,rule.action)){await finish('review',rule.action==='delete'?'저장된 규칙 삭제는 관리자분이 할 수 있어요.':'직원방에 참여한 직원만 업무 규칙을 저장할 수 있어요.');return;}
+   if(!canTeachBusinessRule(member.status,rule.action)){await finish('review','업무 규칙 저장·삭제는 관리자만 할 수 있어요. 이번 건 취소·정정은 평소처럼 요청해주세요.');return;}
    if(rule.action==='delete'){
     const r=await db().from('dream_accounting_rules').update({active:false}).eq('id',rule.id).eq('active',true).select('id');if(r.error)throw Error('Rule removal failed');
     await finish('ignored',r.data?.length?`${rule.id}번 규칙은 삭제했어요.`:'그 번호로 저장된 규칙은 없어요.');return;
