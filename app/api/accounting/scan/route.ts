@@ -14,7 +14,7 @@ export async function POST(req:Request){
   const body=JSON.parse(raw);serial(body.day);const bytes=scanImage(body.image);
   const [[daily,master],rules]=await Promise.all([ranges(["'일일 입력'!A1:O5000","'플레이어 명단'!A1:D2500"],true),db().from('dream_accounting_rules').select('id,kind,content').eq('active',true).order('id')]);
   if(rules.error)throw Error('업무 규칙을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
-  const [result,evidence]=await Promise.all([extract('웹에서 촬영한 바이인 시트의 읽기 전용 판독입니다. 모든 대상 플레이어와 누적 바인을 추출해주세요. 기존 기록과 같아도 추출하세요. 실제 게임 선택과 저장은 관리자가 화면에서 확인합니다.',body.image,{...sheetContext(daily,master,body.day),businessRules:rules.data}),readChipColumns(body.image)]).catch(()=>{throw Error('사진 판독에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.');});
+  const [result,evidence]=await Promise.all([extract('웹에서 촬영한 바이인 시트의 읽기 전용 판독입니다. 모든 대상 플레이어와 누적 바인을 추출해주세요. 기존 기록과 같아도 추출하세요. 실제 게임 선택과 저장은 관리자가 화면에서 확인합니다.',body.image,{...sheetContext(daily,master,body.day),businessRules:rules.data}),readChipColumns(body.image,body.day)]).catch(()=>{throw Error('사진 판독에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.');});
   return json({...scanReview(result,evidence,master,rules.data||[],body.day),scanHash:createHash('sha256').update(bytes).digest('hex')});
  }catch(e){return json({error:(e as Error).message||'사진을 읽지 못했습니다. 다시 시도해주세요.'},400);}
 }

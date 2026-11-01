@@ -23,7 +23,15 @@ function groupedPapers(ops:any[],evidence:any,run:(ops:any[],paper:any)=>any){
    ?documents.filter(d=>!d.headerAmbiguous&&d.date===op.date&&(d.table===op.table||d.printedTable===op.table)&&d.printedGame===op.printedGame&&((Number.isInteger(d.handwrittenGame)&&d.handwrittenGame>0&&!op.gameConfirmed)||(Number.isInteger(d.table)&&d.table>0&&d.table!==op.table))):[];
   const paper=exact||(candidates.length===1?candidates[0]:null);
   const bound=paper&&!exact?{...op,table:paper.table,game:op.gameConfirmed?op.game:paper.handwrittenGame||op.game}:op;
-  if(!paper){questions.push(`${op.game}번 게임의 용지 번호를 확인해주세요.`);continue;}
+  if(!paper){
+   const headers=documents.filter(d=>!d.headerAmbiguous&&d.table===(op.confirmedPaperTable??op.table)&&
+    (Number.isInteger(op.printedGame)?d.printedGame===op.printedGame:d.printedGame===op.game||d.handwrittenGame===op.game));
+   if(headers.length===1&&(headers[0].dateAmbiguous||headers[0].date!==op.date)){
+    const d=headers[0],raw=String(d.dateRaw||d.date||'판독 불가').slice(0,32);
+    questions.push(d.dateAmbiguous?`${op.game}번 게임 영수증 날짜 '${raw}'의 월·일을 확인해주세요.`:`${op.game}번 게임의 요청 날짜 ${op.date}와 사진 판독 날짜 ${d.date}가 달라요. 영수증 날짜만 확인해주세요.`);
+   }else questions.push(`${op.game}번 게임의 용지 번호를 확인해주세요.`);
+   continue;
+  }
   groups.set(paper,[...(groups.get(paper)||[]),bound]);
  }
  for(const paper of documents){
