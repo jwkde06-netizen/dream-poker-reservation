@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
-const {printedDateCandidates,staffReceiptDate,normalizePaperDates}=require('../.test-build/accounting-paper-date');
+const {printedDateCandidates,staffReceiptDate,normalizePaperDates,bindOperationPaperDates}=require('../.test-build/accounting-paper-date');
 const {completePhotoRoster,verifyChipEvidence}=require('../.test-build/accounting-vision');
 const raw={date:'2026-01-11',dateRaw:'11/1/2026',datePresent:true,table:4,printedGame:1,handwrittenGame:1,
  names:['NGUYEN HOANG DUNG B','NGUYEN THE QUANG','KIM YEONDEUG','LAI WEI SHIUNG','HUYNH CONG MINH','CHIP CHIP','PARK JIN YEONG','BUI QUANG DANG','NGUYEN HOANG LINH'],
@@ -54,3 +54,18 @@ assert(agent.includes('normalizePaperDates(evidence,businessDate,confirmedDate)'
 assert(agent.includes('readChipColumns(image!,businessDate,staffReceiptDate(taskText,businessDate))'));
 assert(fs.readFileSync(path.join(__dirname,'../app/api/accounting/scan/route.ts'),'utf8').includes('readChipColumns(body.image,body.day)'));
 console.log('PASS receipt date: November-1 regression, exact printed date, explicit staff dates, historical/mixed papers, leap-day validation and accurate mismatch questions');
+
+const normalized=normalizePaperDates({documents:[raw]},'2026-11-01');
+const wrongFirst=ops.map(o=>({...o,date:'2026-01-11'}));
+const bound=bindOperationPaperDates(wrongFirst,normalized,'2026-11-01');
+assert(bound.every(o=>o.date==='2026-11-01'&&o.printedDateBinding.previousDate==='2026-01-11'));
+assert.equal(completePhotoRoster(bound,normalized,master).operations.length,3);
+for(const bad of [
+ {...wrongFirst[0],table:12},
+ {...wrongFirst[0],printedGame:2},
+ {...wrongFirst[0],date:'2026-03-05'},
+ {...wrongFirst[0],kind:'cancel'}
+])assert.equal(bindOperationPaperDates([bad],normalized,'2026-11-01')[0].date,bad.date);
+assert.equal(bindOperationPaperDates(wrongFirst,{documents:[normalized.documents[0],normalized.documents[0]]},'2026-11-01')[0].date,'2026-01-11');
+assert.equal(bindOperationPaperDates(wrongFirst,normalized,'2026-11-02')[0].date,'2026-01-11');
+console.log('PASS first-reader date repair: exact unique header and printed candidates only; no cancellation or cross-day remapping');

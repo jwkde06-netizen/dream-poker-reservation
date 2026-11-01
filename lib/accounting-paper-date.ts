@@ -33,3 +33,19 @@ export function normalizePaperDates(evidence:any,businessDate?:string,confirmedD
    dateResolution:missing?(confirmedDate?'no_print_staff_date':'no_print_business_date'):!resolved?'unresolved':confirmedDate?'staff_confirmed_printed_date':candidates.length===1?'unambiguous_print':'business_date_matches_print'};
  })};
 }
+
+// The first reader can swap the same printed month/day as well. Rebind only
+// within the current reconciled business day and one exact printed header;
+// both the proposed and resolved dates must be interpretations of that ink.
+export function bindOperationPaperDates(ops:any[],evidence:any,businessDate:string){
+ const documents=Array.isArray(evidence?.documents)?evidence.documents:[];
+ return ops.map(op=>{
+  if(!['add','total'].includes(op.kind)||!Number.isInteger(op.printedGame))return op;
+  const papers=documents.filter((p:any)=>!p.dateAmbiguous&&p.date===businessDate&&typeof p.dateRaw==='string'&&
+   p.table===(op.confirmedPaperTable??op.table)&&p.printedGame===op.printedGame&&
+   Array.isArray(p.dateCandidates)&&p.dateCandidates.includes(op.date)&&p.dateCandidates.includes(p.date));
+  if(papers.length!==1||op.date===papers[0].date)return op;
+  const paper=papers[0];
+  return {...op,date:paper.date,printedDateBinding:{dateRaw:paper.dateRaw,previousDate:op.date,resolvedDate:paper.date,reason:paper.dateResolution}};
+ });
+}

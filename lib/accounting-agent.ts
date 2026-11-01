@@ -1,4 +1,4 @@
-import {normalizePaperDates,staffReceiptDate} from './accounting-paper-date';
+import {normalizePaperDates,staffReceiptDate,bindOperationPaperDates} from './accounting-paper-date';
 import {transitionBustFollowup} from './accounting-bust-followup';
 import {requestSheetStatus} from './accounting-request-status';
 import {prepareDateFormats,verifyDateDisplays} from './accounting-format';
@@ -272,6 +272,7 @@ export async function handle(update:any){
    try{
     if(Date.now()-started>100000)throw Error('Verification time budget');
     const evidence=confirmedEvidence||reconsidered.evidence||await readChipColumns(image,businessDate,staffReceiptDate(taskText,businessDate));if(!confirmedEvidence&&!reconsidered.evidence){recordAI(evidence);}
+    result.operations=bindOperationPaperDates(result.operations,evidence,businessDate);
     result.operations=bindConfirmedRebuy(result.operations,evidence,job.text,previous?.plan?.pendingQuestion,context.games);
     result.operations=bindRebuyHistory(result.operations,evidence,context.games,recent,businessRules);
     const enrollment=prepareSelectedPhotoRegistrations(result.operations,evidence,master,businessRules);
