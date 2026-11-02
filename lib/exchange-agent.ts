@@ -168,13 +168,16 @@ Supported intents:
 {kind:"balance"}, {kind:"help"}, {kind:"ignore"}.
 If replied context.status is applied/resolved, it is evidence only: do NOT repeat its transaction. Only unresolved_texts may complete a pending request. The original ledger reference is not a new external_reference. Global rate changes or requests to overwrite balances are unsupported and must ask an administrator to review configuration. requested_date must reflect any explicitly requested accounting date; server disallows silent historical money imports. Never claim work completed; the deterministic server writes the ledger.`;
 
+/** The model could not be reached before any ledger write was attempted. */
+export class ExchangeAIUnavailable extends Error { constructor() { super('Exchange extraction unavailable'); this.name = 'ExchangeAIUnavailable'; } }
+
 export async function extractExchange(text: string, context: unknown): Promise<any> {
   const response = await fetch('https://ai-gateway.vercel.sh/v1/chat/completions', {
     method: 'POST', headers: { Authorization: 'Bearer ' + (process.env.AI_GATEWAY_API_KEY || await getVercelOidcToken()), 'Content-Type': 'application/json' },
     body: JSON.stringify({ model: process.env.EXCHANGE_AI_GATEWAY_MODEL || process.env.AI_GATEWAY_MODEL || 'openai/gpt-5-mini', max_tokens: 1500, reasoning_effort: 'low', response_format: { type: 'json_object' }, messages: [{ role: 'system', content: EXCHANGE_OPERATING_POLICY + EXTRACTION_PROMPT }, { role: 'user', content: JSON.stringify({ text, context }) }] }),
     signal: AbortSignal.timeout(75000),
-  });
-  if (!response.ok) throw Error('Exchange extraction service failed');
+  }).catch(() => { throw new ExchangeAIUnavailable(); });
+  if (!response.ok) throw new ExchangeAIUnavailable();
   const result = await response.json();
   try { return JSON.parse(result.choices[0].message.content); } catch { throw new ExchangeReview('거래 내용을 정확히 읽지 못했습니다. 받은 통화·금액·계좌와 지급 통화·금액·수수료를 다시 적어주세요.'); }
 }
@@ -496,11 +499,20 @@ export function confirmedKrwExchange(sources: string[]): ExchangeIntent | null {
   return {...first, received: {...first.received, account: cash ? 'KRW_CASH' : 'KRW_BANK'}};
 }
 export function directUsdExchange(text:string):ExchangeIntent|null {
- const x=text.toLowerCase().replace(/,/g,'').replace(/\s+/g,'');
- const m=x.match(/^\+?(\d+(?:\.\d+)?)(?:usd|달러|불)(?:수령|받음)?[-−](\d+(?:\.\d+)?)(천만|백만|만|m)?(?:동|vnd)?(?:나감|지급|줌|드림)?$/);
+ const x=text.toLowerCase().replace(/[,\s]/g,'').replace(/[·、]/g,'/');
+ const usdPart='\\+?(\\d+(?:\\.\\d+)?)(?:usd|달러|불)',vndPart='(\\d+(?:\\.\\d+)?)(천만|백만|만|m)?(?:동|vnd)?';
+ const got='(?:을|를)?(?:수령|받음|받았음|받았어|받았어요|받았습니다|받고|받아서|받아|입금)';
+ const gave='(?:지급|지급함|나감|나갔음|나갔어|나갔어요|나갔습니다|줌|줬음|줬어|줬어요|줬습니다|드림|드렸음|드렸어요)';
+ const sep='[/\\-−~→]?';
+ // Both a USD receipt AND a VND payout must be stated; one half alone is never guessed.
+ const legacy=x.match(new RegExp('^'+usdPart+'(?:수령|받음)?[-−]'+vndPart+'(?:나감|지급|줌|드림)?$'));
+ const usdFirst=legacy||x.match(new RegExp('^'+usdPart+got+sep+vndPart+gave+'$'));
+ const vndFirst=usdFirst?null:x.match(new RegExp('^'+vndPart+gave+sep+usdPart+got+'$'));
+ const m=usdFirst||vndFirst;
  if(!m)return null;
- const usd=Number(m[1]), multiplier=({'천만':10000000,'백만':1000000,'만':10000,'m':1000000} as Record<string,number>)[m[3]||'']||1, vnd=Number(m[2])*multiplier;
- if(!Number.isFinite(usd)||usd<=0||!Number.isSafeInteger(usd*100)||!Number.isSafeInteger(vnd)||vnd<=0)throw new ExchangeReview('환전 금액을 확인해주세요.');
+ const [usdRaw,vndRaw,unit]=usdFirst?[m[1],m[2],m[3]]:[m[3],m[1],m[2]];
+ const usd=Number(usdRaw), multiplier=({'천만':10000000,'백만':1000000,'만':10000,'m':1000000} as Record<string,number>)[unit||'']||1, vnd=Number(vndRaw)*multiplier;
+ if(!Number.isFinite(usd)||usd<=0||!Number.isSafeInteger(Math.round(usd*100))||Math.abs(usd*100-Math.round(usd*100))>1e-9||!Number.isSafeInteger(vnd)||vnd<=0)throw new ExchangeReview('환전 금액을 확인해주세요.');
  return {kind:'exchange',received:{account:'USD_CASH',amount:String(usd)},paid:{account:'VND_CASH',amount:String(vnd)},fee:null,received_includes_fee:false,rate_vnd:null,note:'USD 수령 / VND 지급',external_reference:null};
 }
 function simpleIntent(text: string): ExchangeIntent | null {
@@ -776,6 +788,9 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
     if (current.status === 'applied') { await deliverReply(current, config); return; }
     if (current.status !== 'processing' || current.owner !== owner) { if (['review', 'ignored', 'failed', 'resolved'].includes(current.status)) { await deliverReply(current, config); return; } throw error; }
     if (error instanceof ExchangeReview) { await finish(current, config, owner, 'review', error.message); return; }
+    if (error instanceof ExchangeAIUnavailable) {
+      await finish(current, config, owner, 'failed', 'AI 연결 문제로 이 내용을 읽지 못했습니다. 장부에는 반영되지 않았습니다. 잠시 후 같은 내용을 다시 보내주세요. 달러는 "200불 받음 500만동 나감"처럼 받은 금액과 지급 금액을 함께 적으면 바로 기록됩니다.', { failure_reason: 'Exchange extraction unavailable; no ledger write was attempted' }); return;
+    }
     if (current.intent?.kind === 'report' || current.intent?.kind === 'balance') {
       await finish(current, config, owner, 'failed', '정산 조회 중 오류가 발생했습니다. 이번 요청은 조회만 실행되어 거래 원장에는 반영되지 않았습니다. 잠시 후 /week 또는 /status로 다시 조회해주세요.', { failure_reason: 'Exchange report lookup failed; no ledger write was attempted' }); return;
     }

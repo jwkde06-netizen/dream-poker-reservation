@@ -125,4 +125,42 @@ test('Policy keeps Vietnam midnight and existing KRW_CASH rate equality guard',(
  assert.equal(domain.vietnamDate(Date.parse('2026-11-01T17:00:00Z')/1000),'2026-11-02');
  assert.throws(()=>domain.planExchange(exchange('KRW_CASH','1700000','18'),require('./exchange-audit-regressions.cjs').state()),/환율과 지급액/);
 });
+test('Direct USD receipt / VND payout wording is recognised without AI, in either order',async()=>{
+ for(const text of ['200불 받음 500만동 나감','200불 받음, 500만동 나감','200달러 받았어 500만동 줌','+200불 받음/500만동 지급','500만동 나감 200불 받음','500만동 지급, 200불 수령','200 USD 받음 5,000,000 VND 나감','200불-500만동','200불받음-500만동나감']){
+  const intent=agent.directUsdExchange(text);
+  assert(intent,'recognised: '+text);
+  assert.equal(intent.kind,'exchange');assert.equal(intent.received.account,'USD_CASH');assert.equal(intent.received.amount,'200');
+  assert.equal(intent.paid.account,'VND_CASH');assert.equal(intent.paid.amount,'5000000');assert.equal(intent.fee,null);
+ }
+ assert.equal(agent.directUsdExchange('1500.5불 받음 1억동 나감'),null,'억 is not a supported unit here, so it is not guessed');
+ assert.equal(agent.directUsdExchange('100.5불 받음 250만동 나감').received.amount,'100.5');
+ // Half a transaction, the mirror direction, or extra claims (profit/fees) are never guessed here.
+ for(const text of ['200불 받음','500만동 나감','200불 500만동','200불 줌 500만동 받음','200불 받음 500만동 나감 수익 10만','200불 받음 500만동 나감 수수료 5만','원화 200만원 받음 500만동 나감']){
+  assert.equal(agent.directUsdExchange(text),null,'not guessed: '+text);
+ }
+ assert.throws(()=>agent.directUsdExchange('0불 받음 500만동 나감'),/환전 금액/);
+ assert.throws(()=>agent.directUsdExchange('200불 받음 0동 나감'),/환전 금액/);
+});
+test('"200불 받음 500만동 나감" books USD +200 and VND -5,000,000 with zero profit and never calls AI',async()=>{
+ const r=await handle('200불 받음 500만동 나감');
+ assert.equal(r.aiInputs.length,0,'no AI request');
+ assert.equal(r.job.status,'applied',r.job.reply_text);assert.equal(r.plans.length,1);
+ const plan=r.plans[0].p_plan,post=a=>plan.postings.find(p=>p.account===a);
+ assert.equal(post('USD_CASH').amount_minor,20000);assert.equal(post('VND_CASH').amount_minor,-5000000);
+ assert.equal(plan.postings.length,2);
+ assert.equal(plan.fx_profit_vnd??0,0);assert.equal(plan.fee_vnd??0,0);assert.equal(plan.expense_vnd??0,0);
+ assert.match(r.job.reply_text,/200|5,000,000|500만/);
+});
+test('Profit stays zero unless the user states it; a stated-profit variant is not swallowed by the direct parser',async()=>{
+ const r=await handle('200불 받음 500만동 나감 수익 10만동',{ai:{intent:null}});
+ assert.equal(r.aiInputs.length,1,'wording with an extra claim still goes through the normal path');
+ assert.equal(r.plans.length,0);
+});
+test('When the AI is unreachable the staff message says nothing was booked, instead of "check the result"',async()=>{
+ const r=await handle('200불 줌 500만동 받음');
+ assert.equal(r.job.status,'failed');assert.equal(r.plans.length,0);
+ assert.match(r.job.reply_text,/장부에는 반영되지 않았습니다/);
+ assert.doesNotMatch(r.job.reply_text,/처리 결과를 확인해야/);
+ assert.equal(r.job.failure_reason,'Exchange extraction unavailable; no ledger write was attempted');
+});
 (async()=>{let failed=0;for(const {name,fn} of cases){try{await fn();console.log('PASS '+name)}catch(e){failed++;console.error('FAIL '+name+'\n'+e.stack)}}console.log(cases.length+' policy cases, '+failed+' failures');process.exitCode=failed?1:0})().catch(e=>{console.error(e);process.exitCode=1});
