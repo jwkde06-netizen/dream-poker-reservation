@@ -12,6 +12,16 @@ function integer(value: unknown, nonnegative = false): number {
   if (typeof value !== 'number' || !Number.isSafeInteger(value) || (nonnegative && value < 0)) throw Error('Incomplete exchange receipt totals');
   return value;
 }
+
+/** Exact Korean units for the reference float; no rounding of stored amounts. */
+export function compactFloatVnd(value:number):string {
+ const amount=integer(value,true);
+ const eok=Math.floor(amount/100000000);
+ const man=Math.floor((amount%100000000)/10000);
+ const rest=amount%10000;
+ return [eok?eok.toLocaleString('en-US')+'억':'',man?man.toLocaleString('en-US')+'만':'',rest?rest.toLocaleString('en-US'):''].filter(Boolean).join(' ')+(amount===0?'0동':'동');
+}
+
 /** Compact staff-facing snapshot; no account codes, internal warnings or unverified total valuation. */
 export function compactExchangeStatus(report:any, tradeProfit?:number):string {
   if(report?.initialized!==true || !validDate(report.from) || !validDate(report.to)) throw Error('Exchange status unavailable');
@@ -27,7 +37,7 @@ export function compactExchangeStatus(report:any, tradeProfit?:number):string {
   const money=(n:number)=>n.toLocaleString('en-US');
   const lines=['📊 DREAM EXCHANGE','',`${fm}월 ${fd}일 ~ ${tm}월 ${td}일`,'','💵 현재 시제',
     `🇻🇳 VND ${money(vnd)}`,`🇺🇸 USD ${money(usd)}`,`🇰🇷 KRW ${money(krw)}`];
-  if(report.total_float_vnd!==null&&report.total_float_vnd!==undefined)lines.push('', `💼 총 유통 시제 ${money(integer(report.total_float_vnd,true))}동`);
+  if(report.total_float_vnd!==null&&report.total_float_vnd!==undefined)lines.push('', `💼 총 유통 시제 ${compactFloatVnd(report.total_float_vnd)}`);
   lines.push('', `💰 이번 주 수익 ${money(profit)}동`);
   if(Array.isArray(report.memos)&&report.memos.length) lines.push('', '📝 비고', ...report.memos.map((m:any)=>`#${m.number} · ${m.body}`));
   if(tradeProfit!==undefined)lines.unshift(`✅ 기록 완료 · 이번 거래 ${money(tradeProfit)}동`,'');
