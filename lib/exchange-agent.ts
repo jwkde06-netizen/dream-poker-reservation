@@ -77,7 +77,7 @@ export function parseGoogleKrwVnd(html:string):string {
 }
 export async function googleKrwVnd():Promise<{rate:string;checkedAt:string}> {
   try {
-    const response=await fetch('https://www.google.com/finance/quote/KRW-VND?hl=en',{cache:'no-store',signal:AbortSignal.timeout(15000)});
+    const response=await fetch('https://www.google.com/finance/quote/KRW-VND?hl=en',{headers:{'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36','Accept':'text/html','Accept-Language':'en-US,en;q=0.9'},cache:'no-store',signal:AbortSignal.timeout(15000)});
     if(!response.ok)throw Error('Quote unavailable');
     return {rate:parseGoogleKrwVnd(await response.text()),checkedAt:new Date().toISOString()};
   }catch(error){
