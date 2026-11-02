@@ -59,14 +59,23 @@ export function exchangeMemoCommand(text:string):{action:'add'|'list'|'delete';b
 
 /** Fixed Google Finance KRW/VND quote; never fall back to a default rate. */
 export function parseGoogleKrwVnd(html:string):string {
-  if(!/KRW(?:\/|-|\\\/)VND/.test(html)) throw new ExchangeReview('Google 원화·동 환율을 확인하지 못했습니다. 시제는 변경하지 않았습니다.');
-  const quote=(html.match(/<[^>]+>/g)||[]).find(tag=>/data-source="KRW"/.test(tag)&&/data-target="VND"/.test(tag));
-  const raw=quote?.match(/data-last-price="([0-9.]+)"/)?.[1] || html.match(/class="YMlKec fxKbKc"[^>]*>([0-9,.]+)</)?.[1];
+  // A pair identifier must tolerate Google's "KRW / VND" heading.
+  const pair=/KRW\s*(?:\/|-|\\\/)\s*VND/i;
+  const title=html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '';
+  const canonical=(html.match(/<meta\b[^>]*>/gi)||[]).find(tag=>/property=["']og:url["']/i.test(tag));
+  const trustedPair=pair.test(title)||!!canonical&&/content=["']https:\/\/www\.google\.com\/finance\/(?:beta\/)?quote\/KRW-VND(?:[?"'])/i.test(canonical);
+  const quote=(html.match(/<[^>]+>/g)||[]).find(tag=>/data-source=["']KRW["']/.test(tag)&&/data-target=["']VND["']/.test(tag));
+  if(!trustedPair&&!quote)throw new ExchangeReview('Google 원화·동 환율을 확인하지 못했습니다. 시제는 변경하지 않았습니다.');
+  // Legacy quotes carry data-last-price; Finance Beta renders nested spans.
+  const legacy=html.match(/class=["'][^"']*\bYMlKec\b[^"']*\bfxKbKc\b[^"']*["'][^>]*>\s*([0-9,.]+)\s*</)?.[1];
+  const modern=html.match(/<div\b[^>]*class=["'][^"']*\bN6SYTe\b[^"']*["'][^>]*>\s*<span\b[^>]*>\s*<span\b[^>]*>\s*([0-9,.]+)\s*<\/span>/)?.[1];
+  const titleRate=title.match(/KRW\s*\/\s*VND\s+([0-9,.]+)\s*\(/)?.[1];
+  const raw=quote?.match(/data-last-price=["']([0-9.]+)["']/)?.[1] || (trustedPair ? modern || legacy || titleRate : undefined);
   const rate=raw?.replace(/,/g,'');
   if(!rate||!/^\d+(?:\.\d{1,8})?$/.test(rate)||Number(rate)<1||Number(rate)>100)throw new ExchangeReview('Google 환율 조회에 실패했습니다. 시제는 변경하지 않았습니다. 잠시 후 /sentbe를 다시 보내주세요.');
   return rate;
 }
-async function googleKrwVnd():Promise<{rate:string;checkedAt:string}> {
+export async function googleKrwVnd():Promise<{rate:string;checkedAt:string}> {
   try {
     const response=await fetch('https://www.google.com/finance/quote/KRW-VND?hl=en',{cache:'no-store',signal:AbortSignal.timeout(15000)});
     if(!response.ok)throw Error('Quote unavailable');
