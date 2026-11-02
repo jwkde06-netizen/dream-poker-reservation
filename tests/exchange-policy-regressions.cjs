@@ -15,13 +15,17 @@ test('P1 bare/labelled amounts cannot bypass the final fee guard',async()=>{
   assert.equal(r.job.status,'review');assert.equal(r.plans.length,0);
  }
 });
-test('P2 /fee requires units including negative values; presets retain exact amounts',async()=>{
- for(const text of ['/fee','/fee 5','/fee 1000','/fee 1001','/fee -5']){
-  const r=await handle(text);assert.equal(r.job.status,'review',text);assert.equal(r.plans.length,0);assert.match(r.job.reply_text,/단위/);
+test('P2 /fee keeps legacy shorthand (<=1000 = 만동); amount-only messages are never fees',async()=>{
+ for(const [text,amount] of [['/fee 5',50000],['/fee 100',1000000],['/fee 1000',10000000],['/fee 1001',1001],['/fee 50000',50000]]){
+  assert.equal(Number(agent.exchangeFeeShortcut(text).amount),amount,text);
  }
+ assert.equal(agent.exchangeFeeShortcut('50000'),null);
+ assert.equal(agent.exchangeFeeShortcut('5만동'),null);
  for(const [text,amount] of [['/fee5',50000],['/fee10',100000],['/fee 5만동',50000],['+5만',50000],['/fee@dream_poker_exchange_bot 5만동',50000]]){
   assert.equal(Number(agent.exchangeFeeShortcut(text).amount),amount);
  }
+ const legacyLoss=await handle('/fee -5');
+ assert.equal(legacyLoss.job.status,'applied');assert.equal(legacyLoss.plans[0].p_plan.fx_profit_vnd,-50000);
  const loss=await handle('/fee -5만동');
  assert.equal(loss.job.status,'applied');assert.equal(loss.plans[0].p_plan.fx_profit_vnd,-50000);
 });
