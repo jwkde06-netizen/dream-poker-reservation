@@ -1,6 +1,8 @@
-// Accounting's quality baseline is independent of other app features.
-export const ACCOUNTING_DEFAULT_MODEL='openai/gpt-6-astra';
+// Accounting calls OpenAI directly. Bare OpenAI model ids only; the Vercel AI Gateway setting is ignored here.
+export const ACCOUNTING_DEFAULT_MODEL='gpt-6.1-sol';
+const RETIRED=['gpt-5-mini','gpt-5.4'];
 export function accountingModel(image:boolean,env:Record<string,string|undefined>=process.env){
- const configured=(image?env.ACCOUNTING_VISION_MODEL:env.ACCOUNTING_TEXT_MODEL)||env.ACCOUNTING_MODEL||env.AI_GATEWAY_MODEL;
- return !configured||['openai/gpt-5-mini','openai/gpt-5.4'].includes(configured)?ACCOUNTING_DEFAULT_MODEL:configured;
+ const raw=((image?env.ACCOUNTING_VISION_MODEL:env.ACCOUNTING_TEXT_MODEL)||env.ACCOUNTING_MODEL||'').trim().replace(/^openai\//,'');
+ return !/^[a-z0-9][a-z0-9._-]{0,63}$/i.test(raw)||RETIRED.includes(raw)?ACCOUNTING_DEFAULT_MODEL:raw;
 }
+export const OPENAI_CHAT_URL='https://api.openai.com/v1/chat/completions';

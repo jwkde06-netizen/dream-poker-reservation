@@ -1,4 +1,4 @@
-import {deskCommand,politeAcknowledgement} from './accounting-conversation';
+import {deskCommand,politeAcknowledgement,addressedToDesk} from './accounting-conversation';
 import {followupContext,HistoryJob} from './accounting-followup';
 
 export function shouldProcessStaffMessage(m:any,recent:HistoryJob[]=[]){
@@ -20,15 +20,18 @@ export function shouldProcessStaffMessage(m:any,recent:HistoryJob[]=[]){
  if(/(?:선수|플레이어|님).*소속.*(?:아님|아니|잘못|수정|변경)/.test(t))return true;
  if(/(?:기록|입력|반영).*(?:안\s*되|안\s*됐|안\s*되어|안\s*돼|누락|빠|잘못)|(?:누락|빠졌|잘못).*(?:기록|입력|반영)|우리\s*코드.*\d+\s*명/.test(t))return true;
  if(/(?:아메리카노|커피|라떼|주스|박시우|콜라|아아).*(?:잔|추가|기록)/.test(t))return true;
- if(/규칙|기억해|앞으로|^\/(start|help)|정산상태|처리상태|미처리|시트|정산|F\s*&\s*B|영수증|바이?인|리바인|레벨\s*\d|LV\s*\d/i.test(t))return true;
+ // Bare topic words (바이인, 리바인, 레벨, 정산 ...) appear in ordinary staff chat; they alone never reach the AI.
+ if(/규칙\s*(?:저장|추가|삭제|목록|보여)|기억해|앞으로|다음부터|항상|접수\s*시|처리\s*결과\s*안내|이런\s*경우엔|기본\s*(?:은|으로)|^\/(start|help)|정산상태|처리상태|미처리|시트\s*(?:확인|반영|입력|상태)/i.test(t))return true;
  if(/(?:게임|테이블).*(?:추가|반영|입력|수정|취소|삭제)|(?:추가|반영|입력|수정|취소|삭제).*(?:게임|테이블)|신규.*(?:등록|선수|플레이어)/.test(t))return true;
  // Brief answers have meaning only when tied to a real, still-open task.
  const previous=followupContext(recent,m,['KOREA','KOREA2','UK','HOUSE','JAPAN','MONGOL']);
  if(previous?.plan?.pendingQuestion)return true;
  if(previous&&m.reply_to_message&&/추가|수정|취소|삭제|반영|리바인/.test(t))return true;
- // The AI receives staff text and decides whether it is ledger work.
- // Missing keywords must never silently discard a valid correction.
- return !!t;
+ // Direct call to the desk bot: an @mention, or a reply to one of the bot's own messages.
+ if(addressedToDesk(t))return true;
+ if(t&&m.reply_to_message&&(m.reply_to_message.from?.is_bot||recent.some((j:any)=>j.reply_id&&j.reply_id===m.reply_to_message.message_id)))return true;
+ // Everything else is staff-to-staff conversation and never costs an AI call.
+ return false;
 }
 
 export function resolveFnb(ops:any[],menu:any[][]){
