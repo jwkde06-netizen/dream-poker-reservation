@@ -5,7 +5,7 @@ const receipt=require('../.test-build/exchange-receipt');
 const cash=agent.directKrwExchange('5만5천원 현금으로 받고 100만동 줌');
 assert.equal(cash?.received?.account,'KRW_CASH');
 assert.equal(cash?.received?.amount,'55000');
-assert.equal(agent.directKrwExchange('5만5000원 원화받고 100만동드림')?.received.amount,'55000');
+assert.throws(()=>agent.directKrwExchange('5만5000원 원화받고 100만동드림'),/현금.*계좌/);
 assert.equal(agent.confirmedKrwExchange(['5만5천원 원화받고 100만동드림','5만5000원은 계좌 아니고 현금으로 받아서 분리해야 함'])?.received.account,'KRW_CASH');
 const state={initialized:true,version:1,opened_at:'2026-10-21T12:00:00Z',accounts:{VND_CASH:{balance_minor:44450000,book_vnd:44450000},VND_BANK:{balance_minor:0,book_vnd:0},KRW_BANK:{balance_minor:1380000,book_vnd:26930000},KRW_CASH:{balance_minor:0,book_vnd:0},USD_CASH:{balance_minor:10000,book_vnd:2500000}}};
 const plan=domain.planExchange(cash,state);

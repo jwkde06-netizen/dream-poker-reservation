@@ -21,7 +21,7 @@ interface Job {
   reply_id: number | null; reply_state: string; context_update_id: number | null;
 }
 
-export const EXCHANGE_HELP = `Dream Poker Exchange\n\n실제로 받은 돈과 지급한 돈을 이 방에 적으면 시제와 수익 원장에 기록합니다. 은행 이체를 실행하지는 않습니다.\n\n거래 예시\n• 베트남 계좌로 550만동 받고 현금 550만동 지급. 수수료 5만동은 계좌로 별도 받음\n• 원화 계좌 30만원 입금, 18레이트로 동 현금 지급 완료\n• 100USD 현금 받고 동 현금 250만동 지급 완료\n• 베트남 계좌 수수료 수입 5만동, 별도 수수료 정산\n\n비고: /memo 내용 = 추가, /memo = 목록, /memodel 번호 = 삭제. 보관자·인계·참고사항 모두 적을 수 있습니다. 예: /memo 대니형님 3900만동 보관, /memo 지원 6100만동 보관, /memo 내일 은행 방문 예정. 현황 아래에 삭제할 때까지 표시하며, 시제·수익에 반영하지 않습니다.\n\n시제 설정(관리자): /vnd 1억, /usd 1700, /krw 315000. 해당 통화의 현재 잔액으로 설정하며 더하지 않습니다. /krw는 원화 계좌 잔액입니다. 0 입력 가능. 수익 제외.\n\n베트남동 현재 잔액(관리자): 베트남시제 1억 또는 VND 시제 100,000,000 = 베트남동 현재 시제를 해당 금액으로 대조 조정. 수익 제외.\n\n총 유통 시제(관리자): /float 1억 또는 총 유통시제 1억 = 전체 운용자금 기준액 설정. 기존 기준액을 교체하며 통화별 잔액·수익은 변경하지 않습니다.\n\n조회: 시제 / 오늘 정산 / 이번 주 정산 / 지난주 정산\n기본 환율: 1 KRW = 18 VND, 1 USD = 25,000 VND. 실제 지급액이 있으면 함께 적어주세요.\n환전 원금은 수익에 포함하지 않습니다. 외화 차익은 확인된 취득원가로 처분 시 계산합니다.\n\n최초 설정(관리자): “기초 시제 동 현금 …, 베트남 계좌 …, 원화 계좌 …, 달러 현금 …”을 적고 미리보기의 확정 명령을 보내주세요. 외화의 동 기준 총 취득원가도 알면 함께 적어주세요. 없는 통화는 0입니다. 이후 “원화 잔액 2,598,000원”처럼 보내면 원화 계좌를 해당 잔액으로 바로 대조 조정합니다(관리자 전용, 수익에는 포함하지 않음).\n\n센트비 이동(관리자): /sentbe = 원화 계좌 전액을 현재 Google KRW/VND 환율로 환산해 동 시제에 더하고 원화 계좌 시제를 0원으로 기록합니다. Google 환산액은 실제 센트비 입금액과 다를 수 있습니다. 수익 제외. 실제 송금은 실행하지 않습니다.\n\n단축입력: /fee 5 = 수수료 수익 5만동, /fee 10 = 10만동, /fee 100 = 100만동. /fee -31 = 환전손실 31만동 차감. /fee 뒤 숫자는 만동 단위입니다. 예전처럼 동 단위 숫자를 넣을 때는 /fee 50000 또는 /fee 5만동을 사용하세요. /fee5 = 5만동, /fee10 = 10만동. 수수료 취소는 완료 메시지에 답장하거나 “5만동 취소”라고 적으세요(관리자 전용).\n취소(관리자): “FX-봇번호-업데이트번호 취소, 사유 …”. 기존 메시지를 수정해도 원장은 덮어쓰지 않습니다.`;
+export const EXCHANGE_HELP = `Dream Poker Exchange\n\n실제로 받은 돈과 지급한 돈을 이 방에 적으면 시제와 수익 원장에 기록합니다. 은행 이체를 실행하지는 않습니다.\n\n거래 예시\n• 베트남 계좌로 550만동 받고 현금 550만동 지급. 수수료 5만동은 계좌로 별도 받음\n• 원화 계좌 30만원 입금, 18레이트로 동 현금 지급 완료\n• 100USD 현금 받고 동 현금 250만동 지급 완료\n• 베트남 계좌 수수료 수입 5만동, 별도 수수료 정산\n\n비고: /memo 내용 = 추가, /memo = 목록, /memodel 번호 = 삭제. 보관자·인계·참고사항 모두 적을 수 있습니다. 예: /memo 대니형님 3900만동 보관, /memo 지원 6100만동 보관, /memo 내일 은행 방문 예정. 현황 아래에 삭제할 때까지 표시하며, 시제·수익에 반영하지 않습니다.\n\n시제 설정(관리자): /vnd 1억, /usd 1700, /krw 315000. 해당 통화의 현재 잔액으로 설정하며 더하지 않습니다. /krw는 원화 계좌 잔액입니다. 0 입력 가능. 수익 제외.\n\n베트남동 현재 잔액(관리자): 베트남시제 1억 또는 VND 시제 100,000,000 = 베트남동 현재 시제를 해당 금액으로 대조 조정. 수익 제외.\n\n총 유통 시제(관리자): /float 1억 또는 총 유통시제 1억 = 전체 운용자금 기준액 설정. 기존 기준액을 교체하며 통화별 잔액·수익은 변경하지 않습니다.\n\n조회: 시제 / 오늘 정산 / 이번 주 정산 / 지난주 정산\n기본 환율: 1 KRW = 18 VND, 1 USD = 25,000 VND. 실제 지급액이 있으면 함께 적어주세요.\n환전 원금은 수익에 포함하지 않습니다. 외화 차익은 확인된 취득원가로 처분 시 계산합니다.\n\n최초 설정(관리자): “기초 시제 동 현금 …, 베트남 계좌 …, 원화 계좌 …, 달러 현금 …”을 적고 미리보기의 확정 명령을 보내주세요. 외화의 동 기준 총 취득원가도 알면 함께 적어주세요. 없는 통화는 0입니다. 이후 “원화 잔액 2,598,000원”처럼 보내면 원화 계좌를 해당 잔액으로 바로 대조 조정합니다(관리자 전용, 수익에는 포함하지 않음).\n\n센트비 이동(관리자): /sentbe = 원화 계좌 전액을 현재 Google KRW/VND 환율로 환산해 동 시제에 더하고 원화 계좌 시제를 0원으로 기록합니다. Google 환산액은 실제 센트비 입금액과 다를 수 있습니다. 수익 제외. 실제 송금은 실행하지 않습니다.\n\n단축입력: /fee 5만동 = 수수료 수익 5만동. /fee -31만동 = 환전손실 31만동 차감. 일반 /fee에는 단위가 필요합니다. 금액만 또는 수수료라는 말만 적으면 수수료로 기록하지 않습니다. +5만 또는 /fee 5만동을 사용하세요. /fee5 = 5만동, /fee10 = 10만동. 수수료 취소는 완료 메시지에 답장하거나 “5만동 취소”라고 적으세요(관리자 전용).\n취소(관리자): “FX-봇번호-업데이트번호 취소, 사유 …”. 기존 메시지를 수정해도 원장은 덮어쓰지 않습니다.`;
 
 
 
@@ -89,6 +89,8 @@ export function parseGoogleKrwVnd(html:string):string {
   const trustedPair=pair.test(title)||!!canonical&&/content=["']https:\/\/www\.google\.com\/finance\/(?:beta\/)?quote\/KRW-VND(?:[?"'])/i.test(canonical);
   const quote=(html.match(/<[^>]+>/g)||[]).find(tag=>/data-source=["']KRW["']/.test(tag)&&/data-target=["']VND["']/.test(tag));
   if(!trustedPair&&!quote)throw new ExchangeReview('Google 원화·동 환율을 확인하지 못했습니다. 시제는 변경하지 않았습니다.');
+  const unit=quote?.match(/data-source-amount=["']([^"']+)["']/)?.[1];
+  if(unit!==undefined&&Number(unit)!==1)throw new ExchangeReview('Google 환율의 원화 기준 단위를 확인하지 못했습니다. 시제는 변경하지 않았습니다.');
   // Legacy quotes carry data-last-price; Finance Beta renders nested spans.
   const legacy=html.match(/class=["'][^"']*\bYMlKec\b[^"']*\bfxKbKc\b[^"']*["'][^>]*>\s*([0-9,.]+)\s*</)?.[1];
   const modern=html.match(/<div\b[^>]*class=["'][^"']*\bN6SYTe\b[^"']*["'][^>]*>\s*<span\b[^>]*>\s*<span\b[^>]*>\s*([0-9,.]+)\s*<\/span>/)?.[1];
@@ -148,7 +150,7 @@ export function formatExchangeReceipt(reference: string, plan: ExchangePlan): st
 const EXCHANGE_OPERATING_POLICY = `Operating context agreed with the owner:
 - VND is ONE pooled float, maintained by the owner. Use VND_CASH as its internal bookkeeping code, even if transfer arrived through a bank. Never ask VND_CASH vs VND_BANK.
 - USD float is held by the owner. Danny manages KRW bank balance and KRW bank transfers. KRW cash and KRW bank remain DISTINCT: when explicitly cash, use KRW_CASH; explicitly transferred, use KRW_BANK. Only ask if truly unclear.
-- All confirmed VND transfer-fee income (including "+5만", "5만동", "오만동") is a movement into pooled VND_CASH, category fee, not a capital injection.
+- All confirmed VND transfer-fee income (using explicit "+5만" or "/fee 5만동" commands) is a movement into pooled VND_CASH, category fee, not a capital injection.
 - Responses must be natural concise Korean and contain ZERO code labels such as VND_CASH, KRW_BANK. Never repeat questions answered in the reply thread.
 - Reply contexts contain the unresolved original transaction and subsequent clarifications. Combine them to resolve ONLY that pending transaction; a bare "네" cannot independently create an exchange.
 - For multiple separate completed trades, do not guess or lump them together; ask which to record first.
@@ -177,22 +179,74 @@ export async function extractExchange(text: string, context: unknown): Promise<a
   try { return JSON.parse(result.choices[0].message.content); } catch { throw new ExchangeReview('거래 내용을 정확히 읽지 못했습니다. 받은 통화·금액·계좌와 지급 통화·금액·수수료를 다시 적어주세요.'); }
 }
 
-/** Refuse model-created numbers. Payout arithmetic is done later by the domain layer. */
-export function verifyExchangeNumberEvidence(intent: ExchangeIntent, source: string): void {
+function exchangeNumberEvidence(source: string): Set<string> {
   const seen = new Set<string>();
-  const pattern = /(?:\d[\d,]*)(?:\.\d+)?\s*(?:백만|십만|만|천|[mMkK])?/g;
+  const pattern = /(?:\d[\d,]*)(?:\.\d+)?\s*(?:억|천만|백만|십만|만|천|[mMkK])?/g;
   for (const match of source.match(pattern) || []) {
-    const p = match.replace(/,/g, '').trim().match(/^(\d+(?:\.\d+)?)\s*(백만|십만|만|천|[mMkK])?$/);
+    const p = match.replace(/,/g, '').trim().match(/^(\d+(?:\.\d+)?)\s*(억|천만|백만|십만|만|천|[mMkK])?$/);
     if (!p) continue;
-    const factor: Record<string, number> = { 백만: 1000000, 십만: 100000, 만: 10000, 천: 1000, m: 1000000, k: 1000 };
+    const factor: Record<string, number> = { 억: 100000000, 천만: 10000000, 백만: 1000000, 십만: 100000, 만: 10000, 천: 1000, m: 1000000, k: 1000 };
     const value = Number(p[1]) * (factor[(p[2] || '').toLowerCase()] || 1);
     if (Number.isFinite(value)) seen.add(String(value));
   }
+  return seen;
+}
+
+/** Refuse model-created numbers. Payout arithmetic is done later by the domain layer. */
+export function verifyExchangeNumberEvidence(intent: ExchangeIntent, source: string, sourceIntent: unknown = intent): void {
+  const seen = exchangeNumberEvidence(source);
   const values: string[] = [];
-  if (intent.kind === 'opening') values.push(...Object.values(intent.balances), ...Object.values(intent.basis_vnd).filter((x): x is string => x != null));
+  if (intent.kind === 'opening') {
+    // Inspect the original extraction, before validation inserts the legacy default.
+    // An explicitly supplied zero still requires numeric evidence.
+    const raw = sourceIntent as { kind?: unknown; balances?: Record<string, unknown> } | null;
+    const defaultedCash = raw?.kind === 'opening' && raw.balances != null &&
+      raw.balances.KRW_CASH == null && intent.balances.KRW_CASH === '0';
+    values.push(...ACCOUNT_CODES.filter(code => !(code === 'KRW_CASH' && defaultedCash)).map(code => intent.balances[code]),
+      ...Object.values(intent.basis_vnd).filter((x): x is string => x != null));
+  }
   if (intent.kind === 'exchange') values.push(intent.received.amount, ...(intent.paid.amount == null ? [] : [intent.paid.amount]), ...(intent.fee ? [intent.fee.amount] : []), ...(intent.rate_vnd ? [intent.rate_vnd] : []));
   if (intent.kind === 'movement') values.push(intent.amount, ...(intent.basis_vnd ? [intent.basis_vnd] : []));
   if (values.some(value => !seen.has(String(Number(value))))) throw new ExchangeReview('원문에서 금액을 확실히 확인하지 못했습니다. 실제 금액을 숫자로 다시 적어주세요. 환율 계산은 지급액을 추정해서 적지 않고 제가 계산합니다.');
+}
+
+/** A bare payout answer is evidence for paid.amount, never a new receipt or fee. */
+function verifyPendingPayoutEvidence(intent: ExchangeIntent, answer: string, unresolved: string[]): void {
+  if (intent.kind !== 'exchange' || intent.paid.amount == null ||
+      !['VND_CASH', 'VND_BANK'].includes(intent.paid.account) ||
+      !exchangeNumberEvidence(answer).has(String(Number(intent.paid.amount)))) {
+    throw new ExchangeReview('미처리 환전의 실제 동 지급액인지 확인해주세요. 별도 수수료로 기록하지 않았습니다.');
+  }
+  // The received principal and rate must already exist in the pending source.
+  verifyExchangeNumberEvidence({...intent, paid: {...intent.paid, amount: null}, fee: null}, unresolved.join('\n'));
+  verifyPendingFeeEvidence(intent, unresolved);
+}
+
+function verifyPendingFeeEvidence(intent: Extract<ExchangeIntent, { kind: 'exchange' }>, sources: string[]): void {
+  if (!intent.fee) return;
+
+  // Accept only a separate, explicitly labelled fee clause from the pending transaction.
+  // Full-clause matching rejects negation, hypotheticals and unrelated payout numbers.
+  // Unrecognized phrasing stays in review; numeric coincidence is not provenance.
+  const clauses = sources.flatMap(source => source.split(/[\n;。]|,(?!\d)/));
+  let feeMentioned = false;
+  for (const clause of clauses) {
+    if (/수수료/.test(clause)) feeMentioned = true;
+    // A later correction may omit the word "fee". Do not discard it while
+    // collecting labelled amounts, or assume it refers to another transaction.
+    else if (feeMentioned && /(?:아니|정정|수정|잘못|취소|없|안\s*(?:받|수령)|못\s*(?:받|수령)|받지\s*않|미수령|미입금)/.test(clause)) {
+      throw new ExchangeReview('수수료 뒤에 부정·정정 내용이 있어 기록하지 않았습니다. 실제 받은 수수료를 다시 확인해주세요.');
+    }
+  }
+  const feeClauses = clauses.filter(clause => /수수료/.test(clause));
+  const matches = feeClauses.map(clause =>
+    clause.trim().match(/^(?:이체\s*)?수수료\s*(?:[:：=]\s*)?(\d[\d,]*(?:\.\d+)?\s*(?:억|천만|백만|십만|만|천|[mMkK])?\s*(?:동|VND))\s*(?:(?:은|는)?\s*(?:(?:현금|계좌)로\s*)?(?:별도(?:로)?\s*)?(?:받음|받았음|받았어|수령(?:\s*완료)?))?$/i)
+  );
+  const fees = matches.flatMap(match => match ? Array.from(exchangeNumberEvidence(match[1])) : []);
+  const feeAmount = String(Number(intent.fee.amount));
+  if (matches.some(match => !match) || !fees.length || fees.some(amount => amount !== feeAmount)) {
+    throw new ExchangeReview('지급액 답변을 수수료로도 기록할 수 없습니다. 실제 별도 수수료 금액을 명시해주세요.');
+  }
 }
 
 async function patchJob(config: ExchangeConfig, id: number, patch: Record<string, unknown>, owner?: string): Promise<Job> {
@@ -251,22 +305,28 @@ async function previousContext(config: ExchangeConfig, messageId: number | undef
     if (parent.data && parent.data.status !== 'review') throw new ExchangeReview('답장한 요청은 이미 다른 답장으로 해결되었습니다. 새 거래라면 내용을 새 메시지로 적어주세요.');
     current = parent.data as Job | undefined;
   }
+  if(implicit&&rows.some(row=>!seen.has(row.update_id)))throw new ExchangeReview('미완료 요청이 여러 건입니다. 이어서 처리할 원문 질문에 답장해주세요.');
   return { job: previous, unresolved_texts: texts };
 }
 /** Deliberate short-hand convention authorized by the Exchange owner: +5만 = received transfer fee in VND. */
 /** Owner-approved VND transfer-fee shorthand. Internal cash ledger is the unified VND float. */
 export function exchangeFeeShortcut(text:string):ExchangeIntent|null {
-  const t=text.trim().replace(/@dream_poker_exchange_bot$/i,'').trim();
-  const loss=t.match(/^\/fee\s+[-−]([0-9][0-9,]*(?:\.[0-9]+)?)\s*(백만동|만동|천동|동|vnd)?$/i);
-  if(loss) {
-    const n=Number(loss[1].replace(/,/g,''));
-    return directFxLoss('환전손실 '+loss[1]+(loss[2] || (n<=1000?'만동':'동')));
-  }
+  const t=text.trim().replace(/^\/fee@dream_poker_exchange_bot(?=\s|$)/i,'/fee').replace(/@dream_poker_exchange_bot$/i,'').trim();
   const preset=t.match(/^\/fee(5|10)$/i);
   if(preset) return {kind:'movement',account:'VND_CASH',amount:preset[1]==='5'?'50000':'100000',direction:'in',category:'fee',basis_vnd:null,note:'이체수수료',external_reference:null};
+  const command=t.match(/^\/fee(?:@dream_poker_exchange_bot)?(?:\s+([\s\S]*))?$/i);
+  if (!command && !t.startsWith('+')) return null;
+  if (command && !/(?:백만동|만동|천동|백만|만|천|동|vnd|m|k)$/i.test((command[1]||'').trim())) {
+    throw new ExchangeReview('/fee에는 단위가 필요해요. 예: /fee 5만동');
+  }
+  const loss=t.match(/^\/fee\s+[-−]([0-9][0-9,]*(?:\.[0-9]+)?)\s*(백만동|만동|천동|백만|만|천|동|vnd|m|k)$/i);
+  if(loss) {
+    const factor:Record<string,number>={백만동:1000000,백만:1000000,m:1000000,만동:10000,만:10000,천동:1000,천:1000,k:1000,동:1,vnd:1};
+    return directFxLoss('환전손실 '+String(Number(loss[1].replace(/,/g,''))*factor[loss[2].toLowerCase()])+'동');
+  }
   let p=t, explicit=false;
   if(p.startsWith('+')){p=p.slice(1).trim();explicit=true;}
-  else if(p.startsWith('/fee ')){p=p.slice(5).trim();explicit=true;}
+  else if(command){p=(command[1]||'').trim();explicit=true;}
   else if(p.startsWith('이체수수료 ')){p=p.slice(6).trim();explicit=true;}
   else if(p.startsWith('수수료 ')){p=p.slice(4).trim();explicit=true;}
   if(['오만','오만동','오만원'].includes(p))p='5만동';
@@ -275,8 +335,7 @@ export function exchangeFeeShortcut(text:string):ExchangeIntent|null {
   if(!m || (!explicit && !/^(?:[0-9][0-9,]*[ ]*(?:만동|만|천동|천|동))$/.test(p)))return null;
   const scale:Record<string,number>={'':1,동:1,vnd:1,만:10000,만동:10000,천:1000,천동:1000,백만:1000000,백만동:1000000,m:1000000,k:1000};
   const numeric=Number(m[1].replace(/,/g,''));
-  const tenThousandUnit=explicit && t.toLowerCase().startsWith('/fee ') && !m[2] && numeric<=1000;
-  const amount=numeric*(tenThousandUnit?10000:scale[(m[2]||'').toLowerCase()]);
+  const amount=numeric*scale[(m[2]||'').toLowerCase()];
   if(!Number.isSafeInteger(amount)||amount<=0||amount>1000000000)throw new ExchangeReview('수수료 금액을 확인해주세요.');
   return {kind:'movement',account:'VND_CASH',amount:String(amount),direction:'in',category:'fee',basis_vnd:null,note:'이체수수료',external_reference:null};
 }
@@ -285,8 +344,12 @@ export function exchangeFeeShortcut(text:string):ExchangeIntent|null {
 export function directKrwBalance(text: string): string | null {
   if (/^\/sentbe(?:@dream_poker_exchange_bot)?$/i.test(text.trim())) return '0';
   const t = text.trim().replace(/,/g, '');
-  const match = t.match(/(?:원화|한화|krw)[^\d]{0,15}(?:잔액|시제)[^\d]{0,15}(\d+(?:\.\d+)?)[ ]*(만원|만\s*원|원|krw)?/i)
-    || t.match(/(?:잔액|시제)[^\d]{0,15}(?:원화|한화|krw)[^\d]{0,10}(\d+(?:\.\d+)?)[ ]*(만원|만\s*원|원|krw)?/i);
+  if (/(?:원화|한화|krw)/i.test(t) && /(?:잔액|시제)/.test(t) &&
+      /(?:보충|입금|출금|입출금|회수|송금|이체|지급|추가)/.test(t)) {
+    throw new ExchangeReview('시제 보충·입출금 금액을 현재 잔액으로 조정하지 않았습니다. 실제 입출금인지, 현재 원화 계좌 잔액인지 구분해서 적어주세요.');
+  }
+  const match = t.match(/^(?:현재\s*)?(?:원화|한화|krw)\s*(?:계좌\s*)?(?:잔액|시제)\s*(?:[:：=]\s*)?(\d+(?:\.\d+)?)\s*(만원|만\s*원|원|krw)?\s*$/i)
+    || t.match(/^(?:현재\s*)?(?:잔액|시제)\s*(?:원화|한화|krw)\s*(?:계좌\s*)?(?:[:：=]\s*)?(\d+(?:\.\d+)?)\s*(만원|만\s*원|원|krw)?\s*$/i);
   if (!match) return null;
   const amount = Number(match[1]) * (/^(?:만원|만\s*원)$/i.test(match[2] || '') ? 10_000 : 1);
   if (!Number.isSafeInteger(amount) || amount < 0 || amount > 9_000_000_000_000) throw new ExchangeReview('원화 잔액 금액을 확인해주세요.');
@@ -317,9 +380,10 @@ export function directFxProfit(text:string):ExchangeIntent|null {
 /** Undo a fee transaction by exact receipt or an unambiguous amount. */
 export function cancellationAmount(text: string): number | null {
   let t=text.trim();
-  const slash=t.toLowerCase().startsWith('/cancel');
-  if (!slash && !t.includes('취소')) return null;
-  if (slash) t=t.slice(t.indexOf(' ')+1).trim();
+  const command=t.match(/^\/cancel(?:@dream_poker_exchange_bot)?(?:\s+|$)/i);
+  const slash=!!command;
+  if (!slash && !/^[0-9][\s\S]*취소(?:해줘|해)?$/.test(t)) return null;
+  if (command) t=t.slice(command[0].length).trim();
   for(const tail of ['취소해줘','취소해','취소']) if(t.endsWith(tail)) {t=t.slice(0,-tail.length).trim(); break;}
   const m=t.match(/^([0-9][0-9,]*(?:[.][0-9]+)?)[ ]*(백만동|만동|천동|백만|만|천|m|k|동|vnd)?$/i);
   if (!m) throw new ExchangeReview('취소할 금액을 알려주세요. 또는 완료 메시지에 답장으로 “취소”라고 보내주세요.');
@@ -330,6 +394,11 @@ export function cancellationAmount(text: string): number | null {
 }
 async function cancellationIntent(config:ExchangeConfig, text:string, replyMessageId:number|undefined):Promise<ExchangeIntent|null> {
   const plain=text.trim().toLowerCase();
+  const referenced=text.trim().match(/^(FX-\d+-\d+)\s+취소(?:\s*[,，:：]\s*([\s\S]*)|\s+사유(?:\s+|[:：]\s*)([\s\S]*))?\s*$/i);
+  if(referenced) {
+    const note=(referenced[2]||referenced[3]||'').replace(/^사유\s*[:：]?\s*/, '').trim();
+    return validateExchangeIntent({kind:'reversal',reference:referenced[1].toUpperCase(),note});
+  }
   const bare=['취소','/cancel','/cancel@dream_poker_exchange_bot'].includes(plain);
   let amount=bare?null:cancellationAmount(text);
   if(!bare && amount===null)return null;
@@ -365,13 +434,23 @@ export function directKrwPayout(text: string): ExchangeIntent | null {
  return {kind:'exchange',received:{account:'VND_CASH',amount:String(vnd)},paid:{account:'KRW_BANK',amount:String(krw)},fee:null,received_includes_fee:false,rate_vnd:null,note:'원화 계좌 지급 및 동 수령 완료',external_reference:null};
 }
 /** Exact completed KRW->VND sale, parsed before AI to protect compound Korean numerals. */
-export function directKrwExchange(text:string):ExchangeIntent|null {
+export function explicitKrwAccount(text:string):'KRW_CASH'|'KRW_BANK'|null {
+  const t=text.replace(/,/g,'').replace(/[ \t]/g,'');
+  const cash=/(?:원화|한화|krw)(?:\d+(?:\.\d+)?(?:만|천)?원?)?현금|\d(?:만|천)?원(?:원화)?현금|현금(?:으로)?\d+(?:만|천)?원|\d원.{0,6}계좌아니고현금/i.test(t);
+  const bank=/(?:원화|한화|krw)(?:\d+(?:\.\d+)?(?:만|천)?원?)?계좌|\d(?:만|천)?원(?:원화)?계좌|계좌(?:로)?\d+(?:만|천)?원/i.test(t);
+  if(cash&&bank)throw new ExchangeReview('원화 수령이 현금인지 계좌인지 최종 확인해주세요.');
+  return cash?'KRW_CASH':bank?'KRW_BANK':null;
+}
+
+export function directKrwExchange(text:string, selectedAccount?: 'KRW_CASH' | 'KRW_BANK'):ExchangeIntent|null {
  const compact=text.split(' ').join('');
- const m=compact.match(/^([0-9]+)만(?:(\d+)천|(\d{3,4}))원(?:원화)?(?:현금으로|현금)?받고([0-9]+)만동(드림|줌|지급|보냄)$/);
+ const m=compact.match(/^([0-9]+)만(?:(\d+)천|(\d{3,4}))원(?:원화)?(?:(?:현금|계좌)(?:으로|로)?)?받고([0-9]+)만동(드림|줌|지급|보냄)$/);
  if(!m)return null;
  const krw=Number(m[1])*10000+(m[2]?Number(m[2])*1000:Number(m[3])),vnd=Number(m[4])*10000;
  if(!Number.isSafeInteger(krw)||!Number.isSafeInteger(vnd)||krw<=0||vnd<=0)throw new ExchangeReview('환전 금액을 확인해주세요.');
- return {kind:'exchange',received:{account:/현금/.test(text)?'KRW_CASH':'KRW_BANK',amount:String(krw)},paid:{account:'VND_CASH',amount:String(vnd)},fee:null,received_includes_fee:false,rate_vnd:null,note:'원화 수령 및 동 지급 완료',external_reference:null};
+ const mode=explicitKrwAccount(text)||selectedAccount;
+ if(!mode)throw new ExchangeReview('원화를 현금으로 받았나요, 계좌로 받았나요?');
+ return {kind:'exchange',received:{account:mode,amount:String(krw)},paid:{account:'VND_CASH',amount:String(vnd)},fee:null,received_includes_fee:false,rate_vnd:null,note:'원화 수령 및 동 지급 완료',external_reference:null};
 }
 
 /** Short staff answers belong to the latest unresolved request by that sender. */
@@ -401,14 +480,15 @@ export function pendingKrwDepositExchange(sources:string[]):ExchangeIntent|null 
 
 /** Only persisted unresolved source messages can authorize a short confirmation. */
 export function confirmedKrwExchange(sources: string[]): ExchangeIntent | null {
-  const intents = sources.map(directKrwExchange).filter((x): x is Extract<ExchangeIntent, { kind: 'exchange' }> => x?.kind === 'exchange');
+  const selected=explicitKrwAccount(sources.join('\n'))||undefined;
+  const intents = sources.map(source=>directKrwExchange(source,selected)).filter((x): x is Extract<ExchangeIntent, { kind: 'exchange' }> => x?.kind === 'exchange');
   if (!intents.length) return null;
   const first = intents[0];
   if (intents.some(x => x.received.amount !== first.received.amount || x.paid.amount !== first.paid.amount)) {
     throw new ExchangeReview('답장 맥락에 서로 다른 환전 금액이 있습니다. 정확한 원문에 답장해주세요.');
   }
-  const cash = sources.some(v => /(?:원화.{0,12}현금|현금으로\s*받|현금\s*수령|계좌\s*아니고\s*현금)/.test(v));
-  const bank = sources.some(v => /(?:원화\s*계좌\s*입금|원화\s*계좌로\s*받)/.test(v));
+  const cash = selected==='KRW_CASH';
+  const bank = selected==='KRW_BANK';
   if (cash && bank) throw new ExchangeReview('원화 수령이 현금인지 계좌인지 최종 확인해주세요.');
   if (!cash && !bank) throw new ExchangeReview('원화를 현금으로 받았나요, 계좌로 받았나요?');
   return {...first, received: {...first.received, account: cash ? 'KRW_CASH' : 'KRW_BANK'}};
@@ -475,7 +555,7 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
     }
     const memo=exchangeMemoCommand(text);
     if(memo){
-      await authorizeActor(config,job.sender_id,false);
+      await authorizeActor(config,job.sender_id,memo.action==='delete');
       const result=await exchangeDb().rpc('dream_exchange_memo_command',{p_bot_id:config.botId,p_update_id:job.update_id,p_owner:owner,p_action:memo.action,p_body:memo.body,p_number:memo.number});
       if(result.error||!result.data)throw Error('Exchange memo persistence failed');
       await deliverReply(result.data as Job,config); return;
@@ -510,6 +590,8 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
     const sentbe = /^\/sentbe(?:@dream_poker_exchange_bot)?$/i.test(text.trim());
     const today = vietnamDate(message.date);
     let intent: ExchangeIntent, resolves: number | null = null;
+    let evidenceTexts=[text];
+    let accountConfirmation:{request_update_id:number;answer_update_id:number;account:'KRW_CASH'|'KRW_BANK'}|null=null;
     const confirmation = text.trim().match(/^(?:\/confirm|시제\s*확정)\s+OPEN-(\d+)\s*$/i);
     if (confirmation) {
       await authorizeActor(config, job.sender_id, true);
@@ -520,20 +602,53 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
       if (!pending.data || pending.data.status !== 'review' || pending.data.intent?.kind !== 'opening') throw new ExchangeReview('확정할 기초 시제 미리보기를 찾지 못했거나 이미 처리되었습니다.');
       if (Date.parse(job.source_date) - Date.parse(pending.data.source_date) > 30 * 60 * 1000) throw new ExchangeReview('기초 시제 미리보기가 30분을 지났습니다. 현재 잔액을 다시 적어 새 미리보기를 확인해주세요.');
       intent = validateExchangeIntent(pending.data.intent); resolves = id;
+      evidenceTexts=[pending.data.raw_text||''];
       job = await patchJob(config, job.update_id, { intent, context_update_id: id }, owner);
     } else {
       const cancel = await cancellationIntent(config, text, message.reply_to_message?.message_id);
       const balanceTarget = directKrwBalance(text);
-      const fast = cancel || simpleIntent(text) || exchangeFeeShortcut(text) || directFxLoss(text) || directFxProfit(text) || directUsdExchange(text) || directKrwPayout(text) || directKrwExchange(text) || (balanceTarget !== null ? { kind: 'balance' } as ExchangeIntent : null);
+      const bareFeeAnswer = /^[0-9][0-9,]*\s*(?:만동|만|천동|천|동)$/.test(text.trim());
+      // Read durable pending context before treating an unlabelled amount as fee income.
+      // Explicit /fee, +amount and labelled fees retain their established shortcut.
+      const feeContext = !cancel && bareFeeAnswer
+        ? await previousContext(config, message.reply_to_message?.message_id, job.sender_id, message.date)
+        : null;
+      const pendingFeeAnswer = feeContext?.job?.status === 'review';
+      if(bareFeeAnswer&&!pendingFeeAnswer)throw new ExchangeReview('금액만으로는 기록하지 않습니다. 수수료는 +5만 또는 /fee 5만동으로 입력해주세요.');
+      if (pendingFeeAnswer && !/(?:지급|드림|보냄|줌|나감)/.test(feeContext.job!.reply_text || '')) {
+        throw new ExchangeReview('미처리 요청이 있습니다. 이 금액이 지급액인지 별도 수수료인지 구분해서 적어주세요.');
+      }
+      const fast = cancel || simpleIntent(text) || (!pendingFeeAnswer ? exchangeFeeShortcut(text) : null) || directFxLoss(text) || directFxProfit(text) || directUsdExchange(text) || directKrwPayout(text) || directKrwExchange(text) || (balanceTarget !== null ? { kind: 'balance' } as ExchangeIntent : null);
       if (fast) intent = fast;
       else {
         const implicitFollowup=isExchangeFollowup(text);
         const replyId=message.reply_to_message?.message_id;
-        const previous = await previousContext(config, replyId, replyId || implicitFollowup ? job.sender_id : undefined, message.date);
+        const previous = feeContext || await previousContext(config, replyId, replyId || implicitFollowup ? job.sender_id : undefined, message.date);
+        if(previous.job?.status==='review')evidenceTexts=[...previous.unresolved_texts,text];
+        const savedAccount=previous.job?.intent?.account_confirmation;
+        let verifiedSavedAccount:'KRW_CASH'|'KRW_BANK'|null=null;
+        if(previous.job?.status==='review'&&previous.job.sender_id===job.sender_id&&
+           savedAccount?.answer_update_id===previous.job.update_id&&
+           savedAccount?.request_update_id===previous.job.context_update_id&&
+           ['KRW_CASH','KRW_BANK'].includes(savedAccount?.account)){
+          verifiedSavedAccount=savedAccount.account;
+          evidenceTexts.push('원화 '+(savedAccount.account==='KRW_CASH'?'현금':'계좌'));
+        }
+        const accountAnswer=text.trim().match(/^(?:원화\s*)?(현금|계좌|계좌이체)$/);
+        if(accountAnswer){
+          if(previous.job?.status!=='review'||previous.job.sender_id!==job.sender_id||
+             !/원화/.test(previous.job.reply_text||'')||
+             !/현금[\s\S]*계좌|계좌[\s\S]*현금/.test(previous.job.reply_text||'')){
+            throw new ExchangeReview('같은 미완료 원화 계정 질문에 답장해주세요. 다른 거래의 계정 답변은 재사용하지 않습니다.');
+          }
+          accountConfirmation={request_update_id:previous.job.update_id,answer_update_id:job.update_id,account:accountAnswer[1]==='현금'?'KRW_CASH':'KRW_BANK'};
+          evidenceTexts.push('원화 '+(accountConfirmation.account==='KRW_CASH'?'현금':'계좌'));
+        }
         if (isAmbiguousBareAmount(text) && !previous.unresolved_texts.length) throw new ExchangeReview('금액만으로는 거래 종류를 알 수 없어요. 수수료라면 +5만으로 적어주세요.');
         if (previous.job?.status === 'review') { resolves = previous.job.update_id; job = await patchJob(config, job.update_id, { context_update_id: resolves }, owner); }
+        if(accountConfirmation)job=await patchJob(config,job.update_id,{intent:{kind:'account_selection',account_confirmation:accountConfirmation}},owner);
         // A reply that merely reiterates our agreed VND-account convention is not a second transaction.
-        if (/^(?:베트남 계좌|현금 계좌 구분 없이|VND는 현금 계좌 구분 없이|수익완료\\s*계좌)$/i.test(text.trim())) {
+        if (/^(?:베트남 계좌|현금 계좌 구분 없이|VND는 현금 계좌 구분 없이|수익완료\s*계좌)$/i.test(text.trim())) {
           await finish(job, config, owner, 'ignored', '확인했습니다. 베트남동은 통합 시제로 관리합니다. 수수료는 +5만처럼 한 줄로 입력해주세요.'); return;
         }
         // An explicit yes confirms the specific payment fields in the unanswered quoted request.
@@ -544,7 +659,7 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
         const profitReply=/^(?:환전|환전\s*수익|환전\s*차익|차익|이익)$/i.test(text.trim());
         const confirmedFxProfit=profitReply && previous.job?.status==='review' ? previous.unresolved_texts.map(directFxProfit).find((x): x is ExchangeIntent => x !== null) : null;
         const depositConfirmed = previous.job?.status === 'review' ? pendingKrwDepositExchange([...previous.unresolved_texts,text]) : null;
-        const confirmed = depositConfirmed || ((yes || modeReply) ? confirmedKrwExchange([...previous.unresolved_texts, ...(modeReply ? [text] : [])]) : null);
+        const confirmed = depositConfirmed || ((yes || modeReply) ? confirmedKrwExchange(accountConfirmation?evidenceTexts:[...previous.unresolved_texts, ...(modeReply ? [text] : [])]) : null);
         if (yes && !confirmed && !previous.unresolved_texts.length) throw new ExchangeReview('확인할 미처리 환전 원문을 찾지 못했습니다. 해당 원문에 답장해주세요.');
         if (confirmedFxProfit && previous.job?.status === 'review') {
           intent = confirmedFxProfit;
@@ -553,16 +668,19 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
           intent = confirmed;
           job = await patchJob(config, job.update_id, { intent }, owner);
         } else {
-        const result = await extractExchange(text, { business_date: today, default_rates_vnd: DEFAULT_EXCHANGE_RATES, previous: previous.job ? { status: previous.job.status, reference: previous.job.reference, intent: previous.job.intent } : null, unresolved_texts: previous.unresolved_texts });
+        const result = await extractExchange(text, { business_date: today, default_rates_vnd: DEFAULT_EXCHANGE_RATES, previous: previous.job ? { status: previous.job.status, reference: previous.job.reference, intent: previous.job.intent } : null, unresolved_texts: previous.unresolved_texts,
+          confirmed_krw_account:accountConfirmation?.account||verifiedSavedAccount });
         if (result?.question) throw new ExchangeReview(String(result.question).slice(0, 1000));
         if (result?.intent == null) { await finish(job, config, owner, 'ignored', ''); return; }
         intent = validateExchangeIntent(result.intent);
         if (!['report', 'balance', 'help', 'ignore'].includes(intent.kind) && result.requested_date && result.requested_date !== today) throw new ExchangeReview('이전 날짜의 금액을 자동 소급하지 않습니다. 원장의 기초 시제·기존 거래와 대조 후 관리자에게 확인해주세요.');
-        verifyExchangeNumberEvidence(intent, [...previous.unresolved_texts, text].join('\n'));
+        if (pendingFeeAnswer) verifyPendingPayoutEvidence(intent, text, previous.unresolved_texts);
+        else if (previous.job?.status === 'review' && intent.kind === 'exchange') verifyPendingFeeEvidence(intent, [...previous.unresolved_texts, text]);
+        verifyExchangeNumberEvidence(intent, [...previous.unresolved_texts, text].join('\n'), result.intent);
         if (previous.job?.intent?.kind === 'opening') resolves = null; // Only the exact OPEN confirmation may resolve opening.
         }
       }
-      job = await patchJob(config, job.update_id, { intent }, owner);
+      job = await patchJob(config, job.update_id, { intent:accountConfirmation?{...intent,account_confirmation:accountConfirmation}:intent }, owner);
     }
     if (intent.kind === 'ignore') { await finish(job, config, owner, 'ignored', ''); return; }
     if (intent.kind === 'help') { await finish(job, config, owner, 'ignored', EXCHANGE_HELP); return; }
@@ -574,6 +692,7 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
     const balanceTarget = directKrwBalance(text);
     if (balanceTarget !== null) {
       if (!state.initialized) throw new ExchangeReview('현재 시제를 먼저 확정해주세요.');
+      if(!sentbe&&explicitKrwAccount(text)!=='KRW_BANK')throw new ExchangeReview('원화 잔액이 현금인지 계좌인지 명시해주세요.');
       const current = state.accounts.KRW_BANK.balance_minor;
       const target = toMinor(balanceTarget, 'KRW_BANK', true);
       const delta = target - current;
@@ -587,6 +706,26 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
       const period=exchangeSettlementPeriod(message.date); const report=await getExchangeReport(config.chatId,period.from,period.to); await finish(job,config,owner,'ignored',formatExchangeReport(report)); return;
     }
     const adminRequired = intent.kind === 'opening' || intent.kind === 'reversal' || (intent.kind === 'movement' && intent.category === 'capital');
+    if(intent.kind==='opening'){
+      const source=evidenceTexts.join('\n');
+      for(const [code,label] of [['KRW_BANK','계좌'],['KRW_CASH','현금']] as const){
+        if(Number(intent.balances[code])!==0&&!new RegExp('(?:원화|한화|KRW)\\s*'+label,'i').test(source)){
+          throw new ExchangeReview('기초 시제의 원화 현금과 원화 계좌 금액을 구분해주세요.');
+        }
+      }
+    }
+    if(intent.kind==='movement'&&intent.category==='fee'){
+      const explicit=exchangeFeeShortcut(text);
+      if(!explicit||explicit.kind!=='movement'||explicit.amount!==intent.amount||intent.direction!=='in'||intent.account!=='VND_CASH'){
+        throw new ExchangeReview('수수료는 +5만 또는 /fee 5만동으로 입력해주세요.');
+      }
+    }
+    if(!sentbe&&(intent.kind==='exchange'||intent.kind==='movement')){
+      const accounts=intent.kind==='exchange'?[intent.received.account,intent.paid.account]:[intent.account];
+      for(const code of accounts.filter(code=>code==='KRW_CASH'||code==='KRW_BANK')){
+        if(explicitKrwAccount(evidenceTexts.join('\n'))!==code)throw new ExchangeReview('원화를 현금으로 받았나요, 계좌로 받았나요?');
+      }
+    }
     if (!confirmation) await authorizeActor(config, job.sender_id, adminRequired);
     if (intent.kind === 'opening' && !confirmation) {
       const preview = planExchange(intent, state);

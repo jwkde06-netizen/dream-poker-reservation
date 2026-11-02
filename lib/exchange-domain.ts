@@ -253,7 +253,7 @@ export function planExchange(intent: Exclude<ExchangeIntent, { kind: 'reversal' 
     if (paid <= 0) throw new ExchangeReview('실제 지급액을 확인해주세요.');
     plan.rate_used = `${rate} VND/${EXCHANGE_ACCOUNTS[incoming].currency}${intent.rate_vnd ? '' : ' (설정된 기본 환율)'}`;
   }
-  if (intent.rate_vnd && intent.paid.amount != null && (incoming === 'KRW_BANK' || incoming === 'USD_CASH') && isVnd(outgoing)) {
+  if (intent.rate_vnd && intent.paid.amount != null && (incoming === 'KRW_BANK' || incoming === 'KRW_CASH' || incoming === 'USD_CASH') && isVnd(outgoing)) {
     if (convertToVnd(received, incoming, intent.rate_vnd) !== paid) throw new ExchangeReview('입력한 환율과 지급액이 일치하지 않습니다. 실제 받은 금액·지급액을 확인해주세요.');
     plan.rate_used = `${intent.rate_vnd} VND/${EXCHANGE_ACCOUNTS[incoming].currency}`;
   }

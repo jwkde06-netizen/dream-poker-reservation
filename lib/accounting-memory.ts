@@ -18,7 +18,7 @@ export function ruleList(rules:BusinessRule[]){return rules.length?'기억한 �
 }).join('\n'):'저장된 업무 규칙이 없습니다.';}
 
 export function canTeachBusinessRule(status:string,action:string){
- return action==='list'||(['administrator','creator'].includes(status))||(action==='save'&&status==='member');
+ return action==='list'||(['administrator','creator'].includes(status));
 }
 export function memoryReceipt(content:string,duplicate=false){
  return duplicate?'이미 기억하고 있는 규칙이에요: '+content:'앞으로 이렇게 처리할게요: '+content+'\n업무 규칙에 저장했어요.';

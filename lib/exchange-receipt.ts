@@ -38,7 +38,7 @@ export function compactExchangeStatus(report:any, tradeProfit?:number):string {
   const lines=['📊 DREAM EXCHANGE','',`${fm}월 ${fd}일 ~ ${tm}월 ${td}일`,'','💵 현재 시제',
     `🇻🇳 VND ${money(vnd)}`,`🇺🇸 USD ${money(usd)}`,`🇰🇷 KRW ${money(krw)}`];
   if(report.total_float_vnd!==null&&report.total_float_vnd!==undefined)lines.push('', `💼 총 유통 시제 ${compactFloatVnd(report.total_float_vnd)}`);
-  lines.push('', `💰 이번 주 수익 ${money(profit)}동`);
+  lines.push('', `이체수수료 ${money(fee)}동`, `💰 이번 주 누적 수익 ${money(profit)}동`);
   if(Array.isArray(report.memos)&&report.memos.length) lines.push('', '📝 비고', ...report.memos.map((m:any)=>`#${m.number} · ${m.body}`));
   if(tradeProfit!==undefined)lines.unshift(`✅ 기록 완료 · 이번 거래 ${money(tradeProfit)}동`,'');
   return lines.join(String.fromCharCode(10));
