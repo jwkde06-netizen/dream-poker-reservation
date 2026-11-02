@@ -24,7 +24,11 @@ export function gatewayStaffMessage(error:AccountingGatewayError){
 }
 export function gatewayStatus(reason:unknown){
  const text=String(reason||'');
+ if(text.startsWith('OPENAI_API:authentication_required:'))return 'AI 연결: OpenAI API 키 설정 확인 필요 ⚠️';
+ if(text.startsWith('OPENAI_API:quota_exceeded:'))return 'AI 연결: OpenAI API 한도·잔액 확인 필요 ⚠️';
+ if(text.startsWith('OPENAI_API:'))return 'AI 연결: OpenAI API 호출 실패 · 관리자 확인 필요 ⚠️';
  if(text.startsWith('AI_GATEWAY:paid_credits_required:'))return 'AI 연결: 유료 크레딧 충전 필요 ⚠️';
  if(text.startsWith('AI_GATEWAY:')||/^AI Gateway request failed (401|402|403)/.test(text))return 'AI 연결: 호출 실패 · 관리자 확인 필요 ⚠️';
  return null;
 }
+
