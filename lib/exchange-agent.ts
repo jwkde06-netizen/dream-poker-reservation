@@ -21,7 +21,7 @@ interface Job {
   reply_id: number | null; reply_state: string; context_update_id: number | null;
 }
 
-export const EXCHANGE_HELP = `Dream Poker Exchange\n\n실제로 받은 돈과 지급한 돈을 이 방에 적으면 시제와 수익 원장에 기록합니다. 은행 이체를 실행하지는 않습니다.\n\n거래 예시\n• 베트남 계좌로 550만동 받고 현금 550만동 지급. 수수료 5만동은 계좌로 별도 받음\n• 원화 계좌 30만원 입금, 18레이트로 동 현금 지급 완료\n• 100USD 현금 받고 동 현금 250만동 지급 완료\n• 베트남 계좌 수수료 수입 5만동, 별도 수수료 정산\n\n비고: /memo 내용 = 추가, /memo = 목록, /memodel 번호 = 삭제. 인계 메모는 시제·수익에 반영하지 않습니다.\n\n총 유통 시제(관리자): /float 1억 또는 총 유통시제 1억 = 전체 운용자금 기준액 설정. 기존 기준액을 교체하며 통화별 잔액·수익은 변경하지 않습니다.\n\n조회: 시제 / 오늘 정산 / 이번 주 정산 / 지난주 정산\n기본 환율: 1 KRW = 18 VND, 1 USD = 25,000 VND. 실제 지급액이 있으면 함께 적어주세요.\n환전 원금은 수익에 포함하지 않습니다. 외화 차익은 확인된 취득원가로 처분 시 계산합니다.\n\n최초 설정(관리자): “기초 시제 동 현금 …, 베트남 계좌 …, 원화 계좌 …, 달러 현금 …”을 적고 미리보기의 확정 명령을 보내주세요. 외화의 동 기준 총 취득원가도 알면 함께 적어주세요. 없는 통화는 0입니다. 이후 “원화 잔액 2,598,000원”처럼 보내면 원화 계좌를 해당 잔액으로 바로 대조 조정합니다(관리자 전용, 수익에는 포함하지 않음).\n\n센트비 이동(관리자): /sentbe = 원화 계좌 전액을 현재 Google KRW/VND 환율로 환산해 동 시제에 더하고 원화 계좌 시제를 0원으로 기록합니다. Google 환산액은 실제 센트비 입금액과 다를 수 있습니다. 수익 제외. 실제 송금은 실행하지 않습니다.\n\n단축입력: /fee 5만동 = 수수료 수익 5만동. /fee -31만동 = 환전손실 31만동 차감. 일반 /fee에는 단위가 필요합니다. 금액만 또는 수수료라는 말만 적으면 수수료로 기록하지 않습니다. +5만 또는 /fee 5만동을 사용하세요. /fee5 = 5만동, /fee10 = 10만동. 수수료 취소는 완료 메시지에 답장하거나 “5만동 취소”라고 적으세요(관리자 전용).\n취소(관리자): “FX-봇번호-업데이트번호 취소, 사유 …”. 기존 메시지를 수정해도 원장은 덮어쓰지 않습니다.`;
+export const EXCHANGE_HELP = `Dream Poker Exchange\n\n실제로 받은 돈과 지급한 돈을 이 방에 적으면 시제와 수익 원장에 기록합니다. 은행 이체를 실행하지는 않습니다.\n\n거래 예시\n• 베트남 계좌로 550만동 받고 현금 550만동 지급. 수수료 5만동은 계좌로 별도 받음\n• 원화 계좌 30만원 입금, 18레이트로 동 현금 지급 완료\n• 100USD 현금 받고 동 현금 250만동 지급 완료\n• 베트남 계좌 수수료 수입 5만동, 별도 수수료 정산\n\n비고: /memo 내용 = 추가, /memo = 목록, /memodel 번호 = 삭제. 보관자·인계·참고사항 모두 적을 수 있습니다. 예: /memo 대니형님 3900만동 보관, /memo 지원 6100만동 보관, /memo 내일 은행 방문 예정. 현황 아래에 삭제할 때까지 표시하며, 시제·수익에 반영하지 않습니다.\n\n시제 설정(관리자): /vnd 1억, /usd 1700, /krw 315000. 해당 통화의 현재 잔액으로 설정하며 더하지 않습니다. /krw는 원화 계좌 잔액입니다. 0 입력 가능. 수익 제외.\n\n베트남동 현재 잔액(관리자): 베트남시제 1억 또는 VND 시제 100,000,000 = 베트남동 현재 시제를 해당 금액으로 대조 조정. 수익 제외.\n\n총 유통 시제(관리자): /float 1억 또는 총 유통시제 1억 = 전체 운용자금 기준액 설정. 기존 기준액을 교체하며 통화별 잔액·수익은 변경하지 않습니다.\n\n조회: 시제 / 오늘 정산 / 이번 주 정산 / 지난주 정산\n기본 환율: 1 KRW = 18 VND, 1 USD = 25,000 VND. 실제 지급액이 있으면 함께 적어주세요.\n환전 원금은 수익에 포함하지 않습니다. 외화 차익은 확인된 취득원가로 처분 시 계산합니다.\n\n최초 설정(관리자): “기초 시제 동 현금 …, 베트남 계좌 …, 원화 계좌 …, 달러 현금 …”을 적고 미리보기의 확정 명령을 보내주세요. 외화의 동 기준 총 취득원가도 알면 함께 적어주세요. 없는 통화는 0입니다. 이후 “원화 잔액 2,598,000원”처럼 보내면 원화 계좌를 해당 잔액으로 바로 대조 조정합니다(관리자 전용, 수익에는 포함하지 않음).\n\n센트비 이동(관리자): /sentbe = 원화 계좌 전액을 현재 Google KRW/VND 환율로 환산해 동 시제에 더하고 원화 계좌 시제를 0원으로 기록합니다. Google 환산액은 실제 센트비 입금액과 다를 수 있습니다. 수익 제외. 실제 송금은 실행하지 않습니다.\n\n단축입력: /fee 5만동 = 수수료 수익 5만동. /fee -31만동 = 환전손실 31만동 차감. 일반 /fee에는 단위가 필요합니다. 금액만 또는 수수료라는 말만 적으면 수수료로 기록하지 않습니다. +5만 또는 /fee 5만동을 사용하세요. /fee5 = 5만동, /fee10 = 10만동. 수수료 취소는 완료 메시지에 답장하거나 “5만동 취소”라고 적으세요(관리자 전용).\n취소(관리자): “FX-봇번호-업데이트번호 취소, 사유 …”. 기존 메시지를 수정해도 원장은 덮어쓰지 않습니다.`;
 
 
 
@@ -44,6 +44,29 @@ export function exchangeFloatTarget(text:string):number|null {
  return Number(value/scale);
 }
 
+
+/** Explicit VND current balance is a target, never fee income or an extra deposit. */
+export function directVndBalance(text:string):number|null {
+ const t=text.trim();
+ const m=t.match(/^(?:(?:베트남(?:동)?|VND|동)\s*(?:현재\s*)?(?:시[제재]|잔액)|(?:현재\s*)?(?:시[제재]|잔액)\s*(?:베트남(?:동)?|VND|동))\s*[:：=]?\s*(.+)$/i);
+ return m ? exchangeFloatTarget('/float '+m[1]) : null;
+}
+
+
+/** Absolute balance targets. Bare numeric input uses the named currency's units. */
+export function slashExchangeBalance(text:string):{account:'VND_CASH'|'KRW_BANK'|'USD_CASH';target:number;label:string}|null {
+ const m=text.trim().match(/^\/(vnd|usd|krw)(?:@\w+)?(?:\s+([\s\S]*))?$/i);
+ if(!m)return null;
+ const code=m[1].toLowerCase(),value=(m[2]||'').trim();
+ if(!value)throw new ExchangeReview(code==='vnd'?'/vnd 1억 또는 /vnd 100000000처럼 입력해주세요.':code==='usd'?'/usd 1700처럼 달러 잔액을 입력해주세요.':'/krw 315000처럼 원화 계좌 잔액을 입력해주세요.');
+ if(code==='vnd')return {account:'VND_CASH',target:exchangeFloatTarget('/float '+value)!,label:'베트남동'};
+ const amount=value.match(code==='usd'?/^(\d+(?:,\d{3})*(?:\.\d{1,2})?)\s*(?:USD|달러|불)?$/i:/^(\d+(?:,\d{3})*(?:\.\d+)?)\s*(억|만|천)?\s*(?:KRW|원)?$/i);
+ if(!amount)throw new ExchangeReview('잔액을 양수 또는 0으로 입력해주세요. 예: /'+code+(code==='usd'?' 1700':' 315000'));
+ if(code==='usd')return {account:'USD_CASH',target:toMinor(amount[1].replace(/,/g,''),'USD_CASH',true),label:'달러'};
+ const target=exchangeFloatTarget('/float '+amount[1]+(amount[2]||''))!;
+ return {account:'KRW_BANK',target,label:'원화 계좌'};
+}
+
 export function exchangeMemoCommand(text:string):{action:'add'|'list'|'delete';body:string|null;number:number|null}|null {
  const match=text.trim().match(/^\/(memo|memodel)(?:@\w+)?(?:\s+([\s\S]*))?$/i);
  if(!match)return null;
@@ -59,18 +82,27 @@ export function exchangeMemoCommand(text:string):{action:'add'|'list'|'delete';b
 
 /** Fixed Google Finance KRW/VND quote; never fall back to a default rate. */
 export function parseGoogleKrwVnd(html:string):string {
-  const quote=(html.match(/<[^>]+>/g)||[]).find(tag=>/data-source="KRW"/.test(tag)&&/data-target="VND"/.test(tag));
-  // A detached CSS price cannot prove which currency pair/unit it belongs to.
-  const unit=quote?.match(/data-source-amount="([^"]+)"/)?.[1];
+  // A pair identifier must tolerate Google's "KRW / VND" heading.
+  const pair=/KRW\s*(?:\/|-|\\\/)\s*VND/i;
+  const title=html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '';
+  const canonical=(html.match(/<meta\b[^>]*>/gi)||[]).find(tag=>/property=["']og:url["']/i.test(tag));
+  const trustedPair=pair.test(title)||!!canonical&&/content=["']https:\/\/www\.google\.com\/finance\/(?:beta\/)?quote\/KRW-VND(?:[?"'])/i.test(canonical);
+  const quote=(html.match(/<[^>]+>/g)||[]).find(tag=>/data-source=["']KRW["']/.test(tag)&&/data-target=["']VND["']/.test(tag));
+  if(!trustedPair&&!quote)throw new ExchangeReview('Google 원화·동 환율을 확인하지 못했습니다. 시제는 변경하지 않았습니다.');
+  const unit=quote?.match(/data-source-amount=["']([^"']+)["']/)?.[1];
   if(unit!==undefined&&Number(unit)!==1)throw new ExchangeReview('Google 환율의 원화 기준 단위를 확인하지 못했습니다. 시제는 변경하지 않았습니다.');
-  const raw=quote?.match(/data-last-price="([0-9.]+)"/)?.[1];
+  // Legacy quotes carry data-last-price; Finance Beta renders nested spans.
+  const legacy=html.match(/class=["'][^"']*\bYMlKec\b[^"']*\bfxKbKc\b[^"']*["'][^>]*>\s*([0-9,.]+)\s*</)?.[1];
+  const modern=html.match(/<div\b[^>]*class=["'][^"']*\bN6SYTe\b[^"']*["'][^>]*>\s*<span\b[^>]*>\s*<span\b[^>]*>\s*([0-9,.]+)\s*<\/span>/)?.[1];
+  const titleRate=title.match(/KRW\s*\/\s*VND\s+([0-9,.]+)\s*\(/)?.[1];
+  const raw=quote?.match(/data-last-price=["']([0-9.]+)["']/)?.[1] || (trustedPair ? modern || legacy || titleRate : undefined);
   const rate=raw?.replace(/,/g,'');
   if(!rate||!/^\d+(?:\.\d{1,8})?$/.test(rate)||Number(rate)<1||Number(rate)>100)throw new ExchangeReview('Google 환율 조회에 실패했습니다. 시제는 변경하지 않았습니다. 잠시 후 /sentbe를 다시 보내주세요.');
   return rate;
 }
-async function googleKrwVnd():Promise<{rate:string;checkedAt:string}> {
+export async function googleKrwVnd():Promise<{rate:string;checkedAt:string}> {
   try {
-    const response=await fetch('https://www.google.com/finance/quote/KRW-VND?hl=en',{cache:'no-store',signal:AbortSignal.timeout(15000)});
+    const response=await fetch('https://www.google.com/finance/quote/KRW-VND?hl=en',{headers:{'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36','Accept':'text/html','Accept-Language':'en-US,en;q=0.9'},cache:'no-store',signal:AbortSignal.timeout(15000)});
     if(!response.ok)throw Error('Quote unavailable');
     return {rate:parseGoogleKrwVnd(await response.text()),checkedAt:new Date().toISOString()};
   }catch(error){
@@ -527,6 +559,33 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
       const result=await exchangeDb().rpc('dream_exchange_memo_command',{p_bot_id:config.botId,p_update_id:job.update_id,p_owner:owner,p_action:memo.action,p_body:memo.body,p_number:memo.number});
       if(result.error||!result.data)throw Error('Exchange memo persistence failed');
       await deliverReply(result.data as Job,config); return;
+    }
+
+
+    const slashBalance=slashExchangeBalance(text);
+    const vndTarget=slashBalance?null:directVndBalance(text);
+    const reconciliation=slashBalance||(vndTarget!==null?{account:'VND_CASH' as const,target:vndTarget,label:'베트남동'}:null);
+    if(reconciliation){
+      await authorizeActor(config,job.sender_id,true);
+      const {account,target,label}=reconciliation;
+      for(let attempt=0;attempt<3;attempt++){
+        const currentState=await getExchangeState(config.chatId);
+        if(!currentState.initialized)throw new ExchangeReview('현재 시제를 먼저 확정해주세요.');
+        const current=safeMoney(currentState.accounts[account].balance_minor+(account==='VND_CASH'?currentState.accounts.VND_BANK.balance_minor:0));
+        const delta=safeMoney(target-current);
+        if(delta===0){await finish(job,config,owner,'ignored',label+' 시제가 이미 '+formatMoney(target,account)+'입니다.');return;}
+        const amount=account==='USD_CASH'?(Math.abs(delta)/100).toFixed(2):String(Math.abs(delta));
+        const adjustment:ExchangeIntent={kind:'movement',account,amount,direction:delta>0?'in':'out',category:'capital',basis_vnd:null,note:label+' 현재 잔액 대조 조정 ('+formatMoney(current,account)+' → '+formatMoney(target,account)+') · 수익 제외',external_reference:null};
+        job=await patchJob(config,job.update_id,{intent:adjustment},owner);
+        const plan=planExchange(adjustment,currentState);
+        const result=await exchangeDb().rpc('dream_exchange_commit',{p_bot_id:config.botId,p_update_id:job.update_id,p_owner:owner,p_plan:plan,p_resolves_update_id:null});
+        if(result.error?.message.includes('exchange_stale')&&attempt<2)continue;
+        if(result.error||!result.data?.event)throw Error('Exchange balance reconciliation failed');
+        const event=result.data.event;
+        const saved=await patchJob(config,job.update_id,{reply_text:formatExchangeReceipt(event.reference,event.plan)});
+        await deliverReply(saved,config);return;
+      }
+      throw new ExchangeReview('다른 거래가 처리 중입니다. 잠시 후 다시 보내주세요.');
     }
     const sentbe = /^\/sentbe(?:@dream_poker_exchange_bot)?$/i.test(text.trim());
     const today = vietnamDate(message.date);
