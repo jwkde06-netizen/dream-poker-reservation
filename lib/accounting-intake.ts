@@ -26,6 +26,14 @@ export function shouldProcessStaffMessage(m:any,recent:HistoryJob[]=[]){
  const previous=followupContext(recent,m,['KOREA','KOREA2','UK','HOUSE','JAPAN','MONGOL']);
  if(previous?.plan?.pendingQuestion)return true;
  if(previous&&m.reply_to_message&&/추가|수정|취소|삭제|반영|리바인/.test(t))return true;
+ // Plain staff shift conversation is not a ledger request. Keep this after
+ // explicit accounting instructions and verified pending-task replies.
+ // Do not require an AI connection to decide that nobody requested a write.
+ const shiftConversation=/출근|퇴근|근무|지각|휴무|교대/.test(t)||
+   /^(?:오늘|내일)\s+(?:한|두|세|네|[1-9]\d*)\s*분\s+드림으로\s+오시면\s+(?:돼요|됩니다)[.!~\s]*$/.test(t);
+ if(shiftConversation&&!m.reply_to_message?.from?.is_bot&&
+    !/@dream_poker_reservation_bot\b/i.test(t)&&
+    !/등록|추가|취소|삭제|수정|정정|변경|반영|입력|기록|선수|플레이어|게임|테이블|코드|카드|바인|리바이|칩|디파짓|입금|출금|수수료/.test(t))return false;
  // The AI receives staff text and decides whether it is ledger work.
  // Missing keywords must never silently discard a valid correction.
  return !!t;

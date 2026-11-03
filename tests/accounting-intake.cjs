@@ -33,4 +33,6 @@ for(const text of ['우리코드 5명인데 2명 밖에 기록이 안 되었어'
 
 // Regression: message317 was silently dropped before any AI call.
 for(const text of ["Ye gui cai 우리 코드 아님","YE GUI CAI는 우리 코드가 아니야","이 선수는 저희 정산 코드 대상 아님","김지원님 소속 잘못됐어"])assert.equal(gate({text}),true,text);
-for(const text of ["우리 오늘 몇 시에 퇴근해?","중국인 손님 왔어","우리 코드 개발 중","YE GUI CAI 왔어"])assert.equal(gate({text}),true,text);
+for(const text of ["중국인 손님 왔어","우리 코드 개발 중","YE GUI CAI 왔어"])assert.equal(gate({text}),true,text);
+
+assert.equal(gate({text:"우리 오늘 몇 시에 퇴근해?"}),false);
