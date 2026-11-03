@@ -50,8 +50,8 @@ async function run(text,mode='status',fixture=null){
    return {ok:true,json:async()=>({valueRanges:values.map(values=>({values}))})};
   }
   if(url.startsWith('https://api.telegram.org/file/'))return {ok:true,arrayBuffer:async()=>new Uint8Array([1,2]).buffer};
-  if(url.includes('ai-gateway')){
-   ai++;const body=JSON.parse(init.body);const columns=body.max_tokens===2500||body.max_tokens===4000;
+  if(url==='https://api.openai.com/v1/chat/completions'){
+   ai++;const body=JSON.parse(init.body);const columns=body.max_completion_tokens===2500||body.max_completion_tokens===4000;
    if(fixture?.classificationFailure)throw Error('Fixture classification unavailable');
    if(columns&&fixture?.verificationFailure)throw Error('Fixture receipt verification unavailable');
    const teaching=['rules','readback-fail','unauthorized'].includes(mode);
@@ -69,7 +69,7 @@ async function run(text,mode='status',fixture=null){
   if(name==='./accounting-google')return {accessToken:async()=>'fixture',accountingWorkbook:'fixture'};
   if(cache[name])return cache[name];
   const exports={};cache[name]=exports;
-  new Function('require','exports','process','Buffer','fetch',compile(fs.readFileSync(path.join(__dirname,'../lib',name.replace('./','')+'.ts'),'utf8')))(load,exports,{env:{STAFF_TELEGRAM_CHAT_ID:'-1',AI_GATEWAY_API_KEY:'fixture'}},Buffer,fetch);
+  new Function('require','exports','process','Buffer','fetch',compile(fs.readFileSync(path.join(__dirname,'../lib',name.replace('./','')+'.ts'),'utf8')))(load,exports,{env:{STAFF_TELEGRAM_CHAT_ID:'-1',OPENAI_API_KEY:'fixture'}},Buffer,fetch);
   return exports;
  }
  let failure;try{const update={update_id:400,[fixture?.edited?'edited_message':'message']:{message_id:400,date:stamp,chat:{id:-1,type:'supergroup'},from:{id:1,is_bot:!!fixture?.fromBot},text,...(fixture?.replyTo?{reply_to_message:{message_id:fixture.replyTo}}:fixture?.textOnly?{}:fixture?.document?{document:{file_id:'new-fixture',file_unique_id:'new-fixture',mime_type:'image/png'}}:fixture?{photo:[{file_id:'new-fixture',file_unique_id:'new-fixture'}]}:{})}};await load('./accounting-agent').handle(update);if(fixture?.redeliver)await load('./accounting-agent').handle(update);}catch(e){failure=e;}
