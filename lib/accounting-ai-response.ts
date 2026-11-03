@@ -1,3 +1,4 @@
+import {isFatalProviderError} from './accounting-gateway-error';
 export class InvalidAIResponse extends Error {constructor(public reason:string){super('AI_RESPONSE_INVALID:'+reason);this.name='InvalidAIResponse';}}
 export function parseAIResponse(d:any,kind:'extraction'|'columns'){
  const choice=d?.choices?.[0];
@@ -32,7 +33,7 @@ export async function completeAIJson(request:(attempt:number)=>Promise<any>,kind
   let d:any;
   try{d=await request(attempt);}catch(e){
    const transient=e instanceof Error&&(e.name==='AbortError'||e.name==='TimeoutError'||/\b(?:408|429|500|502|503|504)\b|fetch failed|network/i.test(e.message));
-   if(transient&&attempt===0)continue;
+   if(transient&&!isFatalProviderError(e)&&attempt===0)continue;
    throw e;
   }
   total+=Number(d.usage?.total_tokens||0);prompt+=Number(d.usage?.prompt_tokens||0);completion+=Number(d.usage?.completion_tokens||0);
