@@ -13,7 +13,7 @@ import {rulesLinkText,rulesButton} from './accounting-rules-link';
 import {addressedToDesk,sheetStatusQuestion,deskCommand,deskHelp,politeAcknowledgement,completionReply} from './accounting-conversation';
 import {shouldProcessStaffMessage,resolveFnb} from './accounting-intake';
 import {prepareSelectedPhotoRegistrations,missingRebuyPlayers,missingRebuyQuestion,bindRebuyHistory,confirmedRebuyContext,bindConfirmedRebuy,completePhotoRoster,needsChipVerification,verifyChipEvidence,confirmChipCount,continueChipConfirmation,withheldChipOperations} from './accounting-vision';
-import {defaultAgency,completeNamedArrival,cosmeticNameEdit,jobReport,compactExtractionContext} from './accounting-workflow';
+import {defaultAgency,completeNamedArrival,jobReport,compactExtractionContext} from './accounting-workflow';
 import {reconcileSheet,reconcileOperation,afterVerifiedWrite} from './accounting-reconcile';
 import {sheetContext,correctedOperations,focusedQuestion,certainOperations,clearResolvedIdentityQuestion} from './accounting-context';
 import {closed,followupContext,continuationText,isolateUnapprovedRegistrations,registrationApprovals,rebuyCaption} from './accounting-followup';
@@ -79,10 +79,11 @@ export function explicitPhotoRequest(text:string){
 }
 export async function handle(update:any){
  if(update.callback_query){await handleDeskCallback(update.callback_query);return;}
+ if(update.edited_message)return;
  const started=Date.now();let aiCalls=0,totalTokens=0;
  const responseModels=new Set<string>();
  const recordAI=(result:any)=>{aiCalls++;totalTokens+=result._usage?.totalTokens||0;if(typeof result._model==='string')responseModels.add(result._model.slice(0,120));};
- const m=update.message||update.edited_message;if(!m||String(m.chat?.id)!==process.env.STAFF_TELEGRAM_CHAT_ID||!['group','supergroup'].includes(m.chat.type)||!m.from?.id||m.from.is_bot||m.sender_chat)return;
+ const m=update.message;if(!m||String(m.chat?.id)!==process.env.STAFF_TELEGRAM_CHAT_ID||!['group','supergroup'].includes(m.chat.type)||!m.from?.id||m.from.is_bot||m.sender_chat)return;
  if(!Number.isSafeInteger(update.update_id)||!Number.isSafeInteger(m.message_id))return;
  if(!m.text&&!m.caption&&!m.photo&&!m.document)return;
  const ins=await db().from('dream_accounting_jobs').upsert({update_id:update.update_id,message_id:m.message_id,sender_id:String(m.from.id),text:String(m.text||m.caption||'').slice(0,4096),status:'received',source_message:{message_id:m.message_id,date:m.date,photo:m.photo,document:m.document,reply_to_message_id:m.reply_to_message?.message_id}},{onConflict:'update_id',ignoreDuplicates:true});if(ins.error)throw Error('Job insert failed');
@@ -132,13 +133,6 @@ export async function handle(update:any){
   };
   const metrics=()=>({durationMs:Date.now()-started,aiCalls,totalTokens,responseModels:Array.from(responseModels)});
   const finish=async(status:string,text:string,buttons?:any)=>{const pendingText=text;if(learnedRuleNotice)text=[text,learnedRuleNotice].filter(Boolean).join('\n\n');processingPlan={...(processingPlan||{}),metrics:metrics()};await save(job.update_id,{status,reply_text:text,plan:processingPlan,...(status==='review'&&processingPlan?{plan:{...processingPlan,pendingQuestion:pendingText}}:{})});if(status==='review')await persistBustRoot(processingPlan,pendingText);if(text){const id=await deliver(text,buttons||(status==='review'?pendingButtons(m.message_id):undefined));await save(job.update_id,{reply_id:id});}};
-  if(update.edited_message){
-   if(silentPhoto){processingPlan={sharedPhotoEdit:true};await finish('ignored','');return;}
-   const original=await db().from('dream_accounting_jobs').select('text,plan,status').eq('message_id',m.message_id).lt('update_id',job.update_id).order('update_id',{ascending:true}).limit(1).maybeSingle();
-   if(original.error)throw Error('Edited source lookup failed');
-   if(!m.photo&&!m.document&&original.data&&cosmeticNameEdit(original.data.text,job.text)){processingPlan={cosmeticEdit:true};await finish('ignored','');return;}
-   await finish('review','메시지 수정만으로는 시트가 바뀌지 않아요. 바꿀 내용만 새로 보내주세요.');return;
-  }
   const command=deskCommand(job.text);
   if(sheetStatusQuestion(job.text)&&!m.photo&&!m.document){
    const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(m.date*1000));
