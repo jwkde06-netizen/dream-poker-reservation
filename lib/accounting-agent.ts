@@ -11,7 +11,7 @@ import {completeAIJson,InvalidAIResponse,canRetryPhoto} from './accounting-ai-re
 import {easyHelp,easyMenu,parseDeskAction,pendingButtons,canMarkManual,buyinGuide} from './accounting-easy';
 import {rulesLinkText,rulesButton} from './accounting-rules-link';
 import {addressedToDesk,sheetStatusQuestion,deskCommand,deskHelp,politeAcknowledgement,completionReply} from './accounting-conversation';
-import {shouldProcessStaffMessage,resolveFnb} from './accounting-intake';
+import {shouldProcessStaffMessage,staffMessageIntent,resolveFnb} from './accounting-intake';
 import {prepareSelectedPhotoRegistrations,missingRebuyPlayers,missingRebuyQuestion,bindRebuyHistory,confirmedRebuyContext,bindConfirmedRebuy,completePhotoRoster,needsChipVerification,verifyChipEvidence,confirmChipCount,continueChipConfirmation,withheldChipOperations} from './accounting-vision';
 import {defaultAgency,completeNamedArrival,cosmeticNameEdit,jobReport,compactExtractionContext} from './accounting-workflow';
 import {reconcileSheet,reconcileOperation,afterVerifiedWrite} from './accounting-reconcile';
@@ -111,6 +111,7 @@ export async function handle(update:any){
   }
   return reply(m.message_id,text,buttons);
  };
+ let openTask=false;
  try{
   // The same Telegram update may have waited behind another execution. Re-read
   // under the workbook lock before doing any interpretation or write.
@@ -190,6 +191,7 @@ export async function handle(update:any){
   if(![5,6,8,9,10,11,12,13,14].every(i=>String(formula[1]?.[i]||'').startsWith('=ARRAYFORMULA(')))throw Error('Sheet formula layout changed');
   let previous:any=followupContext(recent,m,master.slice(1).map((r:any[])=>String(r[2]||'')).filter(Boolean));
   if(!previous&&m.reply_to_message?.message_id&&!recent.some(r=>r.message_id===m.reply_to_message.message_id||r.reply_id===m.reply_to_message.message_id)){const q=await db().from('dream_accounting_jobs').select('message_id,sender_id,text,plan,status,source_message,reply_text,reply_id,created_at').or(`message_id.eq.${Number(m.reply_to_message.message_id)},reply_id.eq.${Number(m.reply_to_message.message_id)}`).order('created_at',{ascending:false}).limit(1);if(q.error)throw Error('Context lookup failed');const found=q.data?.[0];if(found)previous=followupContext([found],m,master.slice(1).map((r:any[])=>String(r[2]||'')));}
+  openTask=!!previous?.plan?.pendingQuestion;
   const bustReply=!ownPhoto?transitionBustFollowup(job.text,previous):null;
   if(bustReply&&bustReply.kind!=='count'){
    processingPlan={contextMessageId:previous.message_id,bustFollowup:bustReply.state,unverifiedOperations:previous.plan.unverifiedOperations,operations:[]};
@@ -381,7 +383,11 @@ export async function handle(update:any){
  }catch(e){
   if(writeStarted){await progress('⚠️ 시트 반영 결과를 확인하지 못했어요. 중복 입력을 막기 위해 처리를 멈췄어요. 관리자 확인이 필요해요.');await save(job.update_id,{status:'uncertain',failure_reason:'Write outcome requires reconciliation'});throw e;}
   const latest=await db().from('dream_accounting_jobs').select('status').eq('update_id',job.update_id).single();
-  if(!['applied','review','ignored'].includes(latest.data?.status||'')){const text=silentPhoto?'':e instanceof AccountingGatewayError?gatewayStaffMessage(e):e instanceof InvalidAIResponse?'사진 처리 연결에 문제가 생겨 기록하지 못했어요. 원본은 저장돼 있어 아래 버튼으로 다시 처리할 수 있어요.':'오류가 나서 이번 건은 기록하지 못했어요. 관리자 확인이 필요해요.';await save(job.update_id,{status:'failed',failure_reason:e instanceof Error?e.message:'Processing failed',reply_text:text,...(silentPhoto?{plan:{...(job.plan||{}),silentUnclassifiedPhoto:true}}:{})});if(text){const errorReplyId=await deliver(text,e instanceof InvalidAIResponse?{inline_keyboard:[[{text:'해당 사진 다시 처리',callback_data:'desk:retry:'+m.message_id}]]}:undefined);await save(job.update_id,{reply_id:errorReplyId});}}
+  if(!['applied','review','ignored'].includes(latest.data?.status||'')){const aiOutage=e instanceof AccountingGatewayError||e instanceof InvalidAIResponse;
+   // Ordinary staff chat only reaches the AI to decide if it is ledger work.
+   // When the AI is down, nothing was requested, so stay silent there.
+   const quietChat=aiOutage&&!(m.photo||m.document)&&!openTask&&!m.reply_to_message?.from?.is_bot&&!/@dream_poker_reservation_bot\b/i.test(String(m.text||''))&&staffMessageIntent(m)==='ambiguous';
+   const text=silentPhoto||quietChat?'':e instanceof AccountingGatewayError?gatewayStaffMessage(e):e instanceof InvalidAIResponse?'사진 처리 연결에 문제가 생겨 기록하지 못했어요. 원본은 저장돼 있어 아래 버튼으로 다시 처리할 수 있어요.':'오류가 나서 이번 건은 기록하지 못했어요. 관리자 확인이 필요해요.';await save(job.update_id,{status:'failed',failure_reason:e instanceof Error?e.message:'Processing failed',reply_text:text,...(silentPhoto?{plan:{...(job.plan||{}),silentUnclassifiedPhoto:true}}:{})});if(text){const errorReplyId=await deliver(text,e instanceof InvalidAIResponse?{inline_keyboard:[[{text:'해당 사진 다시 처리',callback_data:'desk:retry:'+m.message_id}]]}:undefined);await save(job.update_id,{reply_id:errorReplyId});}}
   throw e;
  }finally{if(!writeStarted){const r=await db().rpc('dream_accounting_release',{p_owner:owner});if(r.error)throw Error('Lock release failed');}}
 }

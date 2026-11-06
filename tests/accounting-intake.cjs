@@ -1,6 +1,10 @@
 // Intake admits staff text; followupContext and the model still distinguish casual chat and closed tasks.
 const assert=require('node:assert/strict');
-const {shouldProcessStaffMessage:gate,resolveFnb}=require('../.test-build/accounting-intake');
+const {shouldProcessStaffMessage:gate,staffMessageIntent:intent,resolveFnb}=require('../.test-build/accounting-intake');
+// 2026-11-06 Dream Staff: plain chat got an "AI 연결 문제" reply during an AI outage.
+for(const text of ['첫번째 테이블 손님들 오시면 안내해주세요','넵'])assert.equal(intent({text}),'ambiguous',text);
+for(const text of ['14번 게임 시트 반영해','박수민 추가','리바인 체크'])assert.equal(intent({text}),'explicit',text);
+assert.equal(intent({photo:[{}]}),'explicit');
 for(const text of ['위에 대기하는 분들 겜 안하신데 ?','박수민 추가','9번 자리 있습니다','6번 취소','네 시간없대요'])assert.equal(gate({text}),true,text);
 for(const text of ['14번 게임 시트 반영해','우리끼리 대화하는 건 답장하지마. 규칙 저장','준기형님 아메리카노 1잔','리바인 체크'])assert.equal(gate({text}),true,text);
 assert.equal(gate({photo:[{}]}),true);
