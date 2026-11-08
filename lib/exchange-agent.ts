@@ -745,6 +745,20 @@ export async function handleExchangeUpdate(update: any): Promise<void> {
       const preview = planExchange(intent, state);
       await finish(job, config, owner, 'review', ['기초 시제 미리보기 · 아직 반영 전', ...preview.summary, '', `맞으면 관리자가 아래 문장을 그대로 보내주세요.`, `시제 확정 OPEN-${job.update_id}`, '실제 현재 잔액으로만 시작합니다. 취득원가가 없는 외화의 차익은 미확정으로 남습니다.'].join('\n'), { intent, plan: preview }); return;
     }
+    // Repeated fee commands sent before the first acknowledgement are delivery retries.
+    if (intent.kind === 'movement' && intent.category === 'fee') {
+      const prior = await exchangeDb().from('dream_exchange_jobs')
+        .select('reference,reply_state,updated_at,source_date').eq('bot_id', config.botId)
+        .eq('chat_id', config.chatId).eq('sender_id', job.sender_id)
+        .eq('status', 'applied').eq('raw_text', text)
+        .lt('source_date', job.source_date).order('source_date', { ascending: false }).limit(1);
+      if (prior.error) throw Error('Exchange fee acknowledgement lookup failed');
+      const original = prior.data?.[0];
+      if (original && (original.reply_state !== 'sent' || Date.parse(original.updated_at) > Date.parse(job.source_date))) {
+        await finish(job, config, owner, 'ignored', '이미 ' + original.reference + '로 기록된 요청입니다. 완료 답장 전에 다시 보낸 같은 명령은 중복 반영하지 않았습니다.');
+        return;
+      }
+    }
     if ('external_reference' in intent && !intent.external_reference && !confirmation && !(intent.kind === 'movement' && intent.category === 'fee')) {
       const cutoff = new Date(message.date * 1000 - 5 * 60 * 1000).toISOString();
       const duplicate = await exchangeDb().from('dream_exchange_jobs').select('reference').eq('bot_id', config.botId).eq('chat_id', config.chatId).eq('sender_id', job.sender_id).eq('status', 'applied').eq('raw_text', text).gte('source_date', cutoff).limit(1);

@@ -36,7 +36,10 @@ export async function exchangeTelegram(method: 'sendMessage' | 'getChatMember', 
   // Edited-message warnings and clarification replies must never become success receipts.
   if (method === 'sendMessage' && typeof payload.text === 'string' && /^환전 원장 기록 완료 · FX-\d+-\d+(?:\n|$)/.test(payload.text)) {
     try { payload = await exchangeSheetReceipt(payload, config); }
-    catch { throw new ExchangeTelegramFailure(false); }
+    catch {
+      console.error('exchange_receipt_enrichment_failed');
+      payload = { ...payload, text: payload.text + '\n\n⚠️ 거래는 원장에 기록됐습니다. 시트 동기화·현황 조회를 확인 중입니다. 같은 거래를 다시 입력하지 마세요.' };
+    }
   }
   let response: Response;
   try {

@@ -65,10 +65,17 @@ export async function exchangeSheetReceipt(payload: Record<string, unknown>, con
   if (!result.data) return payload;
   const source = await db.from('dream_exchange_jobs').select('raw_text').eq('bot_id', config.botId).eq('update_id', result.data.update_id).eq('chat_id', config.chatId).single();
   if (source.error || !source.data) throw Error('Exchange source lookup failed');
-  await syncExchangeEvent(result.data as SheetEvent, source.data.raw_text);
+  let sheetPending = false;
+  try {
+    await syncExchangeEvent(result.data as SheetEvent, source.data.raw_text);
+  } catch {
+    // The database commit is authoritative. A mirror outage must not block Telegram's queue.
+    sheetPending = true;
+    console.error('exchange_receipt_sheet_sync_failed', { reference: result.data.reference });
+  }
   // Use current Vietnam date, not an old message date when delivering a delayed receipt.
   const period = exchangeSettlementPeriod();
   const snapshot = await db.rpc('dream_exchange_report_with_carry', { p_chat_id: config.chatId, p_from: period.from, p_to: period.to });
   if (snapshot.error || !snapshot.data || snapshot.data.from !== period.from || snapshot.data.to !== period.to) throw Error('Exchange receipt report lookup failed');
-  return { ...payload, text: formatExchangeBalanceReceipt(result.data.reference, result.data.plan, snapshot.data) };
+  return { ...payload, text: formatExchangeBalanceReceipt(result.data.reference, result.data.plan, snapshot.data) + (sheetPending ? '\n\n⚠️ Google 시트 동기화 대기 · 거래는 원장에 기록됐습니다. 재입력하지 마세요.' : '') };
 }
