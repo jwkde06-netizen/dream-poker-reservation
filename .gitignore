@@ -7,3 +7,5 @@ node_modules
 
 supabase/.temp/
 .test-build/
+
+.test-menu-build/

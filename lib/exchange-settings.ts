@@ -52,14 +52,23 @@ export async function withSavedExchange<T>(fn: (row: ExchangeSettings) => Promis
   if (!row?.chat_id) throw Error('Exchange room is not connected');
   return exchangeRuntime.run(runtimeFromSettings(row), () => fn(row));
 }
+export type TelegramSetupMethod = 'getMe' | 'getWebhookInfo' | 'setWebhook' | 'getChatMember' | 'sendMessage' | 'setMyCommands' | 'getMyCommands';
+export class TelegramSetupFailure extends Error {
+  constructor(public readonly method: TelegramSetupMethod, public readonly status: number | null,
+    public readonly reason: 'network' | 'invalid_response' | 'rejected') { super('Telegram connection failed'); }
+}
 /** Telegram error payloads and credential-bearing URLs are never logged or returned. */
-export async function setupTelegram(token: string, method: 'getMe' | 'getWebhookInfo' | 'setWebhook' | 'getChatMember' | 'sendMessage' | 'setMyCommands', payload: Record<string, unknown> = {}): Promise<any> {
-  const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-    cache: 'no-store', signal: AbortSignal.timeout(15000),
-  });
-  const body = await response.json();
-  if (!response.ok || body.ok !== true) throw Error('Telegram connection failed');
+export async function setupTelegram(token: string, method: TelegramSetupMethod, payload: Record<string, unknown> = {}): Promise<any> {
+  let response: Response;
+  try {
+    response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+      cache: 'no-store', signal: AbortSignal.timeout(15000),
+    });
+  } catch { throw new TelegramSetupFailure(method, null, 'network'); }
+  let body: any;
+  try { body = await response.json(); } catch { throw new TelegramSetupFailure(method, response.status, 'invalid_response'); }
+  if (!response.ok || body?.ok !== true) throw new TelegramSetupFailure(method, response.status, 'rejected');
   return body.result;
 }
 export async function pairExchangeRoom(update: any, row: ExchangeSettings): Promise<boolean> {
@@ -78,6 +87,6 @@ export async function pairExchangeRoom(update: any, row: ExchangeSettings): Prom
   }
   const { data, error } = await settingsDb().rpc('dream_exchange_bind_room', { p_hash: row.pair_hash, p_chat_id: String(m.chat.id), p_chat_title: String(m.chat.title || 'Exchange').slice(0, 200), p_admin_id: String(m.from.id) });
   if (error || !data) throw Error('Exchange room binding failed');
-  await setupTelegram(token, 'sendMessage', { chat_id: m.chat.id, text: '✅ Dream Poker Exchange 연결 완료\n\n먼저 관리자가 실제 현재 잔액을 보내주세요:\n기초 시제 동 현금 …동, 베트남 계좌 …동, 원화 계좌 …원, 달러 현금 …USD\n\n없는 통화는 0으로 적고, 표시되는 미리보기를 확인한 뒤 시제 확정 명령을 보내주세요. 이후 완료된 환전 채팅이 자동 기록됩니다. /help로 사용법을 볼 수 있습니다.' });
+  await setupTelegram(token, 'sendMessage', { chat_id: m.chat.id, text: '✅ Dream Poker Exchange 연결 완료\n\n먼저 관리자가 실제 현재 잔액으로 /opening 명령을 보내주세요.\n입력 형식: /opening 실제동잔액동 실제원화잔액원 실제달러잔액불\n위 문구는 입력 형식 안내이며 거래나 시제가 반영되지 않습니다. 각 잔액을 실제 숫자로 바꾸고, 없는 통화는 0으로 적어주세요.\n\n미리보기를 확인한 뒤 표시된 /confirm OPEN-번호 명령으로 확정해주세요. 일반 대화는 자동 기록하지 않으며, 이후에도 슬래시 명령어로만 조작합니다. /help에서 사용법을 확인할 수 있습니다.' });
   return true;
 }

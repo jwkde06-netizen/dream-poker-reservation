@@ -25,7 +25,7 @@ const pending = (patch={}) => ({
 
 // All persistence, AI and delivery are in-memory mocks. Unknown operations fail.
 async function handle(text, options={}) {
-  let job, calls=[], plans=[], aiInputs=[], deliveries=[];
+  let job, calls=[], plans=[], aiInputs=[], deliveries=[], staleReturned=false;
   const history=options.history||[];
   const oldDb=agent.exchangeDb, oldTelegram=telegram.exchangeTelegram, oldFetch=global.fetch;
   agent.exchangeDb=()=>({
@@ -37,12 +37,14 @@ async function handle(text, options={}) {
         return {data:{disposition:'claimed',job:{...job}},error:null};
       }
       if(name==='dream_exchange_state') return {data:options.state||state(),error:null};
+      if(name==='dream_exchange_report_with_carry'&&options.report)return {data:options.report,error:null};
       if(name==='dream_exchange_claim_reply') return {data:true,error:null};
       if(name==='dream_exchange_memo_command') {
         job={...job,status:'ignored',reply_text:'synthetic memo',reply_state:'unsent'};
         return {data:job,error:null};
       }
       if(name==='dream_exchange_commit') {
+        if(options.stalePrior&&!staleReturned){staleReturned=true;history.push(options.stalePrior);return {data:null,error:{message:'exchange_stale'}};}
         if(options.commitError) return {data:null,error:{message:options.commitError}};
         plans.push(args);
         job={...job,status:'applied',plan:args.p_plan,reference:'FX-100001-20'};
@@ -55,7 +57,7 @@ async function handle(text, options={}) {
       const filters=[]; let patch, alternatives, limit;
       const rows=()=>{
         let records=table==='dream_exchange_events'?(options.events||[]):[...history,...(job?[job]:[])];
-        records=records.filter(r=>filters.every(([key,value,op])=>op==='gte'?r[key]>=value:op==='lte'?r[key]<=value:r[key]===value));
+        records=records.filter(r=>filters.every(([key,value,op])=>op==='gte'?r[key]>=value:op==='lte'?r[key]<=value:op==='lt'?r[key]<value:r[key]===value));
         if(alternatives) records=records.filter(r=>alternatives.some(([key,value])=>String(r[key])===value));
         records.sort((a,b)=>(b.update_id||0)-(a.update_id||0));
         if(limit) records=records.slice(0,limit);
@@ -64,7 +66,7 @@ async function handle(text, options={}) {
       };
       const c={
         select(){return c},update(p){patch=p;return c},eq(k,v){filters.push([k,v,'eq']);return c},
-        gte(k,v){filters.push([k,v,'gte']);return c},lte(k,v){filters.push([k,v,'lte']);return c},
+        lt(k,v){filters.push([k,v,'lt']);return c},gte(k,v){filters.push([k,v,'gte']);return c},lte(k,v){filters.push([k,v,'lte']);return c},
         or(s){alternatives=s.split(',').map(x=>{const [k,,v]=x.split('.');return [k,v]});return c},
         order(){return c},limit(n){limit=n;return c},
         async single(){return {data:rows()[0]||null,error:null}},
