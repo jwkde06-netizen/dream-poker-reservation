@@ -23,7 +23,7 @@ if(results[0].exitCode===0) {
     '--moduleResolution','node','--esModuleInterop','--skipLibCheck','--strict','--noEmit','app/api/exchange/webhook/route.ts']);
   run('accounting-agent-syntax',['-e',"const ts=require('typescript'),fs=require('node:fs');const r=ts.transpileModule(fs.readFileSync('lib/accounting-agent.ts','utf8'),{reportDiagnostics:true,compilerOptions:{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS}});if(r.diagnostics?.length){console.error(r.diagnostics);process.exit(1)}console.log('Syntax/transpile only; not a full accounting typecheck');"]);
   for(const file of ['exchange.cjs','exchange-webhook.cjs','exchange-krw-cash.cjs','exchange-confirmation.cjs',
-    'exchange-google.cjs','exchange-receipt.cjs','exchange-settings.cjs','exchange-sql.cjs','exchange-vnd-overdraft.cjs']) {
+    'exchange-krw-movement.cjs','exchange-google.cjs','exchange-receipt.cjs','exchange-settings.cjs','exchange-sql.cjs','exchange-vnd-overdraft.cjs']) {
     run(file.replace('.cjs',''),['--require',guard,'tests/'+file]);
   }
   run('exchange-audit-regressions',['--require',guard,path.join(__dirname,'exchange-audit-regressions.cjs')]);

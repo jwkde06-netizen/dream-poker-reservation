@@ -7,8 +7,10 @@
     "build": "next build",
     "start": "next start",
     "test:accounting": "node tests/run-accounting-offline.cjs",
-    "prebuild": "npm run test:accounting && npm run test:reservations",
-    "test:reservations": "node tests/reservation-operations.cjs && node tests/reservation-postgres.cjs && node tests/reservation-webhook.cjs && node tests/reservation-workflow.cjs"
+    "prebuild": "npm run test:accounting && npm run test:reservations && npm run test:exchange-krw",
+    "test:reservations": "node tests/reservation-operations.cjs && node tests/reservation-postgres.cjs && node tests/reservation-webhook.cjs && node tests/reservation-workflow.cjs",
+    "test:exchange": "node tests/run-exchange-audit-offline.cjs",
+    "test:exchange-krw": "node tests/run-exchange-krw-offline.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.49.1",
