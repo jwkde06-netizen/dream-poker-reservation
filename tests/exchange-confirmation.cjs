@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const { directKrwExchange, confirmedKrwExchange } = require('../.test-build/exchange-agent');
 const source = '5만5천원 원화받고 100만동드림';
-assert.throws(() => confirmedKrwExchange([source, '네', '네']), /원화를 현금으로 받았나요, 계좌로 받았나요\?/);
+assert.equal(confirmedKrwExchange([source, '네', '네']).received.account, 'KRW_BANK');
 const intent = confirmedKrwExchange([source.replace('원화받고', '원화계좌받고'), '네', '네']);
 assert.equal(intent.received.amount, '55000');
 assert.equal(intent.paid.amount, '1000000');

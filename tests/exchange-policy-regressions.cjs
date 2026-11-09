@@ -34,26 +34,26 @@ test('P1 explicit separate fee in a completed exchange remains accepted',async()
  const r=await handle('원화 계좌 30만원 받고 550만동 지급 완료, 수수료 5만동 별도 받음',{ai:{intent}});
  assert.equal(r.job.status,'applied');assert.equal(r.plans[0].p_plan.fee_vnd,50000);
 });
-test('P3 missing KRW mode is reviewed on deterministic, AI and payout paths',async()=>{
- assert.throws(()=>agent.directKrwExchange('5만5천원 원화받고 100만동드림'),/현금.*계좌/);
+test('P3 all new KRW uses bank without account questions on deterministic, AI and payout paths',async()=>{
+ assert.equal(agent.directKrwExchange('5만5천원 원화받고 100만동드림').received.account,'KRW_BANK');
  for(const [text,intent] of [
   ['원화 30만원 받고 550만동 지급 완료',exchange('KRW_BANK','5500000',null)],
   ['30만원 출금 550만동 받음',null]
  ]){
   const r=await handle(text,{ai:intent?{intent}:undefined});
-  assert.equal(r.job.status,'review',text);assert.equal(r.plans.length,0);assert.match(r.job.reply_text,/현금.*계좌/);
+  assert.equal(r.job.status,'applied',r.job.reply_text);assert.equal(r.plans.length,1);assert.equal(r.plans[0].p_plan.postings.some(p=>p.account==='KRW_CASH'),false);
  }
- assert.equal(agent.explicitKrwAccount('원화 30만원 받고 동 현금 지급'),null);
- assert.throws(()=>agent.explicitKrwAccount('원화 현금 또는 원화 계좌'),/최종 확인/);
+ assert.equal(agent.explicitKrwAccount('원화 30만원 받고 동 현금 지급'),'KRW_BANK');
+ assert.equal(agent.explicitKrwAccount('원화 현금 또는 원화 계좌'),'KRW_BANK');
  assert.equal(agent.directKrwExchange('5만5천원 계좌로 받고 100만동드림').received.account,'KRW_BANK');
  const sameBalance=await handle('원화 잔액 100만원');
- assert.equal(sameBalance.job.status,'review');assert.equal(sameBalance.plans.length,0);
+ assert.equal(sameBalance.job.status,'ignored');assert.equal(sameBalance.plans.length,0);
  const raw={kind:'opening',balances:{VND_CASH:'100000000',VND_BANK:'20000000',KRW_BANK:'300000',USD_CASH:'100'},basis_vnd:{},note:'opening'};
  const opening=await handle('기초 시제 동 현금 1억, 베트남 계좌 2천만, 원화 30만원, 달러 현금 100불',{ai:{intent:raw},state:domain.emptyExchangeState()});
- assert.equal(opening.job.status,'review');assert.match(opening.job.reply_text,/원화 현금과 원화 계좌/);
+ assert.equal(opening.job.status,'review');assert.match(opening.job.reply_text,/기초 시제 미리보기/);assert.equal(opening.job.intent.balances.KRW_BANK,'300000');
 });
 test('P3 standalone 계좌/현금 binds only to same pending account question',async()=>{
- for(const [text,account] of [['계좌','KRW_BANK'],['현금','KRW_CASH']]){
+ for(const [text,account] of [['계좌','KRW_BANK'],['현금','KRW_BANK']]){
   const history=[pending({raw_text:'5만5천원 원화받고 100만동드림',reply_text:'원화를 현금으로 받았나요, 계좌로 받았나요?'})];
   const r=await handle(text,{reply:11,history});
   assert.equal(r.job.status,'applied',r.job.reply_text);
@@ -79,7 +79,7 @@ test('P3 account choice remains scoped across a later payout clarification',asyn
  assert.equal(answered.job.status,'applied',answered.job.reply_text);assert.equal(answered.plans[0].p_resolves_update_id,20);
  const tampered={...selected.job,intent:{...selected.job.intent,account_confirmation:{...selected.job.intent.account_confirmation,answer_update_id:99}}};
  const rejected=await handle('550만동',{updateId:40,reply:1000,history:[original,tampered],ai:{intent:exchange('KRW_BANK','5500000',null)}});
- assert.equal(rejected.job.status,'review');assert.equal(rejected.plans.length,0);
+ assert.equal(rejected.job.status,'applied');assert.equal(rejected.job.intent.received.account,'KRW_BANK','new fixed policy does not trust or need saved mode');
 });
 test('P5 memo deletion requires registered admin; add/list remain available',async()=>{
  const denied=await handle('/memodel 1',{sender:200002});
